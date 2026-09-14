@@ -1,0 +1,2865 @@
+{
+  "scenario": "s02_release_settled",
+  "title": "Реліз осів",
+  "tenant": "digital-purchases",
+  "now": "2026-09-14T13:10:00+03:00",
+  "story": "О 09:35 викотили checkout, о 09:40 сплеск помилок, о 09:52 агент закрив інцидент. Зараз 13:10.",
+  "expected": {
+    "verdict": "СПОКІЙНО",
+    "reason": "сплеск о 09:40 осів, агент закрив сам",
+    "states": {
+      "users": "Добре",
+      "forecast": "Чисто",
+      "trust": "Повна",
+      "day": "Осіла"
+    }
+  },
+  "status": {
+    "generatedAt": "2026-09-14T13:10:00+03:00",
+    "tenantStats": {
+      "tenants": {
+        "digital-purchases": {
+          "services": 12,
+          "serviceCoveragePct": 100,
+          "servicesDark": 0,
+          "snrPct": 0.9,
+          "resolutionRatePct": 96,
+          "predictionPrecisionPct": 78,
+          "predictionHits": 31,
+          "predictionMisses": 9,
+          "predictionAvgLeadMs": 2460000,
+          "precursorCoveragePct": 71,
+          "eventsPerIncident": 143,
+          "sampledIncidents": 1,
+          "events": {
+            "noise": 15880,
+            "signal": 142,
+            "incident": 1,
+            "unknown": 2,
+            "drift": 1
+          },
+          "signalsByType": {
+            "log": 88,
+            "red": 31,
+            "use": 7,
+            "k8s": 41
+          },
+          "signalsHistory": [
+            {
+              "t": "2026-09-13T13:10:00+03:00",
+              "requests": 486451,
+              "requestErrors": 1060,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-13T13:15:00+03:00",
+              "requests": 452929,
+              "requestErrors": 966,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-13T13:20:00+03:00",
+              "requests": 473940,
+              "requestErrors": 911,
+              "signal": 2,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-13T13:25:00+03:00",
+              "requests": 470625,
+              "requestErrors": 956,
+              "signal": 0,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-13T13:30:00+03:00",
+              "requests": 470789,
+              "requestErrors": 998,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-13T13:35:00+03:00",
+              "requests": 459814,
+              "requestErrors": 999,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T13:40:00+03:00",
+              "requests": 478329,
+              "requestErrors": 1027,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T13:45:00+03:00",
+              "requests": 478255,
+              "requestErrors": 1034,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-13T13:50:00+03:00",
+              "requests": 475228,
+              "requestErrors": 886,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-13T13:55:00+03:00",
+              "requests": 449878,
+              "requestErrors": 841,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-13T14:00:00+03:00",
+              "requests": 458834,
+              "requestErrors": 891,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-13T14:05:00+03:00",
+              "requests": 459274,
+              "requestErrors": 1009,
+              "signal": 1,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-13T14:10:00+03:00",
+              "requests": 452546,
+              "requestErrors": 909,
+              "signal": 1,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-13T14:15:00+03:00",
+              "requests": 457575,
+              "requestErrors": 889,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-13T14:20:00+03:00",
+              "requests": 469126,
+              "requestErrors": 919,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T14:25:00+03:00",
+              "requests": 456667,
+              "requestErrors": 867,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-13T14:30:00+03:00",
+              "requests": 449385,
+              "requestErrors": 901,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-13T14:35:00+03:00",
+              "requests": 461500,
+              "requestErrors": 996,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-13T14:40:00+03:00",
+              "requests": 448486,
+              "requestErrors": 972,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T14:45:00+03:00",
+              "requests": 443834,
+              "requestErrors": 838,
+              "signal": 1,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-13T14:50:00+03:00",
+              "requests": 449570,
+              "requestErrors": 839,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T14:55:00+03:00",
+              "requests": 450280,
+              "requestErrors": 896,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-13T15:00:00+03:00",
+              "requests": 449271,
+              "requestErrors": 958,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-13T15:05:00+03:00",
+              "requests": 437091,
+              "requestErrors": 894,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-13T15:10:00+03:00",
+              "requests": 442894,
+              "requestErrors": 883,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-13T15:15:00+03:00",
+              "requests": 439227,
+              "requestErrors": 945,
+              "signal": 1,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T15:20:00+03:00",
+              "requests": 413854,
+              "requestErrors": 879,
+              "signal": 2,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-13T15:25:00+03:00",
+              "requests": 413572,
+              "requestErrors": 852,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-13T15:30:00+03:00",
+              "requests": 417249,
+              "requestErrors": 897,
+              "signal": 0,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-13T15:35:00+03:00",
+              "requests": 425175,
+              "requestErrors": 910,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-13T15:40:00+03:00",
+              "requests": 412439,
+              "requestErrors": 887,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-13T15:45:00+03:00",
+              "requests": 427276,
+              "requestErrors": 774,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-13T15:50:00+03:00",
+              "requests": 406757,
+              "requestErrors": 841,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-13T15:55:00+03:00",
+              "requests": 430533,
+              "requestErrors": 779,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-13T16:00:00+03:00",
+              "requests": 397274,
+              "requestErrors": 755,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T16:05:00+03:00",
+              "requests": 400351,
+              "requestErrors": 831,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-13T16:10:00+03:00",
+              "requests": 393435,
+              "requestErrors": 863,
+              "signal": 0,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-13T16:15:00+03:00",
+              "requests": 389846,
+              "requestErrors": 848,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T16:20:00+03:00",
+              "requests": 411505,
+              "requestErrors": 787,
+              "signal": 1,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-13T16:25:00+03:00",
+              "requests": 394899,
+              "requestErrors": 797,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T16:30:00+03:00",
+              "requests": 384077,
+              "requestErrors": 731,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-13T16:35:00+03:00",
+              "requests": 399904,
+              "requestErrors": 744,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-13T16:40:00+03:00",
+              "requests": 398584,
+              "requestErrors": 767,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-13T16:45:00+03:00",
+              "requests": 389338,
+              "requestErrors": 837,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-13T16:50:00+03:00",
+              "requests": 391041,
+              "requestErrors": 765,
+              "signal": 2,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-13T16:55:00+03:00",
+              "requests": 374820,
+              "requestErrors": 818,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T17:00:00+03:00",
+              "requests": 386462,
+              "requestErrors": 760,
+              "signal": 0,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-13T17:05:00+03:00",
+              "requests": 382355,
+              "requestErrors": 709,
+              "signal": 0,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T17:10:00+03:00",
+              "requests": 363854,
+              "requestErrors": 678,
+              "signal": 0,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T17:15:00+03:00",
+              "requests": 379368,
+              "requestErrors": 759,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-13T17:20:00+03:00",
+              "requests": 358685,
+              "requestErrors": 681,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T17:25:00+03:00",
+              "requests": 357365,
+              "requestErrors": 654,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-13T17:30:00+03:00",
+              "requests": 375879,
+              "requestErrors": 770,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T17:35:00+03:00",
+              "requests": 370010,
+              "requestErrors": 707,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-13T17:40:00+03:00",
+              "requests": 348486,
+              "requestErrors": 684,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-13T17:45:00+03:00",
+              "requests": 365671,
+              "requestErrors": 693,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-13T17:50:00+03:00",
+              "requests": 347463,
+              "requestErrors": 657,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-13T17:55:00+03:00",
+              "requests": 354425,
+              "requestErrors": 703,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-13T18:00:00+03:00",
+              "requests": 355117,
+              "requestErrors": 669,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T18:05:00+03:00",
+              "requests": 356963,
+              "requestErrors": 703,
+              "signal": 0,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-13T18:10:00+03:00",
+              "requests": 348255,
+              "requestErrors": 749,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-13T18:15:00+03:00",
+              "requests": 334281,
+              "requestErrors": 614,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-13T18:20:00+03:00",
+              "requests": 327250,
+              "requestErrors": 714,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-13T18:25:00+03:00",
+              "requests": 334036,
+              "requestErrors": 693,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-13T18:30:00+03:00",
+              "requests": 322071,
+              "requestErrors": 668,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-13T18:35:00+03:00",
+              "requests": 327123,
+              "requestErrors": 698,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-13T18:40:00+03:00",
+              "requests": 316844,
+              "requestErrors": 627,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-13T18:45:00+03:00",
+              "requests": 326587,
+              "requestErrors": 615,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-13T18:50:00+03:00",
+              "requests": 313253,
+              "requestErrors": 599,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-13T18:55:00+03:00",
+              "requests": 332879,
+              "requestErrors": 609,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-13T19:00:00+03:00",
+              "requests": 309252,
+              "requestErrors": 602,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T19:05:00+03:00",
+              "requests": 307333,
+              "requestErrors": 595,
+              "signal": 0,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T19:10:00+03:00",
+              "requests": 304371,
+              "requestErrors": 557,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-13T19:15:00+03:00",
+              "requests": 308587,
+              "requestErrors": 581,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-13T19:20:00+03:00",
+              "requests": 311667,
+              "requestErrors": 619,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T19:25:00+03:00",
+              "requests": 311259,
+              "requestErrors": 596,
+              "signal": 1,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-13T19:30:00+03:00",
+              "requests": 310967,
+              "requestErrors": 593,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-13T19:35:00+03:00",
+              "requests": 300681,
+              "requestErrors": 656,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-13T19:40:00+03:00",
+              "requests": 298571,
+              "requestErrors": 618,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-13T19:45:00+03:00",
+              "requests": 288176,
+              "requestErrors": 587,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-13T19:50:00+03:00",
+              "requests": 298510,
+              "requestErrors": 620,
+              "signal": 0,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-13T19:55:00+03:00",
+              "requests": 296838,
+              "requestErrors": 602,
+              "signal": 0,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-13T20:00:00+03:00",
+              "requests": 281677,
+              "requestErrors": 568,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-13T20:05:00+03:00",
+              "requests": 276903,
+              "requestErrors": 507,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-13T20:10:00+03:00",
+              "requests": 287918,
+              "requestErrors": 533,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-13T20:15:00+03:00",
+              "requests": 276224,
+              "requestErrors": 571,
+              "signal": 2,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-13T20:20:00+03:00",
+              "requests": 278681,
+              "requestErrors": 560,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-13T20:25:00+03:00",
+              "requests": 278762,
+              "requestErrors": 607,
+              "signal": 1,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-13T20:30:00+03:00",
+              "requests": 271916,
+              "requestErrors": 516,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T20:35:00+03:00",
+              "requests": 266332,
+              "requestErrors": 496,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-13T20:40:00+03:00",
+              "requests": 269392,
+              "requestErrors": 592,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T20:45:00+03:00",
+              "requests": 261765,
+              "requestErrors": 517,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-13T20:50:00+03:00",
+              "requests": 269444,
+              "requestErrors": 580,
+              "signal": 0,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-13T20:55:00+03:00",
+              "requests": 265651,
+              "requestErrors": 529,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T21:00:00+03:00",
+              "requests": 267939,
+              "requestErrors": 582,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-13T21:05:00+03:00",
+              "requests": 261036,
+              "requestErrors": 570,
+              "signal": 1,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-13T21:10:00+03:00",
+              "requests": 264868,
+              "requestErrors": 546,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-13T21:15:00+03:00",
+              "requests": 258637,
+              "requestErrors": 484,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-13T21:20:00+03:00",
+              "requests": 265980,
+              "requestErrors": 546,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-13T21:25:00+03:00",
+              "requests": 253762,
+              "requestErrors": 529,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-13T21:30:00+03:00",
+              "requests": 246289,
+              "requestErrors": 452,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-13T21:35:00+03:00",
+              "requests": 245495,
+              "requestErrors": 497,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-13T21:40:00+03:00",
+              "requests": 243936,
+              "requestErrors": 533,
+              "signal": 1,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-13T21:45:00+03:00",
+              "requests": 249236,
+              "requestErrors": 528,
+              "signal": 1,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-13T21:50:00+03:00",
+              "requests": 254927,
+              "requestErrors": 518,
+              "signal": 1,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-13T21:55:00+03:00",
+              "requests": 247381,
+              "requestErrors": 446,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-13T22:00:00+03:00",
+              "requests": 243458,
+              "requestErrors": 488,
+              "signal": 0,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T22:05:00+03:00",
+              "requests": 246608,
+              "requestErrors": 539,
+              "signal": 0,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-13T22:10:00+03:00",
+              "requests": 231618,
+              "requestErrors": 461,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-13T22:15:00+03:00",
+              "requests": 231642,
+              "requestErrors": 471,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-13T22:20:00+03:00",
+              "requests": 235661,
+              "requestErrors": 449,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T22:25:00+03:00",
+              "requests": 228715,
+              "requestErrors": 418,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-13T22:30:00+03:00",
+              "requests": 241553,
+              "requestErrors": 525,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-13T22:35:00+03:00",
+              "requests": 238929,
+              "requestErrors": 505,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-13T22:40:00+03:00",
+              "requests": 226307,
+              "requestErrors": 452,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-13T22:45:00+03:00",
+              "requests": 229944,
+              "requestErrors": 414,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T22:50:00+03:00",
+              "requests": 241641,
+              "requestErrors": 470,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-13T22:55:00+03:00",
+              "requests": 229970,
+              "requestErrors": 454,
+              "signal": 2,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-13T23:00:00+03:00",
+              "requests": 231395,
+              "requestErrors": 428,
+              "signal": 2,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-13T23:05:00+03:00",
+              "requests": 234653,
+              "requestErrors": 450,
+              "signal": 1,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-13T23:10:00+03:00",
+              "requests": 226701,
+              "requestErrors": 438,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-13T23:15:00+03:00",
+              "requests": 232208,
+              "requestErrors": 466,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-13T23:20:00+03:00",
+              "requests": 231531,
+              "requestErrors": 452,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-13T23:25:00+03:00",
+              "requests": 235066,
+              "requestErrors": 498,
+              "signal": 2,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-13T23:30:00+03:00",
+              "requests": 224760,
+              "requestErrors": 425,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-13T23:35:00+03:00",
+              "requests": 223056,
+              "requestErrors": 426,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-13T23:40:00+03:00",
+              "requests": 230870,
+              "requestErrors": 488,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-13T23:45:00+03:00",
+              "requests": 224165,
+              "requestErrors": 410,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-13T23:50:00+03:00",
+              "requests": 221257,
+              "requestErrors": 437,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-13T23:55:00+03:00",
+              "requests": 234407,
+              "requestErrors": 508,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T00:00:00+03:00",
+              "requests": 222041,
+              "requestErrors": 423,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T00:05:00+03:00",
+              "requests": 234282,
+              "requestErrors": 465,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T00:10:00+03:00",
+              "requests": 225027,
+              "requestErrors": 437,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T00:15:00+03:00",
+              "requests": 223260,
+              "requestErrors": 451,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T00:20:00+03:00",
+              "requests": 233295,
+              "requestErrors": 489,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T00:25:00+03:00",
+              "requests": 231954,
+              "requestErrors": 472,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T00:30:00+03:00",
+              "requests": 232503,
+              "requestErrors": 448,
+              "signal": 1,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T00:35:00+03:00",
+              "requests": 232558,
+              "requestErrors": 484,
+              "signal": 2,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T00:40:00+03:00",
+              "requests": 237692,
+              "requestErrors": 495,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T00:45:00+03:00",
+              "requests": 232102,
+              "requestErrors": 424,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T00:50:00+03:00",
+              "requests": 229848,
+              "requestErrors": 437,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T00:55:00+03:00",
+              "requests": 230325,
+              "requestErrors": 496,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T01:00:00+03:00",
+              "requests": 239956,
+              "requestErrors": 444,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T01:05:00+03:00",
+              "requests": 229384,
+              "requestErrors": 445,
+              "signal": 2,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T01:10:00+03:00",
+              "requests": 235768,
+              "requestErrors": 425,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T01:15:00+03:00",
+              "requests": 239861,
+              "requestErrors": 488,
+              "signal": 2,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T01:20:00+03:00",
+              "requests": 234094,
+              "requestErrors": 505,
+              "signal": 1,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T01:25:00+03:00",
+              "requests": 230016,
+              "requestErrors": 459,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T01:30:00+03:00",
+              "requests": 231041,
+              "requestErrors": 439,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-14T01:35:00+03:00",
+              "requests": 232949,
+              "requestErrors": 451,
+              "signal": 0,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T01:40:00+03:00",
+              "requests": 233850,
+              "requestErrors": 478,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T01:45:00+03:00",
+              "requests": 237543,
+              "requestErrors": 500,
+              "signal": 0,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T01:50:00+03:00",
+              "requests": 234338,
+              "requestErrors": 501,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T01:55:00+03:00",
+              "requests": 247890,
+              "requestErrors": 459,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T02:00:00+03:00",
+              "requests": 250544,
+              "requestErrors": 484,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T02:05:00+03:00",
+              "requests": 254157,
+              "requestErrors": 480,
+              "signal": 0,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T02:10:00+03:00",
+              "requests": 251872,
+              "requestErrors": 502,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T02:15:00+03:00",
+              "requests": 254792,
+              "requestErrors": 519,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T02:20:00+03:00",
+              "requests": 250388,
+              "requestErrors": 549,
+              "signal": 1,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T02:25:00+03:00",
+              "requests": 255041,
+              "requestErrors": 476,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T02:30:00+03:00",
+              "requests": 251856,
+              "requestErrors": 541,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T02:35:00+03:00",
+              "requests": 246914,
+              "requestErrors": 537,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T02:40:00+03:00",
+              "requests": 264706,
+              "requestErrors": 484,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T02:45:00+03:00",
+              "requests": 264107,
+              "requestErrors": 476,
+              "signal": 0,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T02:50:00+03:00",
+              "requests": 256660,
+              "requestErrors": 479,
+              "signal": 0,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-14T02:55:00+03:00",
+              "requests": 265165,
+              "requestErrors": 487,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T03:00:00+03:00",
+              "requests": 254012,
+              "requestErrors": 548,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T03:05:00+03:00",
+              "requests": 265042,
+              "requestErrors": 536,
+              "signal": 0,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T03:10:00+03:00",
+              "requests": 267455,
+              "requestErrors": 487,
+              "signal": 0,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T03:15:00+03:00",
+              "requests": 278444,
+              "requestErrors": 592,
+              "signal": 2,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T03:20:00+03:00",
+              "requests": 275423,
+              "requestErrors": 592,
+              "signal": 0,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-14T03:25:00+03:00",
+              "requests": 273391,
+              "requestErrors": 506,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T03:30:00+03:00",
+              "requests": 267050,
+              "requestErrors": 503,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T03:35:00+03:00",
+              "requests": 271523,
+              "requestErrors": 529,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T03:40:00+03:00",
+              "requests": 288085,
+              "requestErrors": 622,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T03:45:00+03:00",
+              "requests": 282443,
+              "requestErrors": 611,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T03:50:00+03:00",
+              "requests": 275565,
+              "requestErrors": 586,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T03:55:00+03:00",
+              "requests": 280195,
+              "requestErrors": 546,
+              "signal": 1,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T04:00:00+03:00",
+              "requests": 287570,
+              "requestErrors": 566,
+              "signal": 1,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T04:05:00+03:00",
+              "requests": 298469,
+              "requestErrors": 634,
+              "signal": 2,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T04:10:00+03:00",
+              "requests": 293270,
+              "requestErrors": 561,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-14T04:15:00+03:00",
+              "requests": 289900,
+              "requestErrors": 603,
+              "signal": 2,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T04:20:00+03:00",
+              "requests": 302541,
+              "requestErrors": 548,
+              "signal": 2,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T04:25:00+03:00",
+              "requests": 294041,
+              "requestErrors": 552,
+              "signal": 2,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T04:30:00+03:00",
+              "requests": 307234,
+              "requestErrors": 629,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-14T04:35:00+03:00",
+              "requests": 311182,
+              "requestErrors": 619,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-14T04:40:00+03:00",
+              "requests": 315472,
+              "requestErrors": 671,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T04:45:00+03:00",
+              "requests": 306630,
+              "requestErrors": 636,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T04:50:00+03:00",
+              "requests": 317279,
+              "requestErrors": 640,
+              "signal": 0,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T04:55:00+03:00",
+              "requests": 327995,
+              "requestErrors": 718,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T05:00:00+03:00",
+              "requests": 313745,
+              "requestErrors": 590,
+              "signal": 1,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T05:05:00+03:00",
+              "requests": 329913,
+              "requestErrors": 705,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T05:10:00+03:00",
+              "requests": 313091,
+              "requestErrors": 676,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-14T05:15:00+03:00",
+              "requests": 314760,
+              "requestErrors": 604,
+              "signal": 0,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T05:20:00+03:00",
+              "requests": 334949,
+              "requestErrors": 639,
+              "signal": 0,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T05:25:00+03:00",
+              "requests": 330118,
+              "requestErrors": 628,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T05:30:00+03:00",
+              "requests": 337465,
+              "requestErrors": 708,
+              "signal": 0,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-14T05:35:00+03:00",
+              "requests": 344995,
+              "requestErrors": 716,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T05:40:00+03:00",
+              "requests": 339095,
+              "requestErrors": 657,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T05:45:00+03:00",
+              "requests": 336294,
+              "requestErrors": 631,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T05:50:00+03:00",
+              "requests": 337214,
+              "requestErrors": 670,
+              "signal": 2,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T05:55:00+03:00",
+              "requests": 343120,
+              "requestErrors": 641,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T06:00:00+03:00",
+              "requests": 361252,
+              "requestErrors": 682,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T06:05:00+03:00",
+              "requests": 358330,
+              "requestErrors": 771,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T06:10:00+03:00",
+              "requests": 351059,
+              "requestErrors": 661,
+              "signal": 1,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T06:15:00+03:00",
+              "requests": 345233,
+              "requestErrors": 741,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T06:20:00+03:00",
+              "requests": 349154,
+              "requestErrors": 702,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T06:25:00+03:00",
+              "requests": 360042,
+              "requestErrors": 711,
+              "signal": 1,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T06:30:00+03:00",
+              "requests": 377110,
+              "requestErrors": 681,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T06:35:00+03:00",
+              "requests": 359090,
+              "requestErrors": 667,
+              "signal": 2,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T06:40:00+03:00",
+              "requests": 368949,
+              "requestErrors": 673,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T06:45:00+03:00",
+              "requests": 387754,
+              "requestErrors": 798,
+              "signal": 1,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T06:50:00+03:00",
+              "requests": 387053,
+              "requestErrors": 838,
+              "signal": 0,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T06:55:00+03:00",
+              "requests": 374481,
+              "requestErrors": 818,
+              "signal": 0,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T07:00:00+03:00",
+              "requests": 386836,
+              "requestErrors": 839,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T07:05:00+03:00",
+              "requests": 389387,
+              "requestErrors": 761,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T07:10:00+03:00",
+              "requests": 392878,
+              "requestErrors": 795,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T07:15:00+03:00",
+              "requests": 383133,
+              "requestErrors": 834,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T07:20:00+03:00",
+              "requests": 403736,
+              "requestErrors": 746,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T07:25:00+03:00",
+              "requests": 392725,
+              "requestErrors": 857,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T07:30:00+03:00",
+              "requests": 390290,
+              "requestErrors": 711,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T07:35:00+03:00",
+              "requests": 413435,
+              "requestErrors": 843,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T07:40:00+03:00",
+              "requests": 387485,
+              "requestErrors": 757,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T07:45:00+03:00",
+              "requests": 397225,
+              "requestErrors": 758,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T07:50:00+03:00",
+              "requests": 403825,
+              "requestErrors": 879,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T07:55:00+03:00",
+              "requests": 396623,
+              "requestErrors": 786,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T08:00:00+03:00",
+              "requests": 405818,
+              "requestErrors": 735,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T08:05:00+03:00",
+              "requests": 420375,
+              "requestErrors": 791,
+              "signal": 0,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T08:10:00+03:00",
+              "requests": 402637,
+              "requestErrors": 748,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T08:15:00+03:00",
+              "requests": 428790,
+              "requestErrors": 881,
+              "signal": 2,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T08:20:00+03:00",
+              "requests": 428241,
+              "requestErrors": 794,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T08:25:00+03:00",
+              "requests": 408590,
+              "requestErrors": 819,
+              "signal": 1,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T08:30:00+03:00",
+              "requests": 411120,
+              "requestErrors": 831,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T08:35:00+03:00",
+              "requests": 443198,
+              "requestErrors": 905,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T08:40:00+03:00",
+              "requests": 440590,
+              "requestErrors": 857,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-14T08:45:00+03:00",
+              "requests": 443405,
+              "requestErrors": 957,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T08:50:00+03:00",
+              "requests": 451116,
+              "requestErrors": 816,
+              "signal": 1,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-14T08:55:00+03:00",
+              "requests": 448638,
+              "requestErrors": 809,
+              "signal": 2,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T09:00:00+03:00",
+              "requests": 446325,
+              "requestErrors": 957,
+              "signal": 0,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T09:05:00+03:00",
+              "requests": 442078,
+              "requestErrors": 903,
+              "signal": 1,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-14T09:10:00+03:00",
+              "requests": 439652,
+              "requestErrors": 930,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T09:15:00+03:00",
+              "requests": 428137,
+              "requestErrors": 872,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T09:20:00+03:00",
+              "requests": 440827,
+              "requestErrors": 825,
+              "signal": 0,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T09:25:00+03:00",
+              "requests": 461023,
+              "requestErrors": 1008,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T09:30:00+03:00",
+              "requests": 465050,
+              "requestErrors": 877,
+              "signal": 0,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T09:35:00+03:00",
+              "requests": 446031,
+              "requestErrors": 968,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T09:40:00+03:00",
+              "requests": 442996,
+              "requestErrors": 5817,
+              "signal": 0,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T09:45:00+03:00",
+              "requests": 450738,
+              "requestErrors": 6310,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T09:50:00+03:00",
+              "requests": 461184,
+              "requestErrors": 5878,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T09:55:00+03:00",
+              "requests": 472477,
+              "requestErrors": 931,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T10:00:00+03:00",
+              "requests": 455780,
+              "requestErrors": 904,
+              "signal": 1,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T10:05:00+03:00",
+              "requests": 477211,
+              "requestErrors": 968,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T10:10:00+03:00",
+              "requests": 458848,
+              "requestErrors": 906,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T10:15:00+03:00",
+              "requests": 449798,
+              "requestErrors": 916,
+              "signal": 0,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T10:20:00+03:00",
+              "requests": 457927,
+              "requestErrors": 828,
+              "signal": 2,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T10:25:00+03:00",
+              "requests": 482314,
+              "requestErrors": 991,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T10:30:00+03:00",
+              "requests": 456334,
+              "requestErrors": 902,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T10:35:00+03:00",
+              "requests": 463763,
+              "requestErrors": 884,
+              "signal": 0,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-14T10:40:00+03:00",
+              "requests": 476968,
+              "requestErrors": 1040,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T10:45:00+03:00",
+              "requests": 481071,
+              "requestErrors": 948,
+              "signal": 0,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T10:50:00+03:00",
+              "requests": 471125,
+              "requestErrors": 955,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-14T10:55:00+03:00",
+              "requests": 460603,
+              "requestErrors": 960,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T11:00:00+03:00",
+              "requests": 483915,
+              "requestErrors": 960,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T11:05:00+03:00",
+              "requests": 473629,
+              "requestErrors": 953,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T11:10:00+03:00",
+              "requests": 489207,
+              "requestErrors": 1028,
+              "signal": 1,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T11:15:00+03:00",
+              "requests": 472887,
+              "requestErrors": 1021,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T11:20:00+03:00",
+              "requests": 479243,
+              "requestErrors": 936,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T11:25:00+03:00",
+              "requests": 472162,
+              "requestErrors": 948,
+              "signal": 0,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T11:30:00+03:00",
+              "requests": 483177,
+              "requestErrors": 1030,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T11:35:00+03:00",
+              "requests": 491081,
+              "requestErrors": 1023,
+              "signal": 2,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-14T11:40:00+03:00",
+              "requests": 490284,
+              "requestErrors": 991,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T11:45:00+03:00",
+              "requests": 464674,
+              "requestErrors": 1003,
+              "signal": 0,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-14T11:50:00+03:00",
+              "requests": 473090,
+              "requestErrors": 985,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T11:55:00+03:00",
+              "requests": 462594,
+              "requestErrors": 881,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T12:00:00+03:00",
+              "requests": 490892,
+              "requestErrors": 942,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T12:05:00+03:00",
+              "requests": 492884,
+              "requestErrors": 939,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T12:10:00+03:00",
+              "requests": 456386,
+              "requestErrors": 929,
+              "signal": 0,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T12:15:00+03:00",
+              "requests": 459657,
+              "requestErrors": 829,
+              "signal": 1,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T12:20:00+03:00",
+              "requests": 478580,
+              "requestErrors": 1001,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-14T12:25:00+03:00",
+              "requests": 486983,
+              "requestErrors": 940,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T12:30:00+03:00",
+              "requests": 477788,
+              "requestErrors": 936,
+              "signal": 0,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T12:35:00+03:00",
+              "requests": 488213,
+              "requestErrors": 996,
+              "signal": 1,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-14T12:40:00+03:00",
+              "requests": 465724,
+              "requestErrors": 864,
+              "signal": 2,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T12:45:00+03:00",
+              "requests": 454132,
+              "requestErrors": 891,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T12:50:00+03:00",
+              "requests": 476410,
+              "requestErrors": 858,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T12:55:00+03:00",
+              "requests": 486848,
+              "requestErrors": 915,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T13:00:00+03:00",
+              "requests": 464347,
+              "requestErrors": 897,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T13:05:00+03:00",
+              "requests": 473801,
+              "requestErrors": 944,
+              "signal": 1,
+              "noise": 37
+            }
+          ],
+          "incidents": {
+            "openNow": 0
+          },
+          "mttrMs": 690000,
+          "mttdMs": 41000,
+          "autoResolvedPct": 100,
+          "repeatRatePct": 0
+        }
+      }
+    },
+    "clusterAgentStats": {
+      "digital-purchases": {
+        "cluster": "gke-eu-prod-1",
+        "connected": true,
+        "lastMessageUnix": 1789380592
+      }
+    },
+    "knownServices": 12,
+    "unmappedServices": 0,
+    "unmappedNames": [],
+    "unmappedTruncated": false
+  },
+  "incidents": {
+    "tenant": "digital-purchases",
+    "incidentMetrics": {
+      "criticalOpen": 0,
+      "warningOpen": 0,
+      "infoOpen": 0,
+      "medianTTR": 720
+    },
+    "incidents": [
+      {
+        "id": "inc-2041",
+        "service": "checkout",
+        "severity": "warning",
+        "status": "resolved",
+        "firstSeen": "2026-09-14T09:40:12+03:00",
+        "resolvedAt": "2026-09-14T09:52:30+03:00",
+        "resolvedBy": "agent",
+        "title": "checkout error rate 1.4% after rollout",
+        "rca": "New pods served traffic before warm-up of the price cache; error rate returned to baseline once the cache filled.",
+        "investigationPlan": [
+          "confirm readiness probe waits for cache warm-up",
+          "no action needed now"
+        ],
+        "reopenCount": 0,
+        "blastRadius": 0.62,
+        "relatedEvents": [
+          "AppDegraded checkout 09:40:12",
+          "AppRecovered checkout 09:52:30",
+          "GraphDrift checkout->cart 09:36"
+        ]
+      }
+    ]
+  },
+  "applications": [
+    {
+      "name": "api-gateway",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 420,
+        "errPct": 0.14,
+        "p99Ms": 215,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.14,
+        "memPsiPct": 0.11,
+        "ioPsiPct": 0.16,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 57,
+        "cpuPct": 31,
+        "memReqPct": 66,
+        "cpuReqPct": 48,
+        "memNodePct": 10,
+        "cpuNodePct": 9,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "auth",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 210,
+        "errPct": 0.18,
+        "p99Ms": 189,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.08,
+        "memPsiPct": 0.26,
+        "ioPsiPct": 0.0,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 54,
+        "cpuPct": 37,
+        "memReqPct": 66,
+        "cpuReqPct": 50,
+        "memNodePct": 16,
+        "cpuNodePct": 11,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "checkout",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 85,
+        "errPct": 0.14,
+        "p99Ms": 245,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.0,
+        "memPsiPct": 0.22,
+        "ioPsiPct": 0.18,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 59,
+        "cpuPct": 21,
+        "memReqPct": 65,
+        "cpuReqPct": 43,
+        "memNodePct": 15,
+        "cpuNodePct": 12,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "payments",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 60,
+        "errPct": 0.15,
+        "p99Ms": 280,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.01,
+        "memPsiPct": 0.11,
+        "ioPsiPct": 0.02,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 35,
+        "cpuPct": 25,
+        "memReqPct": 59,
+        "cpuReqPct": 32,
+        "memNodePct": 13,
+        "cpuNodePct": 6,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "catalog",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 300,
+        "errPct": 0.28,
+        "p99Ms": 320,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.36,
+        "memPsiPct": 0.19,
+        "ioPsiPct": 0.05,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 56,
+        "cpuPct": 31,
+        "memReqPct": 72,
+        "cpuReqPct": 56,
+        "memNodePct": 16,
+        "cpuNodePct": 7,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "search",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 150,
+        "errPct": 0.28,
+        "p99Ms": 262,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.22,
+        "memPsiPct": 0.02,
+        "ioPsiPct": 0.18,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 39,
+        "cpuPct": 24,
+        "memReqPct": 73,
+        "cpuReqPct": 55,
+        "memNodePct": 16,
+        "cpuNodePct": 9,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "cart",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 90,
+        "errPct": 0.11,
+        "p99Ms": 375,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.34,
+        "memPsiPct": 0.11,
+        "ioPsiPct": 0.06,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 52,
+        "cpuPct": 18,
+        "memReqPct": 54,
+        "cpuReqPct": 54,
+        "memNodePct": 10,
+        "cpuNodePct": 8,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "notifications",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 20,
+        "errPct": 0.15,
+        "p99Ms": 216,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.03,
+        "memPsiPct": 0.24,
+        "ioPsiPct": 0.17,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 58,
+        "cpuPct": 36,
+        "memReqPct": 53,
+        "cpuReqPct": 33,
+        "memNodePct": 13,
+        "cpuNodePct": 12,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "image-resizer",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 40,
+        "errPct": 0.16,
+        "p99Ms": 317,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.3,
+        "memPsiPct": 0.1,
+        "ioPsiPct": 0.03,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 36,
+        "cpuPct": 31,
+        "memReqPct": 51,
+        "cpuReqPct": 59,
+        "memNodePct": 13,
+        "cpuNodePct": 9,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "reporting",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "reqPerSec": 2,
+        "errPct": 0.17,
+        "p99Ms": 292,
+        "rateAsOfUnix": 1789380548,
+        "cpuPsiPct": 0.12,
+        "memPsiPct": 0.27,
+        "ioPsiPct": 0.03,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 53,
+        "cpuPct": 15,
+        "memReqPct": 52,
+        "cpuReqPct": 34,
+        "memNodePct": 18,
+        "cpuNodePct": 12,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "scheduler",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "cpuPsiPct": 0.27,
+        "memPsiPct": 0.28,
+        "ioPsiPct": 0.03,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 59,
+        "cpuPct": 21,
+        "memReqPct": 68,
+        "cpuReqPct": 52,
+        "memNodePct": 17,
+        "cpuNodePct": 14,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    },
+    {
+      "name": "backup",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-14T13:09:08+03:00",
+      "golden": {
+        "cpuPsiPct": 0.08,
+        "memPsiPct": 0.19,
+        "ioPsiPct": 0.01,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789380548,
+        "memPct": 59,
+        "cpuPct": 27,
+        "memReqPct": 62,
+        "cpuReqPct": 46,
+        "memNodePct": 19,
+        "cpuNodePct": 10,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789380548
+      }
+    }
+  ],
+  "graph": {
+    "tenant": "digital-purchases",
+    "nodes": [
+      {
+        "name": "api-gateway",
+        "tier": 1,
+        "blastRadius": 0.71,
+        "weight": 0.99,
+        "calls": [
+          "auth",
+          "checkout",
+          "catalog",
+          "search",
+          "cart"
+        ],
+        "calledBy": []
+      },
+      {
+        "name": "auth",
+        "tier": 1,
+        "blastRadius": 0.55,
+        "weight": 0.77,
+        "calls": [],
+        "calledBy": [
+          "api-gateway"
+        ]
+      },
+      {
+        "name": "checkout",
+        "tier": 1,
+        "blastRadius": 0.62,
+        "weight": 0.87,
+        "calls": [
+          "payments",
+          "cart"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "cart"
+        ]
+      },
+      {
+        "name": "payments",
+        "tier": 1,
+        "blastRadius": 0.58,
+        "weight": 0.81,
+        "calls": [
+          "notifications"
+        ],
+        "calledBy": [
+          "checkout"
+        ]
+      },
+      {
+        "name": "catalog",
+        "tier": 2,
+        "blastRadius": 0.31,
+        "weight": 0.43,
+        "calls": [
+          "image-resizer"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "cart"
+        ]
+      },
+      {
+        "name": "search",
+        "tier": 2,
+        "blastRadius": 0.28,
+        "weight": 0.39,
+        "calls": [],
+        "calledBy": [
+          "api-gateway"
+        ]
+      },
+      {
+        "name": "cart",
+        "tier": 2,
+        "blastRadius": 0.34,
+        "weight": 0.48,
+        "calls": [
+          "checkout",
+          "catalog"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "checkout"
+        ]
+      },
+      {
+        "name": "notifications",
+        "tier": 3,
+        "blastRadius": 0.12,
+        "weight": 0.17,
+        "calls": [],
+        "calledBy": [
+          "payments"
+        ]
+      },
+      {
+        "name": "image-resizer",
+        "tier": 3,
+        "blastRadius": 0.06,
+        "weight": 0.08,
+        "calls": [],
+        "calledBy": [
+          "catalog"
+        ]
+      },
+      {
+        "name": "reporting",
+        "tier": 3,
+        "blastRadius": 0.09,
+        "weight": 0.13,
+        "calls": [],
+        "calledBy": [
+          "scheduler"
+        ]
+      },
+      {
+        "name": "scheduler",
+        "tier": 3,
+        "blastRadius": 0.05,
+        "weight": 0.07,
+        "calls": [
+          "reporting"
+        ],
+        "calledBy": []
+      },
+      {
+        "name": "backup",
+        "tier": 3,
+        "blastRadius": 0.04,
+        "weight": 0.06,
+        "calls": [],
+        "calledBy": []
+      }
+    ],
+    "edges": [
+      {
+        "from": "api-gateway",
+        "to": "auth"
+      },
+      {
+        "from": "api-gateway",
+        "to": "checkout"
+      },
+      {
+        "from": "api-gateway",
+        "to": "catalog"
+      },
+      {
+        "from": "api-gateway",
+        "to": "search"
+      },
+      {
+        "from": "api-gateway",
+        "to": "cart"
+      },
+      {
+        "from": "cart",
+        "to": "checkout"
+      },
+      {
+        "from": "checkout",
+        "to": "payments"
+      },
+      {
+        "from": "checkout",
+        "to": "cart"
+      },
+      {
+        "from": "cart",
+        "to": "catalog"
+      },
+      {
+        "from": "payments",
+        "to": "notifications"
+      },
+      {
+        "from": "catalog",
+        "to": "image-resizer"
+      },
+      {
+        "from": "scheduler",
+        "to": "reporting"
+      }
+    ]
+  },
+  "analytics": {
+    "tenant": "digital-purchases",
+    "baselines": [
+      {
+        "service": "api-gateway",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.71,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "auth",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.55,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.5,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 1,
+          "2026-W35": 1,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "checkout",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.62,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 1.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 1,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "payments",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.58,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "catalog",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.31,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.25,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 1,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "search",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.28,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "cart",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.34,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "notifications",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.12,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "image-resizer",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.06,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "reporting",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.09,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "scheduler",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.05,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "backup",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.04,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      }
+    ],
+    "patterns": [
+      {
+        "id": "token-refresh-storm",
+        "service": "payments",
+        "steps": [
+          "auth p99 rises above 400ms",
+          "payments retries to auth double",
+          "token cache hit rate drops below 60%",
+          "payments 5xx on /oauth/token starts",
+          "checkout error rate above 5%"
+        ],
+        "seenCount": 3,
+        "avgLeadMs": 1080000
+      },
+      {
+        "id": "catalog-memory-creep",
+        "service": "catalog",
+        "steps": [
+          "memReqPct above 85%",
+          "memPsi above 1%",
+          "GC pause warnings in logs",
+          "OOM kill"
+        ],
+        "seenCount": 2,
+        "avgLeadMs": 5400000
+      }
+    ],
+    "precursorMatches": []
+  }
+}

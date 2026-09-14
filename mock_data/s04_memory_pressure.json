@@ -1,0 +1,2838 @@
+{
+  "scenario": "s04_memory_pressure",
+  "title": "Памʼять насичується",
+  "tenant": "digital-purchases",
+  "now": "2026-09-15T10:00:00+03:00",
+  "story": "Вівторок, 10:00. Catalog тримається, але памʼять упирається в request, ядро гальмує процес. OOM ще не було.",
+  "expected": {
+    "verdict": "ЗАПЛАНУВАТИ",
+    "reason": "catalog: памʼять насичується, OOM ще не було",
+    "states": {
+      "users": "Добре",
+      "forecast": "Назріває",
+      "trust": "Повна",
+      "day": "Спокійна"
+    }
+  },
+  "status": {
+    "generatedAt": "2026-09-15T10:00:00+03:00",
+    "tenantStats": {
+      "tenants": {
+        "digital-purchases": {
+          "services": 12,
+          "serviceCoveragePct": 100,
+          "servicesDark": 0,
+          "snrPct": 0.8,
+          "resolutionRatePct": 96,
+          "predictionPrecisionPct": 78,
+          "predictionHits": 31,
+          "predictionMisses": 9,
+          "predictionAvgLeadMs": 2460000,
+          "precursorCoveragePct": 71,
+          "eventsPerIncident": 143,
+          "sampledIncidents": 0,
+          "events": {
+            "noise": 13990,
+            "signal": 118,
+            "incident": 0,
+            "unknown": 1,
+            "drift": 0
+          },
+          "signalsByType": {
+            "log": 44,
+            "red": 0,
+            "use": 52,
+            "k8s": 22
+          },
+          "signalsHistory": [
+            {
+              "t": "2026-09-14T10:00:00+03:00",
+              "requests": 448780,
+              "requestErrors": 826,
+              "signal": 1,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T10:05:00+03:00",
+              "requests": 447096,
+              "requestErrors": 816,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T10:10:00+03:00",
+              "requests": 476478,
+              "requestErrors": 1010,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T10:15:00+03:00",
+              "requests": 463036,
+              "requestErrors": 900,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T10:20:00+03:00",
+              "requests": 448852,
+              "requestErrors": 846,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T10:25:00+03:00",
+              "requests": 469798,
+              "requestErrors": 894,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T10:30:00+03:00",
+              "requests": 453145,
+              "requestErrors": 868,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T10:35:00+03:00",
+              "requests": 479878,
+              "requestErrors": 1032,
+              "signal": 0,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T10:40:00+03:00",
+              "requests": 471550,
+              "requestErrors": 975,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T10:45:00+03:00",
+              "requests": 456411,
+              "requestErrors": 908,
+              "signal": 0,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T10:50:00+03:00",
+              "requests": 485646,
+              "requestErrors": 1042,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T10:55:00+03:00",
+              "requests": 462601,
+              "requestErrors": 1000,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T11:00:00+03:00",
+              "requests": 485243,
+              "requestErrors": 1038,
+              "signal": 2,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T11:05:00+03:00",
+              "requests": 468267,
+              "requestErrors": 955,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T11:10:00+03:00",
+              "requests": 459335,
+              "requestErrors": 882,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T11:15:00+03:00",
+              "requests": 455528,
+              "requestErrors": 934,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T11:20:00+03:00",
+              "requests": 474492,
+              "requestErrors": 943,
+              "signal": 1,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T11:25:00+03:00",
+              "requests": 492464,
+              "requestErrors": 924,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T11:30:00+03:00",
+              "requests": 462729,
+              "requestErrors": 950,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T11:35:00+03:00",
+              "requests": 468857,
+              "requestErrors": 984,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T11:40:00+03:00",
+              "requests": 476815,
+              "requestErrors": 1030,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T11:45:00+03:00",
+              "requests": 458147,
+              "requestErrors": 866,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T11:50:00+03:00",
+              "requests": 488705,
+              "requestErrors": 903,
+              "signal": 0,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T11:55:00+03:00",
+              "requests": 473478,
+              "requestErrors": 860,
+              "signal": 2,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T12:00:00+03:00",
+              "requests": 490112,
+              "requestErrors": 1069,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T12:05:00+03:00",
+              "requests": 492511,
+              "requestErrors": 890,
+              "signal": 1,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T12:10:00+03:00",
+              "requests": 492653,
+              "requestErrors": 1039,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T12:15:00+03:00",
+              "requests": 491638,
+              "requestErrors": 1006,
+              "signal": 0,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T12:20:00+03:00",
+              "requests": 479063,
+              "requestErrors": 1033,
+              "signal": 1,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T12:25:00+03:00",
+              "requests": 464843,
+              "requestErrors": 948,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T12:30:00+03:00",
+              "requests": 476776,
+              "requestErrors": 927,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T12:35:00+03:00",
+              "requests": 468514,
+              "requestErrors": 994,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T12:40:00+03:00",
+              "requests": 457930,
+              "requestErrors": 1004,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T12:45:00+03:00",
+              "requests": 461638,
+              "requestErrors": 841,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-14T12:50:00+03:00",
+              "requests": 459612,
+              "requestErrors": 951,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T12:55:00+03:00",
+              "requests": 454195,
+              "requestErrors": 906,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T13:00:00+03:00",
+              "requests": 489586,
+              "requestErrors": 905,
+              "signal": 2,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T13:05:00+03:00",
+              "requests": 480411,
+              "requestErrors": 943,
+              "signal": 0,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T13:10:00+03:00",
+              "requests": 458131,
+              "requestErrors": 905,
+              "signal": 1,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T13:15:00+03:00",
+              "requests": 457958,
+              "requestErrors": 905,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T13:20:00+03:00",
+              "requests": 464891,
+              "requestErrors": 876,
+              "signal": 0,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T13:25:00+03:00",
+              "requests": 449347,
+              "requestErrors": 854,
+              "signal": 2,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T13:30:00+03:00",
+              "requests": 475775,
+              "requestErrors": 935,
+              "signal": 1,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T13:35:00+03:00",
+              "requests": 458066,
+              "requestErrors": 987,
+              "signal": 1,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T13:40:00+03:00",
+              "requests": 449248,
+              "requestErrors": 911,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T13:45:00+03:00",
+              "requests": 476001,
+              "requestErrors": 993,
+              "signal": 0,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T13:50:00+03:00",
+              "requests": 456911,
+              "requestErrors": 901,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T13:55:00+03:00",
+              "requests": 476124,
+              "requestErrors": 888,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T14:00:00+03:00",
+              "requests": 457406,
+              "requestErrors": 988,
+              "signal": 1,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T14:05:00+03:00",
+              "requests": 454158,
+              "requestErrors": 856,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T14:10:00+03:00",
+              "requests": 447210,
+              "requestErrors": 970,
+              "signal": 1,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T14:15:00+03:00",
+              "requests": 467208,
+              "requestErrors": 893,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T14:20:00+03:00",
+              "requests": 441472,
+              "requestErrors": 864,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T14:25:00+03:00",
+              "requests": 460706,
+              "requestErrors": 878,
+              "signal": 0,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T14:30:00+03:00",
+              "requests": 437491,
+              "requestErrors": 898,
+              "signal": 2,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T14:35:00+03:00",
+              "requests": 456616,
+              "requestErrors": 991,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T14:40:00+03:00",
+              "requests": 428344,
+              "requestErrors": 929,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T14:45:00+03:00",
+              "requests": 457690,
+              "requestErrors": 845,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T14:50:00+03:00",
+              "requests": 432676,
+              "requestErrors": 788,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T14:55:00+03:00",
+              "requests": 446702,
+              "requestErrors": 863,
+              "signal": 2,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T15:00:00+03:00",
+              "requests": 448747,
+              "requestErrors": 972,
+              "signal": 1,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-14T15:05:00+03:00",
+              "requests": 422121,
+              "requestErrors": 877,
+              "signal": 0,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T15:10:00+03:00",
+              "requests": 436976,
+              "requestErrors": 831,
+              "signal": 0,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T15:15:00+03:00",
+              "requests": 428088,
+              "requestErrors": 901,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T15:20:00+03:00",
+              "requests": 413927,
+              "requestErrors": 883,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T15:25:00+03:00",
+              "requests": 444477,
+              "requestErrors": 880,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T15:30:00+03:00",
+              "requests": 442842,
+              "requestErrors": 865,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T15:35:00+03:00",
+              "requests": 440247,
+              "requestErrors": 809,
+              "signal": 0,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T15:40:00+03:00",
+              "requests": 426304,
+              "requestErrors": 918,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-14T15:45:00+03:00",
+              "requests": 417160,
+              "requestErrors": 869,
+              "signal": 1,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T15:50:00+03:00",
+              "requests": 422019,
+              "requestErrors": 918,
+              "signal": 2,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T15:55:00+03:00",
+              "requests": 429708,
+              "requestErrors": 855,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T16:00:00+03:00",
+              "requests": 415026,
+              "requestErrors": 808,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T16:05:00+03:00",
+              "requests": 417536,
+              "requestErrors": 806,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-14T16:10:00+03:00",
+              "requests": 409727,
+              "requestErrors": 885,
+              "signal": 2,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T16:15:00+03:00",
+              "requests": 389890,
+              "requestErrors": 750,
+              "signal": 2,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T16:20:00+03:00",
+              "requests": 403074,
+              "requestErrors": 840,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T16:25:00+03:00",
+              "requests": 387433,
+              "requestErrors": 735,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-14T16:30:00+03:00",
+              "requests": 389926,
+              "requestErrors": 730,
+              "signal": 2,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-14T16:35:00+03:00",
+              "requests": 401651,
+              "requestErrors": 820,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T16:40:00+03:00",
+              "requests": 406516,
+              "requestErrors": 807,
+              "signal": 2,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T16:45:00+03:00",
+              "requests": 404631,
+              "requestErrors": 810,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T16:50:00+03:00",
+              "requests": 392051,
+              "requestErrors": 767,
+              "signal": 1,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T16:55:00+03:00",
+              "requests": 388810,
+              "requestErrors": 853,
+              "signal": 1,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T17:00:00+03:00",
+              "requests": 381168,
+              "requestErrors": 778,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T17:05:00+03:00",
+              "requests": 384309,
+              "requestErrors": 735,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-14T17:10:00+03:00",
+              "requests": 380255,
+              "requestErrors": 737,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T17:15:00+03:00",
+              "requests": 363106,
+              "requestErrors": 712,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-14T17:20:00+03:00",
+              "requests": 377253,
+              "requestErrors": 728,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T17:25:00+03:00",
+              "requests": 355873,
+              "requestErrors": 643,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T17:30:00+03:00",
+              "requests": 363168,
+              "requestErrors": 771,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T17:35:00+03:00",
+              "requests": 355362,
+              "requestErrors": 779,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T17:40:00+03:00",
+              "requests": 376196,
+              "requestErrors": 688,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T17:45:00+03:00",
+              "requests": 363596,
+              "requestErrors": 752,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T17:50:00+03:00",
+              "requests": 359902,
+              "requestErrors": 767,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T17:55:00+03:00",
+              "requests": 365948,
+              "requestErrors": 718,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T18:00:00+03:00",
+              "requests": 362283,
+              "requestErrors": 754,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-14T18:05:00+03:00",
+              "requests": 340915,
+              "requestErrors": 658,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T18:10:00+03:00",
+              "requests": 359460,
+              "requestErrors": 776,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T18:15:00+03:00",
+              "requests": 340303,
+              "requestErrors": 723,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-14T18:20:00+03:00",
+              "requests": 337925,
+              "requestErrors": 610,
+              "signal": 0,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T18:25:00+03:00",
+              "requests": 338728,
+              "requestErrors": 703,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-14T18:30:00+03:00",
+              "requests": 331322,
+              "requestErrors": 722,
+              "signal": 2,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-14T18:35:00+03:00",
+              "requests": 323139,
+              "requestErrors": 590,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T18:40:00+03:00",
+              "requests": 325590,
+              "requestErrors": 689,
+              "signal": 0,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T18:45:00+03:00",
+              "requests": 320625,
+              "requestErrors": 605,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T18:50:00+03:00",
+              "requests": 327000,
+              "requestErrors": 597,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T18:55:00+03:00",
+              "requests": 316511,
+              "requestErrors": 689,
+              "signal": 0,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T19:00:00+03:00",
+              "requests": 326473,
+              "requestErrors": 676,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T19:05:00+03:00",
+              "requests": 328083,
+              "requestErrors": 624,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T19:10:00+03:00",
+              "requests": 305269,
+              "requestErrors": 561,
+              "signal": 0,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T19:15:00+03:00",
+              "requests": 306729,
+              "requestErrors": 567,
+              "signal": 0,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T19:20:00+03:00",
+              "requests": 320914,
+              "requestErrors": 614,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T19:25:00+03:00",
+              "requests": 298190,
+              "requestErrors": 554,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T19:30:00+03:00",
+              "requests": 294719,
+              "requestErrors": 614,
+              "signal": 0,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T19:35:00+03:00",
+              "requests": 297952,
+              "requestErrors": 536,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-14T19:40:00+03:00",
+              "requests": 298820,
+              "requestErrors": 556,
+              "signal": 1,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-14T19:45:00+03:00",
+              "requests": 296502,
+              "requestErrors": 578,
+              "signal": 0,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T19:50:00+03:00",
+              "requests": 303072,
+              "requestErrors": 607,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T19:55:00+03:00",
+              "requests": 286928,
+              "requestErrors": 562,
+              "signal": 0,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T20:00:00+03:00",
+              "requests": 279035,
+              "requestErrors": 611,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T20:05:00+03:00",
+              "requests": 290887,
+              "requestErrors": 558,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T20:10:00+03:00",
+              "requests": 276732,
+              "requestErrors": 592,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T20:15:00+03:00",
+              "requests": 276214,
+              "requestErrors": 498,
+              "signal": 2,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-14T20:20:00+03:00",
+              "requests": 272996,
+              "requestErrors": 581,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-14T20:25:00+03:00",
+              "requests": 286068,
+              "requestErrors": 593,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-14T20:30:00+03:00",
+              "requests": 272079,
+              "requestErrors": 508,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T20:35:00+03:00",
+              "requests": 266735,
+              "requestErrors": 530,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T20:40:00+03:00",
+              "requests": 280823,
+              "requestErrors": 598,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T20:45:00+03:00",
+              "requests": 274553,
+              "requestErrors": 584,
+              "signal": 0,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-14T20:50:00+03:00",
+              "requests": 269098,
+              "requestErrors": 570,
+              "signal": 2,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-14T20:55:00+03:00",
+              "requests": 271473,
+              "requestErrors": 540,
+              "signal": 1,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T21:00:00+03:00",
+              "requests": 270547,
+              "requestErrors": 583,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T21:05:00+03:00",
+              "requests": 253315,
+              "requestErrors": 554,
+              "signal": 0,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-14T21:10:00+03:00",
+              "requests": 256072,
+              "requestErrors": 509,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T21:15:00+03:00",
+              "requests": 249323,
+              "requestErrors": 519,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-14T21:20:00+03:00",
+              "requests": 257134,
+              "requestErrors": 524,
+              "signal": 0,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-14T21:25:00+03:00",
+              "requests": 248393,
+              "requestErrors": 454,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T21:30:00+03:00",
+              "requests": 245489,
+              "requestErrors": 472,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-14T21:35:00+03:00",
+              "requests": 257757,
+              "requestErrors": 516,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T21:40:00+03:00",
+              "requests": 256484,
+              "requestErrors": 525,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T21:45:00+03:00",
+              "requests": 238529,
+              "requestErrors": 499,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-14T21:50:00+03:00",
+              "requests": 246181,
+              "requestErrors": 457,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-14T21:55:00+03:00",
+              "requests": 252838,
+              "requestErrors": 530,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T22:00:00+03:00",
+              "requests": 241632,
+              "requestErrors": 493,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T22:05:00+03:00",
+              "requests": 240780,
+              "requestErrors": 527,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T22:10:00+03:00",
+              "requests": 241380,
+              "requestErrors": 488,
+              "signal": 1,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-14T22:15:00+03:00",
+              "requests": 234371,
+              "requestErrors": 487,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T22:20:00+03:00",
+              "requests": 233365,
+              "requestErrors": 464,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-14T22:25:00+03:00",
+              "requests": 246671,
+              "requestErrors": 476,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-14T22:30:00+03:00",
+              "requests": 239052,
+              "requestErrors": 510,
+              "signal": 1,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T22:35:00+03:00",
+              "requests": 237895,
+              "requestErrors": 452,
+              "signal": 2,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T22:40:00+03:00",
+              "requests": 225856,
+              "requestErrors": 430,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T22:45:00+03:00",
+              "requests": 241534,
+              "requestErrors": 447,
+              "signal": 1,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T22:50:00+03:00",
+              "requests": 241051,
+              "requestErrors": 509,
+              "signal": 2,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-14T22:55:00+03:00",
+              "requests": 235889,
+              "requestErrors": 512,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T23:00:00+03:00",
+              "requests": 226172,
+              "requestErrors": 465,
+              "signal": 0,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T23:05:00+03:00",
+              "requests": 227812,
+              "requestErrors": 451,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-14T23:10:00+03:00",
+              "requests": 222658,
+              "requestErrors": 447,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-14T23:15:00+03:00",
+              "requests": 235051,
+              "requestErrors": 452,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-14T23:20:00+03:00",
+              "requests": 232031,
+              "requestErrors": 501,
+              "signal": 0,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T23:25:00+03:00",
+              "requests": 234990,
+              "requestErrors": 439,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-14T23:30:00+03:00",
+              "requests": 219631,
+              "requestErrors": 462,
+              "signal": 0,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T23:35:00+03:00",
+              "requests": 222583,
+              "requestErrors": 403,
+              "signal": 1,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-14T23:40:00+03:00",
+              "requests": 224546,
+              "requestErrors": 492,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-14T23:45:00+03:00",
+              "requests": 225000,
+              "requestErrors": 494,
+              "signal": 0,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-14T23:50:00+03:00",
+              "requests": 222139,
+              "requestErrors": 484,
+              "signal": 0,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-14T23:55:00+03:00",
+              "requests": 235227,
+              "requestErrors": 510,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T00:00:00+03:00",
+              "requests": 222877,
+              "requestErrors": 483,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-15T00:05:00+03:00",
+              "requests": 227122,
+              "requestErrors": 485,
+              "signal": 0,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-15T00:10:00+03:00",
+              "requests": 226936,
+              "requestErrors": 458,
+              "signal": 2,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-15T00:15:00+03:00",
+              "requests": 224962,
+              "requestErrors": 471,
+              "signal": 0,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-15T00:20:00+03:00",
+              "requests": 235300,
+              "requestErrors": 440,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-15T00:25:00+03:00",
+              "requests": 224233,
+              "requestErrors": 436,
+              "signal": 0,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T00:30:00+03:00",
+              "requests": 230541,
+              "requestErrors": 446,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-15T00:35:00+03:00",
+              "requests": 232453,
+              "requestErrors": 506,
+              "signal": 0,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-15T00:40:00+03:00",
+              "requests": 223315,
+              "requestErrors": 449,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-15T00:45:00+03:00",
+              "requests": 222566,
+              "requestErrors": 427,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T00:50:00+03:00",
+              "requests": 226858,
+              "requestErrors": 457,
+              "signal": 0,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T00:55:00+03:00",
+              "requests": 227179,
+              "requestErrors": 474,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T01:00:00+03:00",
+              "requests": 224755,
+              "requestErrors": 438,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-15T01:05:00+03:00",
+              "requests": 229480,
+              "requestErrors": 454,
+              "signal": 0,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-15T01:10:00+03:00",
+              "requests": 224177,
+              "requestErrors": 473,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-15T01:15:00+03:00",
+              "requests": 232256,
+              "requestErrors": 428,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-15T01:20:00+03:00",
+              "requests": 235773,
+              "requestErrors": 508,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T01:25:00+03:00",
+              "requests": 244561,
+              "requestErrors": 491,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-15T01:30:00+03:00",
+              "requests": 238816,
+              "requestErrors": 487,
+              "signal": 2,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-15T01:35:00+03:00",
+              "requests": 241972,
+              "requestErrors": 437,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-15T01:40:00+03:00",
+              "requests": 244553,
+              "requestErrors": 453,
+              "signal": 0,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-15T01:45:00+03:00",
+              "requests": 233898,
+              "requestErrors": 447,
+              "signal": 1,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T01:50:00+03:00",
+              "requests": 237625,
+              "requestErrors": 488,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T01:55:00+03:00",
+              "requests": 239485,
+              "requestErrors": 495,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-15T02:00:00+03:00",
+              "requests": 252755,
+              "requestErrors": 549,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-15T02:05:00+03:00",
+              "requests": 241950,
+              "requestErrors": 487,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-15T02:10:00+03:00",
+              "requests": 243966,
+              "requestErrors": 523,
+              "signal": 0,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-15T02:15:00+03:00",
+              "requests": 247518,
+              "requestErrors": 457,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-15T02:20:00+03:00",
+              "requests": 243548,
+              "requestErrors": 453,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-15T02:25:00+03:00",
+              "requests": 243955,
+              "requestErrors": 520,
+              "signal": 2,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-15T02:30:00+03:00",
+              "requests": 249703,
+              "requestErrors": 543,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T02:35:00+03:00",
+              "requests": 245262,
+              "requestErrors": 523,
+              "signal": 0,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-15T02:40:00+03:00",
+              "requests": 249558,
+              "requestErrors": 511,
+              "signal": 1,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-15T02:45:00+03:00",
+              "requests": 265852,
+              "requestErrors": 508,
+              "signal": 2,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-15T02:50:00+03:00",
+              "requests": 265173,
+              "requestErrors": 533,
+              "signal": 0,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T02:55:00+03:00",
+              "requests": 254087,
+              "requestErrors": 550,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-15T03:00:00+03:00",
+              "requests": 260269,
+              "requestErrors": 531,
+              "signal": 1,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-15T03:05:00+03:00",
+              "requests": 259069,
+              "requestErrors": 536,
+              "signal": 1,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-15T03:10:00+03:00",
+              "requests": 276241,
+              "requestErrors": 528,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T03:15:00+03:00",
+              "requests": 262869,
+              "requestErrors": 491,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-15T03:20:00+03:00",
+              "requests": 276823,
+              "requestErrors": 507,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-15T03:25:00+03:00",
+              "requests": 282061,
+              "requestErrors": 615,
+              "signal": 2,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T03:30:00+03:00",
+              "requests": 276243,
+              "requestErrors": 504,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-15T03:35:00+03:00",
+              "requests": 274264,
+              "requestErrors": 512,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T03:40:00+03:00",
+              "requests": 284361,
+              "requestErrors": 518,
+              "signal": 0,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-15T03:45:00+03:00",
+              "requests": 274134,
+              "requestErrors": 599,
+              "signal": 0,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T03:50:00+03:00",
+              "requests": 290511,
+              "requestErrors": 560,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-15T03:55:00+03:00",
+              "requests": 281728,
+              "requestErrors": 573,
+              "signal": 0,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-15T04:00:00+03:00",
+              "requests": 292435,
+              "requestErrors": 534,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T04:05:00+03:00",
+              "requests": 280871,
+              "requestErrors": 536,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-15T04:10:00+03:00",
+              "requests": 300360,
+              "requestErrors": 611,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T04:15:00+03:00",
+              "requests": 293062,
+              "requestErrors": 581,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-15T04:20:00+03:00",
+              "requests": 290886,
+              "requestErrors": 579,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-15T04:25:00+03:00",
+              "requests": 302287,
+              "requestErrors": 614,
+              "signal": 2,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T04:30:00+03:00",
+              "requests": 296271,
+              "requestErrors": 646,
+              "signal": 2,
+              "noise": 53
+            },
+            {
+              "t": "2026-09-15T04:35:00+03:00",
+              "requests": 311745,
+              "requestErrors": 680,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T04:40:00+03:00",
+              "requests": 304616,
+              "requestErrors": 585,
+              "signal": 1,
+              "noise": 65
+            },
+            {
+              "t": "2026-09-15T04:45:00+03:00",
+              "requests": 306322,
+              "requestErrors": 590,
+              "signal": 0,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-15T04:50:00+03:00",
+              "requests": 313466,
+              "requestErrors": 600,
+              "signal": 1,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-15T04:55:00+03:00",
+              "requests": 320597,
+              "requestErrors": 617,
+              "signal": 0,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-15T05:00:00+03:00",
+              "requests": 329199,
+              "requestErrors": 676,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T05:05:00+03:00",
+              "requests": 320167,
+              "requestErrors": 701,
+              "signal": 1,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-15T05:10:00+03:00",
+              "requests": 324859,
+              "requestErrors": 590,
+              "signal": 0,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T05:15:00+03:00",
+              "requests": 331015,
+              "requestErrors": 669,
+              "signal": 0,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-15T05:20:00+03:00",
+              "requests": 322904,
+              "requestErrors": 706,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-15T05:25:00+03:00",
+              "requests": 325418,
+              "requestErrors": 643,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-15T05:30:00+03:00",
+              "requests": 329348,
+              "requestErrors": 604,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-15T05:35:00+03:00",
+              "requests": 329126,
+              "requestErrors": 645,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T05:40:00+03:00",
+              "requests": 338541,
+              "requestErrors": 709,
+              "signal": 2,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-15T05:45:00+03:00",
+              "requests": 356060,
+              "requestErrors": 689,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T05:50:00+03:00",
+              "requests": 350767,
+              "requestErrors": 631,
+              "signal": 1,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-15T05:55:00+03:00",
+              "requests": 355659,
+              "requestErrors": 721,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-15T06:00:00+03:00",
+              "requests": 363406,
+              "requestErrors": 717,
+              "signal": 2,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-15T06:05:00+03:00",
+              "requests": 350793,
+              "requestErrors": 643,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T06:10:00+03:00",
+              "requests": 348289,
+              "requestErrors": 630,
+              "signal": 1,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-15T06:15:00+03:00",
+              "requests": 348497,
+              "requestErrors": 690,
+              "signal": 2,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-15T06:20:00+03:00",
+              "requests": 369405,
+              "requestErrors": 795,
+              "signal": 1,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-15T06:25:00+03:00",
+              "requests": 369571,
+              "requestErrors": 796,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T06:30:00+03:00",
+              "requests": 379467,
+              "requestErrors": 698,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T06:35:00+03:00",
+              "requests": 366304,
+              "requestErrors": 733,
+              "signal": 0,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-15T06:40:00+03:00",
+              "requests": 372285,
+              "requestErrors": 816,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T06:45:00+03:00",
+              "requests": 367127,
+              "requestErrors": 786,
+              "signal": 0,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-15T06:50:00+03:00",
+              "requests": 375774,
+              "requestErrors": 694,
+              "signal": 2,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-15T06:55:00+03:00",
+              "requests": 381201,
+              "requestErrors": 804,
+              "signal": 2,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-15T07:00:00+03:00",
+              "requests": 375180,
+              "requestErrors": 703,
+              "signal": 1,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-15T07:05:00+03:00",
+              "requests": 397451,
+              "requestErrors": 771,
+              "signal": 1,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-15T07:10:00+03:00",
+              "requests": 385850,
+              "requestErrors": 824,
+              "signal": 0,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-15T07:15:00+03:00",
+              "requests": 402406,
+              "requestErrors": 726,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-15T07:20:00+03:00",
+              "requests": 401818,
+              "requestErrors": 798,
+              "signal": 2,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T07:25:00+03:00",
+              "requests": 389096,
+              "requestErrors": 722,
+              "signal": 1,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-15T07:30:00+03:00",
+              "requests": 391071,
+              "requestErrors": 816,
+              "signal": 2,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-15T07:35:00+03:00",
+              "requests": 406204,
+              "requestErrors": 889,
+              "signal": 2,
+              "noise": 60
+            },
+            {
+              "t": "2026-09-15T07:40:00+03:00",
+              "requests": 391754,
+              "requestErrors": 781,
+              "signal": 1,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T07:45:00+03:00",
+              "requests": 405207,
+              "requestErrors": 830,
+              "signal": 0,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T07:50:00+03:00",
+              "requests": 418070,
+              "requestErrors": 825,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-15T07:55:00+03:00",
+              "requests": 417126,
+              "requestErrors": 898,
+              "signal": 2,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T08:00:00+03:00",
+              "requests": 424531,
+              "requestErrors": 842,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-15T08:05:00+03:00",
+              "requests": 417822,
+              "requestErrors": 774,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-15T08:10:00+03:00",
+              "requests": 408787,
+              "requestErrors": 791,
+              "signal": 1,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-15T08:15:00+03:00",
+              "requests": 414209,
+              "requestErrors": 820,
+              "signal": 0,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-15T08:20:00+03:00",
+              "requests": 432157,
+              "requestErrors": 893,
+              "signal": 0,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-15T08:25:00+03:00",
+              "requests": 411211,
+              "requestErrors": 861,
+              "signal": 0,
+              "noise": 42
+            },
+            {
+              "t": "2026-09-15T08:30:00+03:00",
+              "requests": 425660,
+              "requestErrors": 857,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-15T08:35:00+03:00",
+              "requests": 417153,
+              "requestErrors": 783,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T08:40:00+03:00",
+              "requests": 440989,
+              "requestErrors": 832,
+              "signal": 0,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T08:45:00+03:00",
+              "requests": 432244,
+              "requestErrors": 838,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-15T08:50:00+03:00",
+              "requests": 437549,
+              "requestErrors": 911,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-15T08:55:00+03:00",
+              "requests": 441551,
+              "requestErrors": 815,
+              "signal": 1,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-15T09:00:00+03:00",
+              "requests": 424589,
+              "requestErrors": 910,
+              "signal": 1,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T09:05:00+03:00",
+              "requests": 448080,
+              "requestErrors": 963,
+              "signal": 1,
+              "noise": 37
+            },
+            {
+              "t": "2026-09-15T09:10:00+03:00",
+              "requests": 432128,
+              "requestErrors": 820,
+              "signal": 1,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-15T09:15:00+03:00",
+              "requests": 440306,
+              "requestErrors": 804,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-15T09:20:00+03:00",
+              "requests": 459348,
+              "requestErrors": 982,
+              "signal": 2,
+              "noise": 63
+            },
+            {
+              "t": "2026-09-15T09:25:00+03:00",
+              "requests": 459393,
+              "requestErrors": 956,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-15T09:30:00+03:00",
+              "requests": 460916,
+              "requestErrors": 998,
+              "signal": 0,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-15T09:35:00+03:00",
+              "requests": 438242,
+              "requestErrors": 818,
+              "signal": 1,
+              "noise": 52
+            },
+            {
+              "t": "2026-09-15T09:40:00+03:00",
+              "requests": 465846,
+              "requestErrors": 936,
+              "signal": 1,
+              "noise": 46
+            },
+            {
+              "t": "2026-09-15T09:45:00+03:00",
+              "requests": 470395,
+              "requestErrors": 928,
+              "signal": 2,
+              "noise": 43
+            },
+            {
+              "t": "2026-09-15T09:50:00+03:00",
+              "requests": 447276,
+              "requestErrors": 806,
+              "signal": 1,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-15T09:55:00+03:00",
+              "requests": 459411,
+              "requestErrors": 988,
+              "signal": 1,
+              "noise": 60
+            }
+          ],
+          "incidents": {
+            "openNow": 0
+          }
+        }
+      }
+    },
+    "clusterAgentStats": {
+      "digital-purchases": {
+        "cluster": "gke-eu-prod-1",
+        "connected": true,
+        "lastMessageUnix": 1789455592
+      }
+    },
+    "knownServices": 12,
+    "unmappedServices": 0,
+    "unmappedNames": [],
+    "unmappedTruncated": false
+  },
+  "incidents": {
+    "tenant": "digital-purchases",
+    "incidentMetrics": {
+      "criticalOpen": 0,
+      "warningOpen": 0,
+      "infoOpen": 0,
+      "medianTTR": 0
+    },
+    "incidents": []
+  },
+  "applications": [
+    {
+      "name": "api-gateway",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 420,
+        "errPct": 0.13,
+        "p99Ms": 322,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.37,
+        "memPsiPct": 0.29,
+        "ioPsiPct": 0.14,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 44,
+        "cpuPct": 31,
+        "memReqPct": 66,
+        "cpuReqPct": 48,
+        "memNodePct": 10,
+        "cpuNodePct": 13,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "auth",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 210,
+        "errPct": 0.21,
+        "p99Ms": 138,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.12,
+        "memPsiPct": 0.02,
+        "ioPsiPct": 0.09,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 37,
+        "cpuPct": 30,
+        "memReqPct": 56,
+        "cpuReqPct": 54,
+        "memNodePct": 17,
+        "cpuNodePct": 6,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "checkout",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 85,
+        "errPct": 0.26,
+        "p99Ms": 271,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.11,
+        "memPsiPct": 0.27,
+        "ioPsiPct": 0.0,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 44,
+        "cpuPct": 32,
+        "memReqPct": 54,
+        "cpuReqPct": 44,
+        "memNodePct": 18,
+        "cpuNodePct": 8,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "payments",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 60,
+        "errPct": 0.24,
+        "p99Ms": 169,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.39,
+        "memPsiPct": 0.29,
+        "ioPsiPct": 0.03,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 54,
+        "cpuPct": 25,
+        "memReqPct": 50,
+        "cpuReqPct": 36,
+        "memNodePct": 16,
+        "cpuNodePct": 9,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "catalog",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 300,
+        "errPct": 0.21,
+        "p99Ms": 153,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.3,
+        "memPsiPct": 2.4,
+        "ioPsiPct": 0.1,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 71,
+        "cpuPct": 28,
+        "memReqPct": 93,
+        "cpuReqPct": 57,
+        "memNodePct": 16,
+        "cpuNodePct": 12,
+        "memBytes": 748683264,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "search",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 150,
+        "errPct": 0.26,
+        "p99Ms": 246,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.1,
+        "memPsiPct": 0.03,
+        "ioPsiPct": 0.13,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 53,
+        "cpuPct": 42,
+        "memReqPct": 72,
+        "cpuReqPct": 45,
+        "memNodePct": 13,
+        "cpuNodePct": 14,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "cart",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 90,
+        "errPct": 0.12,
+        "p99Ms": 217,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.22,
+        "memPsiPct": 0.18,
+        "ioPsiPct": 0.12,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 38,
+        "cpuPct": 30,
+        "memReqPct": 54,
+        "cpuReqPct": 41,
+        "memNodePct": 10,
+        "cpuNodePct": 8,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "notifications",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 20,
+        "errPct": 0.23,
+        "p99Ms": 223,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.07,
+        "memPsiPct": 0.14,
+        "ioPsiPct": 0.13,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 42,
+        "cpuPct": 23,
+        "memReqPct": 60,
+        "cpuReqPct": 50,
+        "memNodePct": 8,
+        "cpuNodePct": 11,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "image-resizer",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 40,
+        "errPct": 0.11,
+        "p99Ms": 351,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.08,
+        "memPsiPct": 0.25,
+        "ioPsiPct": 0.01,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 47,
+        "cpuPct": 22,
+        "memReqPct": 69,
+        "cpuReqPct": 53,
+        "memNodePct": 9,
+        "cpuNodePct": 5,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "reporting",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "reqPerSec": 2,
+        "errPct": 0.25,
+        "p99Ms": 228,
+        "rateAsOfUnix": 1789455573,
+        "cpuPsiPct": 0.15,
+        "memPsiPct": 0.1,
+        "ioPsiPct": 0.07,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 49,
+        "cpuPct": 26,
+        "memReqPct": 53,
+        "cpuReqPct": 44,
+        "memNodePct": 19,
+        "cpuNodePct": 12,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "scheduler",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "cpuPsiPct": 0.18,
+        "memPsiPct": 0.11,
+        "ioPsiPct": 0.16,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 37,
+        "cpuPct": 37,
+        "memReqPct": 53,
+        "cpuReqPct": 48,
+        "memNodePct": 14,
+        "cpuNodePct": 12,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    },
+    {
+      "name": "backup",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-15T09:59:33+03:00",
+      "golden": {
+        "cpuPsiPct": 0.33,
+        "memPsiPct": 0.01,
+        "ioPsiPct": 0.14,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1789455573,
+        "memPct": 41,
+        "cpuPct": 37,
+        "memReqPct": 74,
+        "cpuReqPct": 30,
+        "memNodePct": 12,
+        "cpuNodePct": 9,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1789455573
+      }
+    }
+  ],
+  "graph": {
+    "tenant": "digital-purchases",
+    "nodes": [
+      {
+        "name": "api-gateway",
+        "tier": 1,
+        "blastRadius": 0.71,
+        "weight": 0.99,
+        "calls": [
+          "auth",
+          "checkout",
+          "catalog",
+          "search",
+          "cart"
+        ],
+        "calledBy": []
+      },
+      {
+        "name": "auth",
+        "tier": 1,
+        "blastRadius": 0.55,
+        "weight": 0.77,
+        "calls": [],
+        "calledBy": [
+          "api-gateway"
+        ]
+      },
+      {
+        "name": "checkout",
+        "tier": 1,
+        "blastRadius": 0.62,
+        "weight": 0.87,
+        "calls": [
+          "payments",
+          "cart"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "cart"
+        ]
+      },
+      {
+        "name": "payments",
+        "tier": 1,
+        "blastRadius": 0.58,
+        "weight": 0.81,
+        "calls": [
+          "notifications"
+        ],
+        "calledBy": [
+          "checkout"
+        ]
+      },
+      {
+        "name": "catalog",
+        "tier": 2,
+        "blastRadius": 0.31,
+        "weight": 0.43,
+        "calls": [
+          "image-resizer"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "cart"
+        ]
+      },
+      {
+        "name": "search",
+        "tier": 2,
+        "blastRadius": 0.28,
+        "weight": 0.39,
+        "calls": [],
+        "calledBy": [
+          "api-gateway"
+        ]
+      },
+      {
+        "name": "cart",
+        "tier": 2,
+        "blastRadius": 0.34,
+        "weight": 0.48,
+        "calls": [
+          "checkout",
+          "catalog"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "checkout"
+        ]
+      },
+      {
+        "name": "notifications",
+        "tier": 3,
+        "blastRadius": 0.12,
+        "weight": 0.17,
+        "calls": [],
+        "calledBy": [
+          "payments"
+        ]
+      },
+      {
+        "name": "image-resizer",
+        "tier": 3,
+        "blastRadius": 0.06,
+        "weight": 0.08,
+        "calls": [],
+        "calledBy": [
+          "catalog"
+        ]
+      },
+      {
+        "name": "reporting",
+        "tier": 3,
+        "blastRadius": 0.09,
+        "weight": 0.13,
+        "calls": [],
+        "calledBy": [
+          "scheduler"
+        ]
+      },
+      {
+        "name": "scheduler",
+        "tier": 3,
+        "blastRadius": 0.05,
+        "weight": 0.07,
+        "calls": [
+          "reporting"
+        ],
+        "calledBy": []
+      },
+      {
+        "name": "backup",
+        "tier": 3,
+        "blastRadius": 0.04,
+        "weight": 0.06,
+        "calls": [],
+        "calledBy": []
+      }
+    ],
+    "edges": [
+      {
+        "from": "api-gateway",
+        "to": "auth"
+      },
+      {
+        "from": "api-gateway",
+        "to": "checkout"
+      },
+      {
+        "from": "api-gateway",
+        "to": "catalog"
+      },
+      {
+        "from": "api-gateway",
+        "to": "search"
+      },
+      {
+        "from": "api-gateway",
+        "to": "cart"
+      },
+      {
+        "from": "cart",
+        "to": "checkout"
+      },
+      {
+        "from": "checkout",
+        "to": "payments"
+      },
+      {
+        "from": "checkout",
+        "to": "cart"
+      },
+      {
+        "from": "cart",
+        "to": "catalog"
+      },
+      {
+        "from": "payments",
+        "to": "notifications"
+      },
+      {
+        "from": "catalog",
+        "to": "image-resizer"
+      },
+      {
+        "from": "scheduler",
+        "to": "reporting"
+      }
+    ]
+  },
+  "analytics": {
+    "tenant": "digital-purchases",
+    "baselines": [
+      {
+        "service": "api-gateway",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.71,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "auth",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.55,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.5,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 1,
+          "2026-W35": 1,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "checkout",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.62,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 1.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 1,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "payments",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.58,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "catalog",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.31,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.25,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 1,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "search",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.28,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "cart",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.34,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "notifications",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.12,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "image-resizer",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.06,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "reporting",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.09,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "scheduler",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.05,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "backup",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.04,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      }
+    ],
+    "patterns": [
+      {
+        "id": "token-refresh-storm",
+        "service": "payments",
+        "steps": [
+          "auth p99 rises above 400ms",
+          "payments retries to auth double",
+          "token cache hit rate drops below 60%",
+          "payments 5xx on /oauth/token starts",
+          "checkout error rate above 5%"
+        ],
+        "seenCount": 3,
+        "avgLeadMs": 1080000
+      },
+      {
+        "id": "catalog-memory-creep",
+        "service": "catalog",
+        "steps": [
+          "memReqPct above 85%",
+          "memPsi above 1%",
+          "GC pause warnings in logs",
+          "OOM kill"
+        ],
+        "seenCount": 2,
+        "avgLeadMs": 5400000
+      }
+    ],
+    "precursorMatches": []
+  }
+}
