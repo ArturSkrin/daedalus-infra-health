@@ -31,6 +31,7 @@ Infra Health Tracker для хакатону «Self-Aware Infrastructure». Фі
 | [mock_data/](mock_data/) | JSON на кожен зріз у формі Triage API, генератор, еталонна реалізація правил і інструкція |
 | [design_rationale.md](design_rationale.md) | Чому саме ці пʼять, чому не інші, що виявив прогін, прогалини в каталозі |
 | [metrics_catalog_triage.md](metrics_catalog_triage.md) | Розбір каталогу метрик на три категорії: змінює рішення, пояснює, не змінює нічого |
+| [reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md) | Оригінальний каталог метрик Triage від організаторів, джерело для розбору |
 | `design/` | Прототип головного екрану і drill-in. У роботі |
 
 ## Як переглянути прототип
