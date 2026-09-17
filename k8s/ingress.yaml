@@ -1,0 +1,26 @@
+# Host and issuer follow the cluster that already serves evetools.skrin.pp.ua.
+# Change the host before applying.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: daedalus
+  namespace: daedalus
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - daedalus.skrin.pp.ua
+      secretName: daedalus-tls
+  rules:
+    - host: daedalus.skrin.pp.ua
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

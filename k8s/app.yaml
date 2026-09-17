@@ -1,0 +1,97 @@
+# Same layout as docker-compose: a FastAPI backend that owns the rules, and an
+# nginx frontend that serves the build and proxies /api to the backend service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: daedalus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/arturskrin/daedalus-infra-health-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          # Live mode is off until these are set. Demo scenarios always work.
+          envFrom:
+            - secretRef:
+                name: triage
+                optional: true
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # nginx.conf proxies to http://backend:8000, so the service keeps that name
+  name: backend
+  namespace: daedalus
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: daedalus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/arturskrin/daedalus-infra-health-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 96Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: daedalus
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
