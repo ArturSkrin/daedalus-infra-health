@@ -1,17 +1,17 @@
 {
   "scenario": "s10_low_precision",
-  "title": "Агент упевнений, але часто помиляється",
+  "title": "Agent is confident but often wrong",
   "tenant": "digital-purchases",
   "now": "2026-09-21T14:05:00+03:00",
-  "story": "Той самий збіг, що в S09, але агент працює другий тиждень і вгадав 8 разів з 19.",
+  "story": "Same match as S09, but the agent is in its second week here and got 8 of 19 predictions right.",
   "expected": {
-    "verdict": "СПОКІЙНО",
-    "reason": "усе в нормі; агент підозрює auth, але помиляється частіше, ніж вгадує",
+    "verdict": "all_clear",
+    "reason": "all normal; agent suspects auth but is wrong more often than right",
     "states": {
-      "users": "Добре",
-      "forecast": "Тисне",
-      "trust": "Повна",
-      "day": "Спокійна"
+      "users": "ok",
+      "forecast": "pressure",
+      "trust": "full",
+      "day": "quiet"
     }
   },
   "status": {

@@ -1,17 +1,17 @@
 {
   "scenario": "s03_release_regressed",
-  "title": "Реліз регресував тихо",
+  "title": "Release regressed quietly",
   "tenant": "digital-purchases",
   "now": "2026-09-14T13:10:00+03:00",
-  "story": "О 11:00 викотили catalog і cart. Помилки не вибухнули, але стабільно вдвічі вищі дві години. Інцидент не відкрито.",
+  "story": "catalog and cart were rolled out at 11:00. Errors did not explode but have been steadily twice the norm for two hours. No incident was opened.",
   "expected": {
-    "verdict": "ЗАПЛАНУВАТИ",
-    "reason": "помилок удвічі більше за норму після 11:00, catalog і cart",
+    "verdict": "schedule",
+    "reason": "errors twice the norm since 11:00 in catalog and cart",
     "states": {
-      "users": "Добре",
-      "forecast": "Чисто",
-      "trust": "Повна",
-      "day": "Погіршилась"
+      "users": "ok",
+      "forecast": "clear",
+      "trust": "full",
+      "day": "regressed"
     }
   },
   "status": {

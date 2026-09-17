@@ -1,17 +1,17 @@
 {
   "scenario": "s01_calm",
-  "title": "Спокійний ранок",
+  "title": "Quiet morning",
   "tenant": "digital-purchases",
   "now": "2026-09-14T08:30:00+03:00",
-  "story": "Понеділок, 08:30. За ніч нічого не сталось.",
+  "story": "Monday, 08:30. Nothing happened overnight.",
   "expected": {
-    "verdict": "СПОКІЙНО",
-    "reason": "усе в нормі, за добу нічого не сталось",
+    "verdict": "all_clear",
+    "reason": "all normal, nothing happened in the last day",
     "states": {
-      "users": "Добре",
-      "forecast": "Чисто",
-      "trust": "Повна",
-      "day": "Спокійна"
+      "users": "ok",
+      "forecast": "clear",
+      "trust": "full",
+      "day": "quiet"
     }
   },
   "status": {

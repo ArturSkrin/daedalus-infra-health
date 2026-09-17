@@ -1,32 +1,32 @@
 # mock_data
 
-Десять наборів мок-даних, по одному на зріз зі `scenarios.md`. Кожен файл повторює форму відповідей Triage API з каталогу метрик, щоб прототип читав мок і живий бекенд одним кодом.
+Ten mock data sets, one per scenario in `scenarios.md`. Each file follows the shape of the Triage API responses from the metrics catalog, so the backend reads a mock file and a live core with the same code.
 
-## Файли
+## Files
 
-| Файл | Зріз | Очікуване рішення |
+| File | Scenario | Expected decision |
 | --- | --- | --- |
-| `s01_calm.json` | Спокійний ранок | СПОКІЙНО |
-| `s02_release_settled.json` | Реліз осів | СПОКІЙНО |
-| `s03_release_regressed.json` | Реліз регресував тихо | ЗАПЛАНУВАТИ |
-| `s04_memory_pressure.json` | Памʼять насичується | ЗАПЛАНУВАТИ |
-| `s05_agent_disconnected.json` | Агент кластера відвалився | НАОСЛІП |
-| `s06_log_spike.json` | Сплеск логів без впливу | СПОКІЙНО |
-| `s07_outage.json` | Checkout не працює | ЗАРАЗ |
-| `s08_dark_services.json` | Два сервіси мовчать | ЗАПЛАНУВАТИ |
-| `s09_precursor_imminent.json` | Агент бачить збій за 18 хвилин | ЗАРАЗ |
-| `s10_low_precision.json` | Агент упевнений, але часто помиляється | СПОКІЙНО |
+| `s01_calm.json` | Quiet morning | ALL CLEAR |
+| `s02_release_settled.json` | Release settled | ALL CLEAR |
+| `s03_release_regressed.json` | Release regressed quietly | SCHEDULE |
+| `s04_memory_pressure.json` | Memory is saturating | SCHEDULE |
+| `s05_agent_disconnected.json` | Cluster agent disconnected | BLIND |
+| `s06_log_spike.json` | Log spike with no impact | ALL CLEAR |
+| `s07_outage.json` | Checkout is down | ACT NOW |
+| `s08_dark_services.json` | Two services went silent | SCHEDULE |
+| `s09_precursor_imminent.json` | Agent sees a failure 18 minutes out | ACT NOW |
+| `s10_low_precision.json` | Agent is confident but often wrong | ALL CLEAR |
 
-`index.json` містить список зрізів для перемикача в прототипі.
+`index.json` lists the scenarios for the switcher in the prototype.
 
-## Форма одного файлу
+## Shape of one file
 
 ```
 {
   "scenario": "s03_release_regressed",
   "title": "...", "tenant": "digital-purchases", "now": "2026-09-14T13:10:00+03:00",
   "story": "...",
-  "expected": { "verdict": "ЗАПЛАНУВАТИ", "reason": "...", "states": { "users": "Добре", "forecast": "Чисто", "trust": "Повна", "day": "Погіршилась" } },
+  "expected": { "verdict": "schedule", "reason": "...", "states": { "users": "ok", "forecast": "clear", "trust": "full", "day": "regressed" } },
   "status":       { ...  GET /v2/agent/status  (tenantStats.tenants[tenant], clusterAgentStats, unmapped*) },
   "incidents":    { ...  GET /v2/agent/incidents?tenant= },
   "applications": [ ...  GET /v2/agent/applications?tenant= ],
@@ -35,49 +35,63 @@
 }
 ```
 
-Блок `expected` не є частиною API. Його читає лише перевірка і сторінка зрізу в прототипі.
+The `expected` block is not part of the API. Only the tests and the "Why this word" drill-in read it.
 
-Поля, яких немає в каталозі, але які потрібні для рендеру, додано мінімально і позначено в `generate.py`: `precursorMatches[].matched / remaining` (список кроків, у каталозі є лише лічильники) і `darkServices[]` у зрізі S08 (каталог дає лише `servicesDark` як число). Обидва є кандидатами в прогалини.
+State codes used in `expected` and returned by the engine:
 
-Каталог каже: відсутнє поле означає "не виміряно". Мок це відтворює: у batch-сервісів (`scheduler`, `backup`) немає блоку `reqPerSec / errPct / rateAsOfUnix`, у зрізі S08 їх немає в `applications` зовсім, у зрізі S05 усі `*AsOfUnix` застарілі на 47 хвилин.
+| Indicator | Codes | On screen |
+| --- | --- | --- |
+| verdict | `all_clear`, `schedule`, `act_now`, `blind` | ALL CLEAR, SCHEDULE, ACT NOW, BLIND |
+| users | `ok`, `degraded`, `broken` | Fine, Degraded, Broken |
+| forecast | `clear`, `pressure`, `brewing` | Clear, Pressure, Brewing |
+| trust | `full`, `partial`, `blind` | Full, Partial, Blind |
+| day | `quiet`, `settled`, `regressed` | Quiet, Settled, Regressed |
+| any | `unknown` | — |
 
-## Як переглянути разом із прототипом
+## Fields that are not in the catalog
 
-Прототип читає `mock_data/<id>.json` і перемикає зріз через параметр URL:
+Three fields were added because the screen needs them and the catalog has no equivalent. Each one is a candidate gap, and each is marked with a comment in `generate.py`.
+
+- `precursorMatches[].matched` and `.remaining`: the step texts. The catalog has only the counters `matchedSteps` and `totalSteps`.
+- `darkServices[]` in S08: names and last event time. The catalog has only the count `servicesDark`.
+- `topSignalSources[]` in S06: which service produced the log storm. The catalog says log volume is never stored per service.
+
+The catalog says a missing field means "not measured". The mock data reproduces that: batch services (`scheduler`, `backup`) have no `reqPerSec / errPct / rateAsOfUnix` block, in S08 they are absent from `applications` entirely, and in S05 every `*AsOfUnix` is 47 minutes stale.
+
+## How to view it with the prototype
+
+```bash
+docker compose up -d --build
+```
+
+Open http://localhost:8080 and pick a scenario in the header, or use the URL:
 
 ```
 /?scenario=s03_release_regressed
+/?scenario=s03_release_regressed&drill=day
 ```
 
-Без параметра відкривається `s01_calm`. Перемикач зрізів у шапці прототипу бере список із `index.json`. Кожен екран показує рядок "DEMO DATA · <title>" і, у drill-in показника 1, блок `expected` поруч із тим, що прототип обчислив сам, щоб розбіжність було видно одразу.
+Tapping the verdict word opens "Why this word": the priority rules with the fired one highlighted, plus the expected and computed decision for the scenario side by side.
 
-## Як перевірити правила без прототипу
+## How to check the rules without the prototype
 
-`evaluate.py` є еталонною реалізацією пʼяти показників із `metrics_spec.md`. Він читає всі зрізи, рахує стани та рішення і звіряє з `expected`.
+The rules live in `backend/engine.py`. `evaluate.py` is a thin command-line wrapper around it and needs only Python 3.12+, no packages.
 
 ```bash
-python evaluate.py
+python mock_data/evaluate.py
+python mock_data/evaluate.py s03     # one scenario with the intermediate numbers
 ```
 
-```
-scenario                  users       forecast    trust       day           verdict       ok
-s01_calm                  Добре       Чисто       Повна       Спокійна      СПОКІЙНО      ✓
-...
-10/10 scenarios match metrics_spec.md
-```
-
-Один зріз із проміжними числами (частка помилок, свіжість, вікна доби):
+The same checks run as tests, together with a check that the reason line on screen matches `expected.reason`:
 
 ```bash
-python evaluate.py s03
+python -m pytest -q
 ```
 
-Логіка прототипу має відтворювати `evaluate.py` один в один. Якщо правило в `metrics_spec.md` змінюється, змінюються обидва.
-
-## Як перегенерувати
+## How to regenerate
 
 ```bash
-python generate.py
+python mock_data/generate.py
 ```
 
-Усе детерміноване: спільна фікстура на 12 сервісів і seed на зріз. Перевизначення для зрізу лежать у функції з його номером у `generate.py`, решта успадковується від фікстури. Після зміни фікстури або порогів запустіть `evaluate.py`: він виходить із кодом 1, якщо хоч один зріз розійшовся з очікуванням.
+Everything is deterministic: one shared fixture of 12 services and a seed per scenario. Scenario overrides live in the function with the scenario number; everything else is inherited from the fixture. After changing the fixture or a threshold, run the tests: they fail if any scenario disagrees with its expectation.

@@ -1,17 +1,17 @@
 {
   "scenario": "s02_release_settled",
-  "title": "Реліз осів",
+  "title": "Release settled",
   "tenant": "digital-purchases",
   "now": "2026-09-14T13:10:00+03:00",
-  "story": "О 09:35 викотили checkout, о 09:40 сплеск помилок, о 09:52 агент закрив інцидент. Зараз 13:10.",
+  "story": "checkout was rolled out at 09:35, errors spiked at 09:40, the agent closed the incident at 09:52. It is 13:10 now.",
   "expected": {
-    "verdict": "СПОКІЙНО",
-    "reason": "сплеск о 09:40 осів, агент закрив сам",
+    "verdict": "all_clear",
+    "reason": "09:40 spike settled, the agent closed it on its own",
     "states": {
-      "users": "Добре",
-      "forecast": "Чисто",
-      "trust": "Повна",
-      "day": "Осіла"
+      "users": "ok",
+      "forecast": "clear",
+      "trust": "full",
+      "day": "settled"
     }
   },
   "status": {

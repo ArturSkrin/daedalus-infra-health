@@ -1,17 +1,17 @@
 {
   "scenario": "s04_memory_pressure",
-  "title": "Памʼять насичується",
+  "title": "Memory is saturating",
   "tenant": "digital-purchases",
   "now": "2026-09-15T10:00:00+03:00",
-  "story": "Вівторок, 10:00. Catalog тримається, але памʼять упирається в request, ядро гальмує процес. OOM ще не було.",
+  "story": "Tuesday, 10:00. catalog is holding up, but memory is hitting its request and the kernel is stalling the process. No OOM kill yet.",
   "expected": {
-    "verdict": "ЗАПЛАНУВАТИ",
-    "reason": "catalog: памʼять насичується, OOM ще не було",
+    "verdict": "schedule",
+    "reason": "catalog: memory is saturating, no OOM kill yet",
     "states": {
-      "users": "Добре",
-      "forecast": "Назріває",
-      "trust": "Повна",
-      "day": "Спокійна"
+      "users": "ok",
+      "forecast": "brewing",
+      "trust": "full",
+      "day": "quiet"
     }
   },
   "status": {

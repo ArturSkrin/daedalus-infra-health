@@ -1,17 +1,17 @@
 {
   "scenario": "s08_dark_services",
-  "title": "Два сервіси мовчать",
+  "title": "Two services went silent",
   "tenant": "digital-purchases",
   "now": "2026-09-19T09:00:00+03:00",
-  "story": "Субота, 09:00. Scheduler і backup не надіслали жодної події за 6 годин. Сплять або впали, невідомо.",
+  "story": "Saturday, 09:00. scheduler and backup have not sent a single event in 6 hours. Asleep or dead, unknown.",
   "expected": {
-    "verdict": "ЗАПЛАНУВАТИ",
-    "reason": "scheduler і backup мовчать 6 год: здорові чи мертві, невідомо",
+    "verdict": "schedule",
+    "reason": "scheduler and backup silent for 6 h: healthy or dead, unknown",
     "states": {
-      "users": "Добре",
-      "forecast": "Чисто",
-      "trust": "Частково",
-      "day": "Спокійна"
+      "users": "ok",
+      "forecast": "clear",
+      "trust": "partial",
+      "day": "quiet"
     }
   },
   "status": {

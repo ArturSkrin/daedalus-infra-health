@@ -50,3 +50,36 @@ def test_scenario_matches_expected(
         result["states"]
         == data["expected"]["states"]
     )
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    INDEX,
+    ids=lambda item: item["id"],
+)
+def test_reason_line_matches_expected(
+    scenario: dict,
+):
+    from backend.presentation import build_view
+
+    data = json.loads(
+        (
+            MOCK_DIR
+            / scenario["file"]
+        ).read_text(
+            encoding="utf-8",
+        )
+    )
+
+    view = build_view(
+        data,
+        verdict(data),
+    )
+
+    assert (
+        view["decision"]["reason"]
+        == data["expected"]["reason"]
+    )
+
+    # exactly five indicators: the verdict plus four vitals
+    assert len(view["indicators"]) == 4

@@ -35,7 +35,7 @@ def trust(data: dict) -> tuple[str, dict]:
     )
 
     if tenant is None:
-        return "Наосліп", {
+        return "blind", {
             "why": "tenant missing",
         }
 
@@ -43,13 +43,13 @@ def trust(data: dict) -> tuple[str, dict]:
         last_message = agent.get("lastMessageUnix", now)
         minutes = int((now - last_message) / 60)
 
-        return "Наосліп", {
+        return "blind", {
             "why": f"agent disconnected {minutes} min",
             "disconnectedMinutes": minutes,
         }
 
     if tenant.get("services", 0) == 0:
-        return "Наосліп", {
+        return "blind", {
             "why": "services = 0",
         }
 
@@ -86,7 +86,7 @@ def trust(data: dict) -> tuple[str, dict]:
     }
 
     if coverage < 80 or dark >= 3:
-        return "Наосліп", info
+        return "blind", info
 
     if (
         coverage < 95
@@ -94,9 +94,9 @@ def trust(data: dict) -> tuple[str, dict]:
         or unmapped > 0
         or fresh_share < 90
     ):
-        return "Частково", info
+        return "partial", info
 
-    return "Повна", info
+    return "full", info
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ def users(data: dict) -> tuple[str, dict]:
             tier1_hurt.append(app["name"])
 
     if denominator == 0:
-        return "—", {
+        return "unknown", {
             "why": "no fresh rate data",
         }
 
@@ -184,15 +184,15 @@ def users(data: dict) -> tuple[str, dict]:
     if failing_share >= 5 or tier1_broken:
         info["tier1Broken"] = tier1_broken
 
-        return "Зламано", info
+        return "broken", info
 
     if failing_share >= 0.5 or tier1_hurt:
         info["tier1Hurt"] = tier1_hurt
         info["escalate"] = blast_max >= 0.5
 
-        return "Страждають", info
+        return "degraded", info
 
-    return "Добре", info
+    return "ok", info
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +230,7 @@ def forecast(data: dict) -> tuple[str, dict]:
         ),
     }
 
-    level = "Чисто"
+    level = "clear"
     service = None
     best = 0.0
 
@@ -254,10 +254,10 @@ def forecast(data: dict) -> tuple[str, dict]:
             service = match["service"]
 
     if best >= 0.7:
-        level = "Назріває"
+        level = "brewing"
 
     elif best >= 0.5:
-        level = "Тисне"
+        level = "pressure"
 
     info["precursorLevel"] = round(best, 2)
 
@@ -289,25 +289,25 @@ def forecast(data: dict) -> tuple[str, dict]:
                 golden.get("ioPsiPct", 0),
             )
             >= 1
-            and level == "Чисто"
+            and level == "clear"
         ):
-            level = "Тисне"
+            level = "pressure"
 
     if pressure:
-        level = "Назріває"
+        level = "brewing"
         service = service or pressure[0]
 
     info["pressure"] = pressure
 
     if (
-        level == "Назріває"
+        level == "brewing"
         and best >= 0.7
         and not pressure
         and hits + misses >= 10
         and precision is not None
         and precision < 60
     ):
-        level = "Тисне"
+        level = "pressure"
         info["downgraded"] = True
 
     info["service"] = service
@@ -318,7 +318,7 @@ def forecast(data: dict) -> tuple[str, dict]:
     )
 
     info["actNow"] = bool(
-        level == "Назріває"
+        level == "brewing"
         and tier1
         and lead_ms is not None
         and lead_ms < 30 * 60000
@@ -343,7 +343,7 @@ def day(data: dict) -> tuple[str, dict]:
     )
 
     if len(history) < MIN_BUCKETS:
-        return "—", {
+        return "unknown", {
             "why": f"only {len(history)} buckets",
         }
 
@@ -371,12 +371,12 @@ def day(data: dict) -> tuple[str, dict]:
     )
 
     if recent_requests == 0:
-        return "—", {
+        return "unknown", {
             "why": "recent window has no requests",
         }
 
     if base_requests < 1000:
-        return "—", {
+        return "unknown", {
             "why": "base window too small",
         }
 
@@ -459,7 +459,7 @@ def day(data: dict) -> tuple[str, dict]:
         or repeat_rate > 20
         or incidents_today > 2 * norm_per_day
     ):
-        return "Погіршилась", info
+        return "regressed", info
 
     open_now = (
         tenant
@@ -472,9 +472,9 @@ def day(data: dict) -> tuple[str, dict]:
         and err_recent <= 1.5 * err_base
         and open_now == 0
     ):
-        return "Осіла", info
+        return "settled", info
 
-    return "Спокійна", info
+    return "quiet", info
 
 
 # ---------------------------------------------------------------------------
@@ -484,15 +484,15 @@ def day(data: dict) -> tuple[str, dict]:
 def verdict(data: dict) -> dict:
     trust_state, trust_info = trust(data)
 
-    if trust_state == "Наосліп":
+    if trust_state == "blind":
         return {
-            "verdict": "НАОСЛІП",
+            "verdict": "blind",
             "trigger": "trust_blind",
             "states": {
-                "users": "—",
-                "forecast": "—",
+                "users": "unknown",
+                "forecast": "unknown",
                 "trust": trust_state,
-                "day": "—",
+                "day": "unknown",
             },
             "detail": {
                 "trust": trust_info,
@@ -513,50 +513,50 @@ def verdict(data: dict) -> dict:
         .get("warningOpen", 0)
     )
 
-    if users_state == "Зламано":
-        final_verdict = "ЗАРАЗ"
+    if users_state == "broken":
+        final_verdict = "act_now"
         trigger = "users_broken"
 
     elif critical_open > 0:
-        final_verdict = "ЗАРАЗ"
+        final_verdict = "act_now"
         trigger = "critical_incident"
 
     elif (
-        forecast_state == "Назріває"
+        forecast_state == "brewing"
         and forecast_info.get("actNow")
     ):
-        final_verdict = "ЗАРАЗ"
+        final_verdict = "act_now"
         trigger = "forecast_imminent"
 
     elif (
-        users_state == "Страждають"
+        users_state == "degraded"
         and users_info.get("escalate")
     ):
-        final_verdict = "ЗАРАЗ"
+        final_verdict = "act_now"
         trigger = "users_escalated"
 
-    elif users_state == "Страждають":
-        final_verdict = "ЗАПЛАНУВАТИ"
+    elif users_state == "degraded":
+        final_verdict = "schedule"
         trigger = "users_degraded"
 
-    elif forecast_state == "Назріває":
-        final_verdict = "ЗАПЛАНУВАТИ"
+    elif forecast_state == "brewing":
+        final_verdict = "schedule"
         trigger = "forecast_risk"
 
-    elif day_state == "Погіршилась":
-        final_verdict = "ЗАПЛАНУВАТИ"
+    elif day_state == "regressed":
+        final_verdict = "schedule"
         trigger = "day_regressed"
 
     elif warning_open > 0:
-        final_verdict = "ЗАПЛАНУВАТИ"
+        final_verdict = "schedule"
         trigger = "warning_incident"
 
-    elif trust_state == "Частково":
-        final_verdict = "ЗАПЛАНУВАТИ"
+    elif trust_state == "partial":
+        final_verdict = "schedule"
         trigger = "trust_partial"
 
     else:
-        final_verdict = "СПОКІЙНО"
+        final_verdict = "all_clear"
         trigger = "calm"
 
     return {

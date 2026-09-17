@@ -1,17 +1,17 @@
 {
   "scenario": "s07_outage",
-  "title": "Checkout не працює",
+  "title": "Checkout is down",
   "tenant": "digital-purchases",
   "now": "2026-09-18T17:45:00+03:00",
-  "story": "Пʼятниця, 17:45. Оновлення сертифіката зламало виклик checkout до payments. Критичний інцидент відкрито 4 хвилини тому.",
+  "story": "Friday, 17:45. A certificate rotation broke the checkout call to payments. A critical incident was opened 4 minutes ago.",
   "expected": {
-    "verdict": "ЗАРАЗ",
-    "reason": "checkout не працює, зачепить ще 2 сервіси",
+    "verdict": "act_now",
+    "reason": "checkout is down, 2 more services will be hit",
     "states": {
-      "users": "Зламано",
-      "forecast": "Чисто",
-      "trust": "Повна",
-      "day": "Спокійна"
+      "users": "broken",
+      "forecast": "clear",
+      "trust": "full",
+      "day": "quiet"
     }
   },
   "status": {

@@ -1,17 +1,17 @@
 {
   "scenario": "s05_agent_disconnected",
-  "title": "Агент кластера відвалився",
+  "title": "Cluster agent disconnected",
   "tenant": "digital-purchases",
   "now": "2026-09-16T15:20:00+03:00",
-  "story": "Середа, 15:20. WebSocket від cluster agent обірвався о 14:33. Core віддає останній відомий стан, лічильники виглядають чудово.",
+  "story": "Wednesday, 15:20. The cluster agent WebSocket dropped at 14:33. The core keeps serving the last known state and every counter looks great.",
   "expected": {
-    "verdict": "НАОСЛІП",
-    "reason": "агент кластера не підключений 47 хв, флот не видно",
+    "verdict": "blind",
+    "reason": "cluster agent disconnected for 47 min, the fleet is not visible",
     "states": {
-      "users": "—",
-      "forecast": "—",
-      "trust": "Наосліп",
-      "day": "—"
+      "users": "unknown",
+      "forecast": "unknown",
+      "trust": "blind",
+      "day": "unknown"
     }
   },
   "status": {

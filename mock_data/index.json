@@ -1,62 +1,62 @@
 [
   {
     "id": "s01_calm",
-    "title": "Спокійний ранок",
+    "title": "Quiet morning",
     "file": "s01_calm.json",
-    "expected": "СПОКІЙНО"
+    "expected": "all_clear"
   },
   {
     "id": "s02_release_settled",
-    "title": "Реліз осів",
+    "title": "Release settled",
     "file": "s02_release_settled.json",
-    "expected": "СПОКІЙНО"
+    "expected": "all_clear"
   },
   {
     "id": "s03_release_regressed",
-    "title": "Реліз регресував тихо",
+    "title": "Release regressed quietly",
     "file": "s03_release_regressed.json",
-    "expected": "ЗАПЛАНУВАТИ"
+    "expected": "schedule"
   },
   {
     "id": "s04_memory_pressure",
-    "title": "Памʼять насичується",
+    "title": "Memory is saturating",
     "file": "s04_memory_pressure.json",
-    "expected": "ЗАПЛАНУВАТИ"
+    "expected": "schedule"
   },
   {
     "id": "s05_agent_disconnected",
-    "title": "Агент кластера відвалився",
+    "title": "Cluster agent disconnected",
     "file": "s05_agent_disconnected.json",
-    "expected": "НАОСЛІП"
+    "expected": "blind"
   },
   {
     "id": "s06_log_spike",
-    "title": "Сплеск логів без впливу",
+    "title": "Log spike with no impact",
     "file": "s06_log_spike.json",
-    "expected": "СПОКІЙНО"
+    "expected": "all_clear"
   },
   {
     "id": "s07_outage",
-    "title": "Checkout не працює",
+    "title": "Checkout is down",
     "file": "s07_outage.json",
-    "expected": "ЗАРАЗ"
+    "expected": "act_now"
   },
   {
     "id": "s08_dark_services",
-    "title": "Два сервіси мовчать",
+    "title": "Two services went silent",
     "file": "s08_dark_services.json",
-    "expected": "ЗАПЛАНУВАТИ"
+    "expected": "schedule"
   },
   {
     "id": "s09_precursor_imminent",
-    "title": "Агент бачить збій за 18 хвилин",
+    "title": "Agent sees a failure 18 minutes out",
     "file": "s09_precursor_imminent.json",
-    "expected": "ЗАРАЗ"
+    "expected": "act_now"
   },
   {
     "id": "s10_low_precision",
-    "title": "Агент упевнений, але часто помиляється",
+    "title": "Agent is confident but often wrong",
     "file": "s10_low_precision.json",
-    "expected": "СПОКІЙНО"
+    "expected": "all_clear"
   }
 ]

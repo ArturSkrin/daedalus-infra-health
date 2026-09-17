@@ -1,17 +1,17 @@
 {
   "scenario": "s06_log_spike",
-  "title": "Сплеск логів без впливу",
+  "title": "Log spike with no impact",
   "tenant": "digital-purchases",
   "now": "2026-09-17T11:00:00+03:00",
-  "story": "Четвер, 11:00. Reporting після оновлення бібліотеки пише 8.9 тис. error-рядків за годину. Запити проходять.",
+  "story": "Thursday, 11:00. After a library upgrade, reporting writes 8.9k error lines an hour. Requests are going through.",
   "expected": {
-    "verdict": "СПОКІЙНО",
-    "reason": "reporting шумить у логах, користувачів не зачіпає",
+    "verdict": "all_clear",
+    "reason": "reporting is noisy in logs, users are not affected",
     "states": {
-      "users": "Добре",
-      "forecast": "Чисто",
-      "trust": "Повна",
-      "day": "Спокійна"
+      "users": "ok",
+      "forecast": "clear",
+      "trust": "full",
+      "day": "quiet"
     }
   },
   "status": {
@@ -2064,7 +2064,14 @@
           ],
           "incidents": {
             "openNow": 0
-          }
+          },
+          "topSignalSources": [
+            {
+              "service": "reporting",
+              "type": "log",
+              "count": 8913
+            }
+          ]
         }
       }
     },

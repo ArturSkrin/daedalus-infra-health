@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend import live
 from backend.engine import verdict
 from backend.presentation import build_view
 from backend.repository import (
@@ -15,7 +16,7 @@ from backend.repository import (
 
 app = FastAPI(
     title="Daedalus Infra Health",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -32,6 +33,7 @@ app.add_middleware(
 def health() -> dict:
     return {
         "status": "ok",
+        "live": live.configured(),
     }
 
 
@@ -40,10 +42,7 @@ def scenarios() -> list[dict]:
     response = []
 
     for item in list_scenarios():
-        data = load_scenario(
-            item["id"],
-        )
-
+        data = load_scenario(item["id"])
         result = verdict(data)
 
         response.append(
@@ -51,10 +50,8 @@ def scenarios() -> list[dict]:
                 **item,
                 "actual": result["verdict"],
                 "passed": (
-                    result["verdict"]
-                    == data["expected"]["verdict"]
-                    and result["states"]
-                    == data["expected"]["states"]
+                    result["verdict"] == data["expected"]["verdict"]
+                    and result["states"] == data["expected"]["states"]
                 ),
             }
         )
@@ -62,16 +59,10 @@ def scenarios() -> list[dict]:
     return response
 
 
-@app.get(
-    "/api/scenarios/{scenario_id}"
-)
-def scenario(
-    scenario_id: str,
-) -> dict:
+@app.get("/api/scenarios/{scenario_id}")
+def scenario(scenario_id: str) -> dict:
     try:
-        data = load_scenario(
-            scenario_id,
-        )
+        data = load_scenario(scenario_id)
 
     except ScenarioNotFound:
         raise HTTPException(
@@ -79,27 +70,31 @@ def scenario(
             detail="Scenario not found",
         )
 
-    result = verdict(data)
-
-    return build_view(
-        data,
-        result,
-    )
+    return build_view(data, verdict(data), mode="demo")
 
 
-@app.get(
-    "/api/scenarios/{scenario_id}/raw"
-)
-def scenario_raw(
-    scenario_id: str,
-) -> dict:
+@app.get("/api/scenarios/{scenario_id}/raw")
+def scenario_raw(scenario_id: str) -> dict:
     try:
-        return load_scenario(
-            scenario_id,
-        )
+        return load_scenario(scenario_id)
 
     except ScenarioNotFound:
         raise HTTPException(
             status_code=404,
             detail="Scenario not found",
         )
+
+
+@app.get("/api/live")
+def live_view(tenant: str | None = None) -> dict:
+    """Same view model, computed from a real Triage core instead of a mock file."""
+    try:
+        data = live.load_live(tenant)
+
+    except live.LiveUnavailable as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Live data unavailable: {error}",
+        )
+
+    return build_view(data, verdict(data), mode="live")

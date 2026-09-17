@@ -1,17 +1,17 @@
 {
   "scenario": "s09_precursor_imminent",
-  "title": "Агент бачить збій за 18 хвилин",
+  "title": "Agent sees a failure 18 minutes out",
   "tenant": "digital-purchases",
   "now": "2026-09-21T14:05:00+03:00",
-  "story": "Понеділок, 14:05. Нічого не зламано, але в payments розгортається той самий ланцюжок, що тричі закінчувався штормом токенів. 4 з 5 кроків пройдено.",
+  "story": "Monday, 14:05. Nothing is broken, but payments is walking the same chain of events that ended in a token refresh storm three times before. 4 of 5 steps are done.",
   "expected": {
-    "verdict": "ЗАРАЗ",
-    "reason": "payments: агент бачить 4 з 5 кроків до збою, зазвичай є ~18 хв",
+    "verdict": "act_now",
+    "reason": "payments: agent sees 4 of 5 steps to a failure, usually ~18 min of warning",
     "states": {
-      "users": "Добре",
-      "forecast": "Назріває",
-      "trust": "Повна",
-      "day": "Спокійна"
+      "users": "ok",
+      "forecast": "brewing",
+      "trust": "full",
+      "day": "quiet"
     }
   },
   "status": {

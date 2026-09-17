@@ -266,10 +266,10 @@ def s01():
     hist = make_history(now, rng, flat)
     tenant = base_tenant(hist, {"noise": 14210, "signal": 96, "incident": 0, "unknown": 3, "drift": 0},
                          {"log": 61, "red": 0, "use": 9, "k8s": 26}, open_now=0)
-    return bundle("s01_calm", "Спокійний ранок", now,
-                  "Понеділок, 08:30. За ніч нічого не сталось.",
-                  {"verdict": "СПОКІЙНО", "reason": "усе в нормі, за добу нічого не сталось",
-                   "states": {"users": "Добре", "forecast": "Чисто", "trust": "Повна", "day": "Спокійна"}},
+    return bundle("s01_calm", "Quiet morning", now,
+                  "Monday, 08:30. Nothing happened overnight.",
+                  {"verdict": "all_clear", "reason": "all normal, nothing happened in the last day",
+                   "states": {"users": "ok", "forecast": "clear", "trust": "full", "day": "quiet"}},
                   tenant, no_incidents(), make_apps(now, rng, {}), [])
 
 
@@ -300,10 +300,10 @@ def s02():
                "relatedEvents": ["AppDegraded checkout 09:40:12", "AppRecovered checkout 09:52:30",
                                  "GraphDrift checkout->cart 09:36"],
            }]}
-    return bundle("s02_release_settled", "Реліз осів", now,
-                  "О 09:35 викотили checkout, о 09:40 сплеск помилок, о 09:52 агент закрив інцидент. Зараз 13:10.",
-                  {"verdict": "СПОКІЙНО", "reason": "сплеск о 09:40 осів, агент закрив сам",
-                   "states": {"users": "Добре", "forecast": "Чисто", "trust": "Повна", "day": "Осіла"}},
+    return bundle("s02_release_settled", "Release settled", now,
+                  "checkout was rolled out at 09:35, errors spiked at 09:40, the agent closed the incident at 09:52. It is 13:10 now.",
+                  {"verdict": "all_clear", "reason": "09:40 spike settled, the agent closed it on its own",
+                   "states": {"users": "ok", "forecast": "clear", "trust": "full", "day": "settled"}},
                   tenant, inc, make_apps(now, rng, {}), [])
 
 
@@ -322,10 +322,10 @@ def s03():
     apps = make_apps(now, rng, {"catalog": {"errPct": 1.0, "p99Ms": 410}, "cart": {"errPct": 1.5, "p99Ms": 530},
                                 "api-gateway": {"errPct": 0.2}, "auth": {"errPct": 0.2},
                                 "checkout": {"errPct": 0.2}, "payments": {"errPct": 0.2}})
-    return bundle("s03_release_regressed", "Реліз регресував тихо", now,
-                  "О 11:00 викотили catalog і cart. Помилки не вибухнули, але стабільно вдвічі вищі дві години. Інцидент не відкрито.",
-                  {"verdict": "ЗАПЛАНУВАТИ", "reason": "помилок удвічі більше за норму після 11:00, catalog і cart",
-                   "states": {"users": "Добре", "forecast": "Чисто", "trust": "Повна", "day": "Погіршилась"}},
+    return bundle("s03_release_regressed", "Release regressed quietly", now,
+                  "catalog and cart were rolled out at 11:00. Errors did not explode but have been steadily twice the norm for two hours. No incident was opened.",
+                  {"verdict": "schedule", "reason": "errors twice the norm since 11:00 in catalog and cart",
+                   "states": {"users": "ok", "forecast": "clear", "trust": "full", "day": "regressed"}},
                   tenant, no_incidents(), apps, [])
 
 
@@ -338,10 +338,10 @@ def s04():
     apps = make_apps(now, rng, {"catalog": {"memPsiPct": 2.4, "memReqPct": 93, "memPct": 71,
                                             "cpuPsiPct": 0.3, "ioPsiPct": 0.1, "oomKills": 0,
                                             "memBytes": 714 * 1024 * 1024}})
-    return bundle("s04_memory_pressure", "Памʼять насичується", now,
-                  "Вівторок, 10:00. Catalog тримається, але памʼять упирається в request, ядро гальмує процес. OOM ще не було.",
-                  {"verdict": "ЗАПЛАНУВАТИ", "reason": "catalog: памʼять насичується, OOM ще не було",
-                   "states": {"users": "Добре", "forecast": "Назріває", "trust": "Повна", "day": "Спокійна"}},
+    return bundle("s04_memory_pressure", "Memory is saturating", now,
+                  "Tuesday, 10:00. catalog is holding up, but memory is hitting its request and the kernel is stalling the process. No OOM kill yet.",
+                  {"verdict": "schedule", "reason": "catalog: memory is saturating, no OOM kill yet",
+                   "states": {"users": "ok", "forecast": "brewing", "trust": "full", "day": "quiet"}},
                   tenant, no_incidents(), apps, [])
 
 
@@ -353,10 +353,10 @@ def s05():
     tenant = base_tenant(hist, {"noise": 12030, "signal": 80, "incident": 0, "unknown": 0, "drift": 0},
                          {"log": 40, "red": 0, "use": 4, "k8s": 18}, open_now=0)
     apps = make_apps(now, rng, {}, stale_s=47 * 60)
-    return bundle("s05_agent_disconnected", "Агент кластера відвалився", now,
-                  "Середа, 15:20. WebSocket від cluster agent обірвався о 14:33. Core віддає останній відомий стан, лічильники виглядають чудово.",
-                  {"verdict": "НАОСЛІП", "reason": "агент кластера не підключений 47 хв, флот не видно",
-                   "states": {"users": "—", "forecast": "—", "trust": "Наосліп", "day": "—"}},
+    return bundle("s05_agent_disconnected", "Cluster agent disconnected", now,
+                  "Wednesday, 15:20. The cluster agent WebSocket dropped at 14:33. The core keeps serving the last known state and every counter looks great.",
+                  {"verdict": "blind", "reason": "cluster agent disconnected for 47 min, the fleet is not visible",
+                   "states": {"users": "unknown", "forecast": "unknown", "trust": "blind", "day": "unknown"}},
                   tenant, no_incidents(), apps, [], agent_connected=False, last_msg=lost)
 
 
@@ -373,11 +373,13 @@ def s06():
     hist = make_history(now, rng, flat, signal_fn=sig)
     tenant = base_tenant(hist, {"noise": 22790, "signal": 264, "incident": 0, "unknown": 5, "drift": 0},
                          {"log": 8913, "red": 0, "use": 3, "k8s": 41}, open_now=0)
+    # not in the catalog: the API keeps log volume only inside each event's `raw`, never per service
+    tenant["topSignalSources"] = [{"service": "reporting", "type": "log", "count": 8913}]
     apps = make_apps(now, rng, {"reporting": {"errPct": 0.3}})
-    return bundle("s06_log_spike", "Сплеск логів без впливу", now,
-                  "Четвер, 11:00. Reporting після оновлення бібліотеки пише 8.9 тис. error-рядків за годину. Запити проходять.",
-                  {"verdict": "СПОКІЙНО", "reason": "reporting шумить у логах, користувачів не зачіпає",
-                   "states": {"users": "Добре", "forecast": "Чисто", "trust": "Повна", "day": "Спокійна"}},
+    return bundle("s06_log_spike", "Log spike with no impact", now,
+                  "Thursday, 11:00. After a library upgrade, reporting writes 8.9k error lines an hour. Requests are going through.",
+                  {"verdict": "all_clear", "reason": "reporting is noisy in logs, users are not affected",
+                   "states": {"users": "ok", "forecast": "clear", "trust": "full", "day": "quiet"}},
                   tenant, no_incidents(), apps, [])
 
 
@@ -411,10 +413,10 @@ def s07():
                "relatedEvents": ["AppDegraded checkout", "RequestErrorAnomaly checkout POST /checkout/confirm",
                                  "RequestErrorAnomaly payments POST /charge", "Warning BackOff checkout-7d9f"],
            }]}
-    return bundle("s07_outage", "Checkout не працює", now,
-                  "Пʼятниця, 17:45. Оновлення сертифіката зламало виклик checkout до payments. Критичний інцидент відкрито 4 хвилини тому.",
-                  {"verdict": "ЗАРАЗ", "reason": "checkout не працює, зачепить ще 2 сервіси",
-                   "states": {"users": "Зламано", "forecast": "Чисто", "trust": "Повна", "day": "Спокійна"}},
+    return bundle("s07_outage", "Checkout is down", now,
+                  "Friday, 17:45. A certificate rotation broke the checkout call to payments. A critical incident was opened 4 minutes ago.",
+                  {"verdict": "act_now", "reason": "checkout is down, 2 more services will be hit",
+                   "states": {"users": "broken", "forecast": "clear", "trust": "full", "day": "quiet"}},
                   tenant, inc, apps, [])
 
 
@@ -431,10 +433,10 @@ def s08():
     ]
     apps = make_apps(now, rng, {})
     apps = [a for a in apps if a["name"] not in ("scheduler", "backup")]
-    return bundle("s08_dark_services", "Два сервіси мовчать", now,
-                  "Субота, 09:00. Scheduler і backup не надіслали жодної події за 6 годин. Сплять або впали, невідомо.",
-                  {"verdict": "ЗАПЛАНУВАТИ", "reason": "scheduler і backup мовчать 6 год: здорові чи мертві, невідомо",
-                   "states": {"users": "Добре", "forecast": "Чисто", "trust": "Частково", "day": "Спокійна"}},
+    return bundle("s08_dark_services", "Two services went silent", now,
+                  "Saturday, 09:00. scheduler and backup have not sent a single event in 6 hours. Asleep or dead, unknown.",
+                  {"verdict": "schedule", "reason": "scheduler and backup silent for 6 h: healthy or dead, unknown",
+                   "states": {"users": "ok", "forecast": "clear", "trust": "partial", "day": "quiet"}},
                   tenant, no_incidents(), apps, [])
 
 
@@ -451,10 +453,10 @@ def s09():
             "matchedSteps": 4, "totalSteps": 5,
             "matchedAt": ts(now - timedelta(minutes=3)),
             "matched": PATTERNS[0]["steps"][:4], "remaining": PATTERNS[0]["steps"][4:]}]
-    return bundle("s09_precursor_imminent", "Агент бачить збій за 18 хвилин", now,
-                  "Понеділок, 14:05. Нічого не зламано, але в payments розгортається той самий ланцюжок, що тричі закінчувався штормом токенів. 4 з 5 кроків пройдено.",
-                  {"verdict": "ЗАРАЗ", "reason": "payments: агент бачить 4 з 5 кроків до збою, зазвичай є ~18 хв",
-                   "states": {"users": "Добре", "forecast": "Назріває", "trust": "Повна", "day": "Спокійна"}},
+    return bundle("s09_precursor_imminent", "Agent sees a failure 18 minutes out", now,
+                  "Monday, 14:05. Nothing is broken, but payments is walking the same chain of events that ended in a token refresh storm three times before. 4 of 5 steps are done.",
+                  {"verdict": "act_now", "reason": "payments: agent sees 4 of 5 steps to a failure, usually ~18 min of warning",
+                   "states": {"users": "ok", "forecast": "brewing", "trust": "full", "day": "quiet"}},
                   tenant, no_incidents(), apps, pre)
 
 
@@ -470,10 +472,10 @@ def s10():
             "matchedSteps": 4, "totalSteps": 5,
             "matchedAt": ts(now - timedelta(minutes=2)),
             "matched": PATTERNS[0]["steps"][:4], "remaining": PATTERNS[0]["steps"][4:]}]
-    return bundle("s10_low_precision", "Агент упевнений, але часто помиляється", now,
-                  "Той самий збіг, що в S09, але агент працює другий тиждень і вгадав 8 разів з 19.",
-                  {"verdict": "СПОКІЙНО", "reason": "усе в нормі; агент підозрює auth, але помиляється частіше, ніж вгадує",
-                   "states": {"users": "Добре", "forecast": "Тисне", "trust": "Повна", "day": "Спокійна"}},
+    return bundle("s10_low_precision", "Agent is confident but often wrong", now,
+                  "Same match as S09, but the agent is in its second week here and got 8 of 19 predictions right.",
+                  {"verdict": "all_clear", "reason": "all normal; agent suspects auth but is wrong more often than right",
+                   "states": {"users": "ok", "forecast": "pressure", "trust": "full", "day": "quiet"}},
                   tenant, no_incidents(), apps, pre)
 
 
