@@ -1,0 +1,308 @@
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color: #f4f7fb;
+  background: #080b11;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+
+  background:
+    radial-gradient(
+      circle at 50% -20%,
+      rgba(93, 124, 255, 0.18),
+      transparent 42%
+    ),
+    #080b11;
+}
+
+.page {
+  width: min(1180px, calc(100% - 40px));
+  margin: auto;
+  padding: 42px 0 80px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  margin: 4px 0 0;
+  font-size: 38px;
+}
+
+.subtitle {
+  color: #8d98aa;
+}
+
+.eyebrow {
+  color: #78859a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+}
+
+.scenario-picker {
+  min-width: 340px;
+}
+
+.scenario-picker label {
+  display: block;
+  margin-bottom: 7px;
+
+  color: #77849a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.scenario-picker select {
+  width: 100%;
+  padding: 12px 14px;
+
+  color: #e7ebf2;
+  background: #111722;
+
+  border: 1px solid #252e3d;
+  border-radius: 10px;
+}
+
+.scenario-meta {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+
+  color: #738096;
+  font-size: 12px;
+}
+
+.demo-pill {
+  padding: 5px 8px;
+
+  color: #98a9ff;
+  background: rgba(99,124,255,.1);
+
+  border: 1px solid rgba(99,124,255,.25);
+  border-radius: 6px;
+}
+
+.hero {
+  padding: 62px 30px;
+  text-align: center;
+
+  background: #0d121b;
+
+  border: 1px solid #1d2633;
+  border-radius: 20px;
+}
+
+.hero-label {
+  color: #79869b;
+}
+
+.verdict {
+  margin: 15px 0 12px;
+
+  font-size: clamp(48px, 8vw, 92px);
+  font-weight: 900;
+  letter-spacing: -5px;
+}
+
+.verdict.calm {
+  color: #77e8b0;
+}
+
+.verdict.plan {
+  color: #ffcc74;
+}
+
+.verdict.now {
+  color: #ff6e79;
+}
+
+.verdict.blind {
+  color: #a5adbb;
+}
+
+.reason {
+  font-size: 18px;
+}
+
+.story {
+  max-width: 760px;
+  margin: 18px auto 0;
+
+  color: #7c899d;
+  line-height: 1.6;
+}
+
+.indicators {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.indicator-card {
+  padding: 22px;
+
+  background: #0d121b;
+
+  border: 1px solid #1d2633;
+  border-radius: 14px;
+}
+
+.indicator-title {
+  color: #8290a4;
+}
+
+.state {
+  margin: 15px 0 20px;
+
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.state.good {
+  color: #77e8b0;
+}
+
+.state.warning {
+  color: #ffcc74;
+}
+
+.state.bad {
+  color: #ff6e79;
+}
+
+.state.muted {
+  color: #828d9d;
+}
+
+details summary {
+  cursor: pointer;
+  color: #78869b;
+}
+
+.evidence {
+  margin-top: 14px;
+}
+
+.evidence-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 7px 0;
+
+  border-bottom: 1px solid #171f2b;
+
+  font-size: 11px;
+}
+
+.validation {
+  margin-top: 14px;
+  padding: 25px;
+
+  background: #0d121b;
+
+  border: 1px solid #1d2633;
+  border-radius: 14px;
+}
+
+.validation-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pass {
+  color: #77e8b0;
+  font-weight: 900;
+}
+
+.fail {
+  color: #ff6e79;
+  font-weight: 900;
+}
+
+.validation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.validation-grid > div,
+.validation-state {
+  padding: 16px;
+
+  background: #0a0f17;
+  border-radius: 10px;
+}
+
+.validation-grid span,
+.validation-state span,
+.validation-state small {
+  display: block;
+  color: #748096;
+}
+
+.validation-states {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.loading,
+.error-box {
+  padding: 50px;
+  text-align: center;
+
+  background: #0d121b;
+
+  border: 1px solid #1d2633;
+  border-radius: 14px;
+}
+
+@media (max-width: 900px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .indicators,
+  .validation-states {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .indicators,
+  .validation-grid,
+  .validation-states {
+    grid-template-columns: 1fr;
+  }
+}

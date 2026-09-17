@@ -1,0 +1,35 @@
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+
+    restart: unless-stopped
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    ports:
+      - "8080:80"
