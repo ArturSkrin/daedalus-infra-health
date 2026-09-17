@@ -1,10 +1,10 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
-COPY frontend/package.json ./package.json
+COPY frontend/package.json frontend/package-lock.json ./
 
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 COPY frontend/ ./
 
