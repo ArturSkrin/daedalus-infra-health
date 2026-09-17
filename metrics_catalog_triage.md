@@ -1,86 +1,86 @@
-# Розбір каталогу метрик Triage
+# Triage metrics catalog review
 
-Джерело: [reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md) (Reference, 2026-09-14), каталог від організаторів. Кожен показник з каталогу рознесено на три категорії:
+Source: [reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md) (Reference, 2026-09-14), the catalog from the organizers. Each metric from the catalog is sorted into one of three categories:
 
-- **Змінює рішення**: без нього одне з трьох рішень (втрутитись / запланувати / нічого) було б іншим.
-- **Пояснює рішення**: показує, чому агент вирішив саме так. Місце в drill-in.
-- **Не змінює нічого**: цікаве число, але жодне рішення від нього не залежить.
+- **Changes the decision**: without it, one of the three decisions (intervene / schedule / nothing) would be different.
+- **Explains the decision**: shows why the agent decided this way. Belongs in the drill-in.
+- **Changes nothing**: an interesting number, but no decision depends on it.
 
-Усі поля з `tenantStats.tenants[<name>]` на `GET /v2/agent/status`, якщо не вказано інше.
+All fields are from `tenantStats.tenants[<name>]` on `GET /v2/agent/status`, unless stated otherwise.
 
-## 1. Змінює рішення
+## 1. Changes the decision
 
-| Поле | Ендпоінт | Яке рішення змінює | Поріг (чернетка) | Коментар |
+| Field | Endpoint | Which decision it changes | Threshold (draft) | Comment |
 | --- | --- | --- | --- | --- |
-| `incidentMetrics.criticalOpen` | `/v2/agent/incidents` | втрутитись зараз | > 0 | Єдине поле, яке саме по собі дає "зараз". 0 тут справжній нуль. |
-| `incidentMetrics.warningOpen` | `/v2/agent/incidents` | запланувати | > 0 | Відкрите, але не критичне. |
-| `incidents.openNow` | status | зараз / запланувати | > 0 | Дублює два попередні, потрібен лише як перевірка узгодженості. |
-| `golden.reqPerSec`, `golden.errPct`, `golden.p99Ms` | `/v2/agent/applications` | втрутитись зараз | errPct, зважений на blastRadius | Валідні лише якщо `golden.rateAsOfUnix` свіжий. Тенант-широкого значення немає, рахуємо самі. |
-| `nodes[].blastRadius`, `nodes[].tier` | `/v2/agent/graph` | зараз або запланувати | tier 1 або blastRadius >= 0.5 піднімає warning до "зараз" | Це вага, не показник. На екрані не число, а "зачепить N сервісів, включно з X". |
-| `precursorMatches[].confidence`, `.matchedSteps`, `.totalSteps` | `/v2/agent/analytics` | запланувати (майбутнє) | confidence >= 0.7 і matchedSteps/totalSteps >= 0.5 | Єдиний справжній прогноз у каталозі. Це наш показник у майбутнє. |
-| `golden.memPsiPct`, `golden.cpuPsiPct`, `golden.ioPsiPct`, `golden.oomKills` | `/v2/agent/applications` | запланувати | PSI >= 1% або oomKills > 0 | Валідні лише при `golden.saturationAsOfUnix`. Це "найближче майбутнє" з фізики ресурсу. |
-| `golden.memReqPct`, `golden.memPct` | `/v2/agent/applications` | запланувати | memReqPct >= 90% при PSI > 0 | Разом з PSI дає "памʼять насичується". |
-| `repeatRatePct` | status | запланувати | > 20% | Проблема повертається, отже треба робота над коренем, а не гасіння. Показувати тільки при `sampledIncidents` > 0. |
-| `serviceCoveragePct`, `servicesDark` | status | **блокує всі рішення** | coverage < 90% або dark > 0 | Довіра до даних. Якщо низька, рішення "спочатку полагодь збір". |
-| `clusterAgentStats`, `gossip` | status | **блокує всі рішення** | агент кластера не підключений | Немає потоку, немає трекера. |
-| `golden.*AsOfUnix` | `/v2/agent/applications` | **блокує показник** | старше 2 вікон | Свіжість кожного golden-блоку окремо. |
-| `predictionPrecisionPct` | status | довіра до прогнозу | < 60%: прогноз показуємо сірим | Показувати тільки при `predictionHits + predictionMisses` > 0. |
-| `ready`, `componentsReady` | `/v2/agent/applications` | втрутитись зараз | ready = false у tier 1 | Майже завжди вже відкрито як інцидент через `AppDegraded`, тому це підстраховка. |
+| `incidentMetrics.criticalOpen` | `/v2/agent/incidents` | intervene now | > 0 | The only field that gives "now" on its own. 0 here is a real zero. |
+| `incidentMetrics.warningOpen` | `/v2/agent/incidents` | schedule | > 0 | Open, but not critical. |
+| `incidents.openNow` | status | now / schedule | > 0 | Duplicates the previous two, needed only as a consistency check. |
+| `golden.reqPerSec`, `golden.errPct`, `golden.p99Ms` | `/v2/agent/applications` | intervene now | errPct, weighted by blastRadius | Valid only if `golden.rateAsOfUnix` is fresh. There is no tenant-wide value, we compute it ourselves. |
+| `nodes[].blastRadius`, `nodes[].tier` | `/v2/agent/graph` | now or schedule | tier 1 or blastRadius >= 0.5 raises a warning to "now" | This is a weight, not an indicator. On screen it is not a number, but "will hit N services, including X". |
+| `precursorMatches[].confidence`, `.matchedSteps`, `.totalSteps` | `/v2/agent/analytics` | schedule (future) | confidence >= 0.7 and matchedSteps/totalSteps >= 0.5 | The only real forecast in the catalog. This is our indicator into the future. |
+| `golden.memPsiPct`, `golden.cpuPsiPct`, `golden.ioPsiPct`, `golden.oomKills` | `/v2/agent/applications` | schedule | PSI >= 1% or oomKills > 0 | Valid only with `golden.saturationAsOfUnix`. This is the "nearest future" from resource physics. |
+| `golden.memReqPct`, `golden.memPct` | `/v2/agent/applications` | schedule | memReqPct >= 90% with PSI > 0 | Together with PSI gives "memory is saturating". |
+| `repeatRatePct` | status | schedule | > 20% | The problem keeps coming back, so it needs work on the root cause, not firefighting. Show only when `sampledIncidents` > 0. |
+| `serviceCoveragePct`, `servicesDark` | status | **blocks all decisions** | coverage < 90% or dark > 0 | Trust in the data. If it is low, the decision is "fix collection first". |
+| `clusterAgentStats`, `gossip` | status | **blocks all decisions** | the cluster agent is not connected | No stream, no tracker. |
+| `golden.*AsOfUnix` | `/v2/agent/applications` | **blocks the indicator** | older than 2 windows | Freshness of each golden block separately. |
+| `predictionPrecisionPct` | status | trust in the forecast | < 60%: we show the forecast in gray | Show only when `predictionHits + predictionMisses` > 0. |
+| `ready`, `componentsReady` | `/v2/agent/applications` | intervene now | ready = false in tier 1 | Almost always already open as an incident through `AppDegraded`, so this is a safety net. |
 
-## 2. Пояснює вже прийняте рішення
+## 2. Explains a decision already made
 
-| Поле | Ендпоінт | Що пояснює |
+| Field | Endpoint | What it explains |
 | --- | --- | --- |
-| `events.noise/signal/incident/unknown/drift` | status | Скільки шуму агент зʼїв замість нас. Аргумент довіри, не рішення. |
-| `snrPct` | status | Те саме одним числом. У drill-in "довіра до агента". |
-| `signalsByType` | status | Яка сімʼя сигналів домінує (log / red / use / k8s). Атрибуція. |
-| `signalsHistory` | status | Текстура доби. Sparkline у drill-in, а також джерело для "як пройшла доба" через `.requests` і `.requestErrors`. |
-| `autoResolvedPct` | status | Чому "нічого не робити" безпечне: агент сам закрив N%. |
-| `precursorCoveragePct` | status | Скільки інцидентів агент передбачив заздалегідь. Пояснює довіру до прогнозу. |
-| `predictionAvgLeadMs` | status | Скільки зазвичай є часу після попередження. Горизонт для "запланувати". |
-| `mttrMs`, `mttdMs`, `incidentMetrics.medianTTR` | status, incidents | Цілі (goals), не рішення. Скидаються при рестарті core, тому на головному екрані небезпечні. |
-| oldest open incident (`incidents[].firstSeen`) | incidents | Порядок у черзі, не саме рішення. |
-| `incidents[].rca`, `.investigationPlan`, `.relatedEvents`, `.reopenCount` | incidents | Зміст drill-in відкритого інциденту. |
-| `baselines[].mttrMean`, `.mttdMean`, `.blastRadiusMean`, `.reopenRate`, `.incidentRateWeek` | analytics | Норма для сервісу. Потрібна, щоб сказати "гірше, ніж зазвичай". |
-| `patterns[]` | analytics | Який саме патерн збігся. Drill-in прогнозу. |
-| `ownership.resolved/unattributed/contested` | status | Хто має реагувати. Змінює адресата, не рішення. |
-| `golden.memNodePct`, `cpuNodePct`, денумінатори | applications | Пояснення насичення в drill-in. |
-| `knownServices`, `unmappedServices`, `unmappedNames` | status | Пояснення низької довіри: які сервіси не в графі. |
-| `baselines[].weeklyIncidentCounts` | analytics | Тижневий тренд для спокійного дня. |
+| `events.noise/signal/incident/unknown/drift` | status | How much noise the agent absorbed instead of us. An argument for trust, not a decision. |
+| `snrPct` | status | The same as a single number. In the drill-in "trust in the agent". |
+| `signalsByType` | status | Which signal family dominates (log / red / use / k8s). Attribution. |
+| `signalsHistory` | status | The texture of the day. A sparkline in the drill-in, and also the source for "how the day went" through `.requests` and `.requestErrors`. |
+| `autoResolvedPct` | status | Why "do nothing" is safe: the agent closed N% on its own. |
+| `precursorCoveragePct` | status | How many incidents the agent predicted in advance. Explains trust in the forecast. |
+| `predictionAvgLeadMs` | status | How much time there usually is after a warning. The horizon for "schedule". |
+| `mttrMs`, `mttdMs`, `incidentMetrics.medianTTR` | status, incidents | Goals, not decisions. They reset on a core restart, so they are dangerous on the main screen. |
+| oldest open incident (`incidents[].firstSeen`) | incidents | The order in the queue, not the decision itself. |
+| `incidents[].rca`, `.investigationPlan`, `.relatedEvents`, `.reopenCount` | incidents | The content of the drill-in for an open incident. |
+| `baselines[].mttrMean`, `.mttdMean`, `.blastRadiusMean`, `.reopenRate`, `.incidentRateWeek` | analytics | The norm for a service. Needed to say "worse than usual". |
+| `patterns[]` | analytics | Which exact pattern matched. The forecast drill-in. |
+| `ownership.resolved/unattributed/contested` | status | Who has to respond. Changes the addressee, not the decision. |
+| `golden.memNodePct`, `cpuNodePct`, denominators | applications | Explanation of saturation in the drill-in. |
+| `knownServices`, `unmappedServices`, `unmappedNames` | status | Explanation of low trust: which services are not in the graph. |
+| `baselines[].weeklyIncidentCounts` | analytics | The weekly trend for a quiet day. |
 
-## 3. Не змінює нічого
+## 3. Changes nothing
 
-| Поле | Чому |
+| Field | Why |
 | --- | --- |
-| `resolutionRatePct` | Частка закритих. Ретроспектива, рішення від неї не залежить. |
-| `eventsPerIncident` | Показник якості класифікатора, не стану флоту. |
-| `llmTokens`, `llmCalls`, `llmTokenRatio`, `llmRatioToday`, `llmRatio7d`, `llmBudget.byTenant` | Вартість самого агента, не інфраструктури. Це не "аномалія у витратах" з умови. |
-| `retention` | Налаштування, не стан. |
-| `nodes[].weight`, `nodes[].calls`, `.calledBy`, `edges[]` | Потрібні для обчислення blastRadius, самі по собі не читаються. |
-| `incidentMetrics.infoOpen` | Інфо-інциденти не ведуть до жодного рішення. |
+| `resolutionRatePct` | The share of closed incidents. A retrospective, no decision depends on it. |
+| `eventsPerIncident` | A measure of classifier quality, not of fleet state. |
+| `llmTokens`, `llmCalls`, `llmTokenRatio`, `llmRatioToday`, `llmRatio7d`, `llmBudget.byTenant` | The cost of the agent itself, not of the infrastructure. This is not the "cost anomaly" from the brief. |
+| `retention` | A setting, not a state. |
+| `nodes[].weight`, `nodes[].calls`, `.calledBy`, `edges[]` | Needed to compute blastRadius, not read on their own. |
+| `incidentMetrics.infoOpen` | Info incidents lead to no decision. |
 
-## 4. Пʼять показників головного екрану (оновлена чернетка)
+## 4. Five indicators of the main screen (updated draft)
 
-| # | Показник (як читає інженер) | Рішення | З яких полів | Довіра |
+| # | Indicator (as the engineer reads it) | Decision | From which fields | Trust |
 | --- | --- | --- | --- | --- |
-| 1 | **Стан флоту одним словом**: Спокійно / Запланувати / Зараз | усі три | criticalOpen дає Зараз; warningOpen, precursor >= 0.7, PSI >= 1%, repeatRate > 20% дають Запланувати; інакше Спокійно | ховається за сірим, якщо #4 червоний |
-| 2 | **Користувачі зараз**: "всі запити проходять" / "страждає X% трафіку у N сервісах" | зараз | сума errPct x reqPerSec x blastRadius по apps зі свіжим rateAsOfUnix, плюс criticalOpen | свіжість rateAsOfUnix |
-| 3 | **Що назріває** (майбутнє): "агент бачить 3 з 5 кроків до збою у payments, зазвичай є ~40 хв" / "нічого не назріває" | запланувати | precursorMatches, predictionAvgLeadMs, PSI + memReqPct | predictionPrecisionPct |
-| 4 | **Чи можна вірити**: "бачимо 11 з 12 сервісів, дані 40 с" | блокує решту | serviceCoveragePct, servicesDark, clusterAgentStats, unmappedServices, *AsOfUnix | сам є довірою |
-| 5 | **Як пройшла доба**: "агент закрив 7 сам, 0 повернулось, помилок як завжди" | нічого / запланувати | signalsHistory.requests і .requestErrors проти baselines, autoResolvedPct, repeatRatePct, incidentRateWeek | sampledIncidents > 0 |
+| 1 | **Fleet state in one word**: ALL CLEAR / SCHEDULE / ACT NOW | all three | criticalOpen gives ACT NOW; warningOpen, precursor >= 0.7, PSI >= 1%, repeatRate > 20% give SCHEDULE; otherwise ALL CLEAR | grayed out if #4 is red |
+| 2 | **Users now**: "all requests are going through" / "X% of traffic is failing in N services" | now | sum of errPct x reqPerSec x blastRadius over apps with a fresh rateAsOfUnix, plus criticalOpen | freshness of rateAsOfUnix |
+| 3 | **What's brewing** (future): "agent sees 3 of 5 steps to a payments failure, usually ~40 min of warning" / "nothing is brewing" | schedule | precursorMatches, predictionAvgLeadMs, PSI + memReqPct | predictionPrecisionPct |
+| 4 | **Can we trust it**: "we see 11 of 12 services, data is 40 s old" | blocks the rest | serviceCoveragePct, servicesDark, clusterAgentStats, unmappedServices, *AsOfUnix | is trust itself |
+| 5 | **How the day went**: "the agent closed 7 on its own, 0 came back, errors as usual" | nothing / schedule | signalsHistory.requests and .requestErrors against baselines, autoResolvedPct, repeatRatePct, incidentRateWeek | sampledIncidents > 0 |
 
-## 5. Виявлені прогалини (для номінації)
+## 5. Gaps found (for the nomination)
 
-1. **Немає події релізу або деплою.** Умова каже, що трекер відкривають "щоб зрозуміти, як пройшов реліз", але в API немає жодного маркера rollout. Найближче: `GraphDrift` і `AppStatusChanged`. Показник #5 доводиться будувати як "доба", а не "реліз". Потрібно: подія `Deploy` з часом і сервісом.
-2. **Немає історії USE.** PSI і memPct є лише як поточний знімок на `/v2/agent/applications`. "Памʼять насичується третій день" з API порахувати неможливо, потрібен ряд у часі. `signalsHistory` має 5-хвилинні кошики лише для сигналів і запитів.
-3. **Безпека невидима.** Умова називає порушення безпеки однією з трьох цілей, а каталог прямо каже: жодне поле не маркує security-подію. Потрібен фільтр за `source` або лічильник у `signalsByType`.
-4. **Немає тенант-широкого RED.** Каталог визнає: rate, error%, p99 є лише per-app. Показник #2 рахується клієнтом, і формула зважування є нашою, не агента.
-5. **Вартість інфраструктури відсутня.** Єдина вартість у каталозі, це LLM-токени самого агента. "Аномалії у витратах" з умови в API не представлені.
-6. **Ретроспективні цілі скидаються при рестарті.** `mttrMs`, `mttdMs`, `resolutionRatePct`, `openNow` живуть у памʼяті core. Кільце може рухатись без змін у кластері. Аргумент проти винесення їх на головний екран.
+1. **No release or deploy event.** The brief says the tracker is opened "to understand how the release went", but the API has no rollout marker at all. The closest: `GraphDrift` and `AppStatusChanged`. Indicator #5 has to be built as "the day", not "the release". Needed: a `Deploy` event with a time and a service.
+2. **No USE history.** PSI and memPct exist only as a current snapshot on `/v2/agent/applications`. "Memory has been saturating for three days" cannot be computed from the API, a time series is needed. `signalsHistory` has 5-minute buckets only for signals and requests.
+3. **Security is invisible.** The brief names security breaches as one of the three goals, and the catalog says directly: no field marks a security event. Needed: a filter by `source` or a counter in `signalsByType`.
+4. **No tenant-wide RED.** The catalog admits it: rate, error%, p99 exist only per app. Indicator #2 is computed by the client, and the weighting formula is ours, not the agent's.
+5. **Infrastructure cost is absent.** The only cost in the catalog is the LLM tokens of the agent itself. The "cost anomalies" from the brief are not represented in the API.
+6. **Retrospective goals reset on restart.** `mttrMs`, `mttdMs`, `resolutionRatePct`, `openNow` live in core memory. The ring can move with no changes in the cluster. An argument against putting them on the main screen.
 
-## 6. Аргументи проти показників, які організатори вважають основними
+## 6. Arguments against indicators the organizers treat as primary
 
-- **"% of goals" у центрі екрана.** На еталонному екрані стоїть "100% of goals" поруч зі станом DEGRADED і відкритим критичним інцидентом. Цілі (awareness, warning, recovery) є метриками якості агента, а не стану флоту, тому вони можуть бути виконані на 100% в момент, коли треба бігти. Центр екрана має займати рішення.
-- **SNR / Signal share як vital.** `snrPct` пояснює, скільки шуму відфільтровано, але жодне з трьох рішень від нього не залежить. Місце в drill-in як доказ довіри до агента.
-- **Сирий лічильник подій у "короні"** (use 99, red 0, log 8 913, k8s 159 481). Умова прямо забороняє сирі величини на головному екрані; каталог сам називає це "raw feed, not a vital".
-- **Пʼять вкладок** (Trends, Apps, Vitals, Cost, Secure) при ліміті "чотири максимум", причому Cost і Secure не мають полів в API.
+- **"% of goals" in the center of the screen.** The reference screen shows "100% of goals" next to a DEGRADED state and an open critical incident. Goals (awareness, warning, recovery) are metrics of agent quality, not of fleet state, so they can be 100% met at the very moment you need to run. The center of the screen must be taken by the decision.
+- **SNR / Signal share as a vital.** `snrPct` explains how much noise was filtered out, but none of the three decisions depends on it. It belongs in the drill-in as evidence of trust in the agent.
+- **A raw event counter in the "crown"** (use 99, red 0, log 8 913, k8s 159 481). The brief explicitly forbids raw values on the main screen; the catalog itself calls this "raw feed, not a vital".
+- **Five tabs** (Trends, Apps, Vitals, Cost, Secure) against a limit of "four maximum", while Cost and Secure have no fields in the API.

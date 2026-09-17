@@ -1,14 +1,14 @@
-# scenarios.md: прогін пʼяти показників по зрізах
+# scenarios.md: running the five indicators through scenarios
 
-Десять зрізів замість мінімальних восьми: два додаткові ловлять крайні випадки (агент, що помиляється, і сплеск логів без впливу), на яких набір показників найчастіше ламається. Кожен зріз має вхідні значення полів API, стан кожного з пʼяти показників за правилами `metrics_spec.md`, очікуване рішення і те, що прогін виявив.
+Ten scenarios instead of the minimum eight: the two extra ones catch edge cases (an agent that is often wrong, and a log spike with no impact) where an indicator set breaks most often. Each scenario has the input values of the API fields, the state of each of the five indicators under the rules of `metrics_spec.md`, the expected decision, and what the run revealed.
 
-Для кожного зрізу є файл у `mock_data/` з тією ж назвою.
+Each scenario has a file in `mock_data/` with the same name.
 
-## Спільна фікстура
+## Shared fixture
 
-Тенант `digital-purchases`, 12 сервісів. Ваги з `GET /v2/agent/graph`, трафік із `GET /v2/agent/applications`.
+Tenant `digital-purchases`, 12 services. Weights from `GET /v2/agent/graph`, traffic from `GET /v2/agent/applications`.
 
-| Сервіс | tier | blastRadius | reqPerSec (норма) |
+| Service | tier | blastRadius | reqPerSec (normal) |
 | --- | --- | --- | --- |
 | api-gateway | 1 | 0.71 | 420 |
 | auth | 1 | 0.55 | 210 |
@@ -23,108 +23,108 @@
 | scheduler | 3 | 0.05 | 0 (batch) |
 | backup | 3 | 0.04 | 0 (batch) |
 
-Сумарний трафік 1377 rps. Норма `errBase = 0.20%`. Історія агента: `predictionHits 31`, `predictionMisses 9`, `predictionPrecisionPct 78`, `predictionAvgLeadMs 2 460 000` (41 хв). `serviceCoveragePct 100`, `servicesDark 0`, `unmappedServices 0`, агент кластера підключений, усі `*AsOfUnix` не старші за 60 с. `baselines[].weeklyIncidentCounts` за 4 тижні дають медіану 4 інциденти на тиждень, тобто `weeklyMedian / 7 = 0.57` на добу. Усе, що зріз не перевизначає, дорівнює цим значенням.
+Total traffic is 1377 rps. The norm is `errBase = 0.20%`. Agent history: `predictionHits 31`, `predictionMisses 9`, `predictionPrecisionPct 78`, `predictionAvgLeadMs 2 460 000` (41 min). `serviceCoveragePct 100`, `servicesDark 0`, `unmappedServices 0`, the cluster agent is connected, all `*AsOfUnix` are no older than 60 s. `baselines[].weeklyIncidentCounts` over 4 weeks give a median of 4 incidents per week, that is `weeklyMedian / 7 = 0.57` per day. Anything a scenario does not override equals these values.
 
-Позначення станів: показник 2 (Добре / Страждають / Зламано), 3 (Чисто / Тисне / Назріває), 4 (Повна / Частково / Наосліп), 5 (Спокійна / Осіла / Погіршилась).
+State notation: indicator 2 (Fine / Degraded / Broken), 3 (Clear / Pressure / Brewing), 4 (Full / Partial / Blind), 5 (Quiet / Settled / Regressed).
 
 ---
 
-## S01. Спокійний ранок
+## S01. Quiet morning
 
 `mock_data/s01_calm.json`
 
-**Історія.** Понеділок, 08:30. Нічого не сталось за ніч. Інженер відкриває трекер із кавою.
+**Story.** Monday, 08:30. Nothing happened overnight. The engineer opens the tracker with a coffee.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
-| `golden.errPct` по всіх сервісах | 0.1–0.3 |
-| `precursorMatches[]` | порожньо |
+| `golden.errPct` across all services | 0.1–0.3 |
+| `precursorMatches[]` | empty |
 | `golden.memPsiPct` max | 0.2 (search) |
 | `signalsHistory`: errRecent / errBase | 0.19% / 0.20% |
 | `incidentsToday` | 0 |
-| `events` за добу | noise 14 210, signal 96, incident 0 |
+| `events` over the day | noise 14 210, signal 96, incident 0 |
 
-**Стани.** 2 Добре (failingShare 0.19%). 3 Чисто. 4 Повна. 5 Спокійна.
+**States.** 2 Fine (failingShare 0.19%). 3 Clear. 4 Full. 5 Quiet.
 
-**Очікуване рішення: СПОКІЙНО.** Рядок причини: "усе в нормі, за добу нічого не сталось".
+**Expected decision: ALL CLEAR.** Reason line: "all normal, nothing happened in the last day".
 
-**Перевірка.** Пройшов. Це доводить, що стан "все гаразд" досяжний, а не теоретичний.
+**Check.** Passed. This proves that the "everything is fine" state is reachable, not theoretical.
 
-**Що виявив.** Цінність у спокійний день тримається на показнику 5: без нього екран був би просто зеленим без відповіді "а що робив агент". 14 тисяч подій шуму відсіяно, і це видно лише в drill-in, як і має бути.
+**What it revealed.** The value on a quiet day rests on indicator 5: without it the screen would be just green, with no answer to "so what did the agent do". 14 thousand noise events were filtered out, and that is visible only in the drill-in, as it should be.
 
 ---
 
-## S02. Реліз осів
+## S02. Release settled
 
 `mock_data/s02_release_settled.json`
 
-**Історія.** О 09:35 викотили checkout. О 09:40 помилки підскочили, агент відкрив інцидент AppDegraded, о 09:52 сервіс сам відновився, агент закрив інцидент. Зараз 13:10.
+**Story.** At 09:35 checkout was rolled out. At 09:40 errors jumped, the agent opened an AppDegraded incident, at 09:52 the service recovered on its own, and the agent closed the incident. It is now 13:10.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
-| `signalsHistory`: кошики 09:40–09:50 | errBucket 1.4% (7 × errBase) |
-| `signalsHistory`: errRecent (останні 6 год) / errBase | 0.21% / 0.20% |
+| `signalsHistory`: buckets 09:40–09:50 | errBucket 1.4% (7 × errBase) |
+| `signalsHistory`: errRecent (last 2 h) / errBase | 0.21% / 0.20% |
 | `sampledIncidents / autoResolvedPct / repeatRatePct` | 1 / 100 / 0 |
-| `incidentsToday` | 1 (0.57 на добу норма, менше ніж 2 × норма) |
-| `golden.errPct` checkout зараз | 0.2 |
+| `incidentsToday` | 1 (the norm is 0.57 per day, less than 2 × the norm) |
+| `golden.errPct` checkout now | 0.2 |
 
-**Стани.** 2 Добре. 3 Чисто. 4 Повна. 5 Осіла (був кошик > 3 × errBase, errRecent < 1.5 × errBase).
+**States.** 2 Fine. 3 Clear. 4 Full. 5 Settled (there was a bucket > 3 × errBase, errRecent < 1.5 × errBase).
 
-**Очікуване рішення: СПОКІЙНО.** Рядок причини: "сплеск о 09:40 осів, агент закрив сам".
+**Expected decision: ALL CLEAR.** Reason line: "09:40 spike settled, the agent closed it on its own".
 
-**Перевірка.** Пройшов. Інженер бачить, що реліз пережили без нього, і не лізе в логи.
+**Check.** Passed. The engineer sees that the release was survived without them and does not dig into the logs.
 
-**Що виявив.** В API немає події деплою. Трекер каже "сплеск о 09:40", а не "реліз 09:35 осів". Зв'язок сплеску з релізом інженер робить у голові. Прогалина 1 з `metrics_catalog_triage.md`.
+**What it revealed.** The API has no deploy event. The tracker says "09:40 spike", not "09:35 release settled". The engineer links the spike to the release in their head. Gap 1 from `metrics_catalog_triage.md`.
 
 ---
 
-## S03. Реліз регресував тихо
+## S03. Release regressed quietly
 
 `mock_data/s03_release_regressed.json`
 
-**Історія.** О 11:00 викотили catalog і cart. Помилки не вибухнули, але стабільно вищі вже дві години. Інцидент агент не відкрив, бо жоден поріг AppDegraded не пробито. Зараз 13:10.
+**Story.** At 11:00 catalog and cart were rolled out. Errors did not explode, but they have been steadily higher for two hours now. The agent did not open an incident, because no AppDegraded threshold was crossed. It is now 13:10.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
 | `golden.errPct` catalog / cart | 1.0 / 1.5 |
-| `golden.errPct` tier-1 сервіси | 0.2 |
+| `golden.errPct` tier-1 services | 0.2 |
 | failingShare | (300 × 1.0 + 90 × 1.5 + 987 × 0.2) / 1377 = 0.46% |
-| `signalsHistory`: errRecent (2 год) / errBase | 0.46% / 0.20% |
+| `signalsHistory`: errRecent (2 h) / errBase | 0.46% / 0.20% |
 | `sampledIncidents` | 0 |
 
-**Стани.** 2 Добре (0.46% < 0.5%, tier-1 чисті). 3 Чисто. 4 Повна. 5 Погіршилась (errRecent > 2 × errBase і >= 0.3%).
+**States.** 2 Fine (0.46% < 0.5%, tier-1 clean). 3 Clear. 4 Full. 5 Regressed (errRecent > 2 × errBase and >= 0.3%).
 
-**Очікуване рішення: ЗАПЛАНУВАТИ.** Рядок причини: "помилок удвічі більше за норму після 11:00, catalog і cart".
+**Expected decision: SCHEDULE.** Reason line: "errors twice the norm since 11:00 in catalog and cart".
 
-**Перевірка.** Пройшов після трьох правок, і це найпродуктивніший зріз набору.
+**Check.** Passed after four fixes, and this is the most productive scenario in the set.
 
-1. Підлога стану Погіршилась була 0.5%, і 0.46% не потрапляло в жоден стан. Знижено до 0.3%.
-2. На папері частку помилок було пораховано хибно (для 1.5% і 2.0% вона дорівнює 0.60%, а не 0.46%), і `mock_data/evaluate.py` дав Страждають замість Добре. Значення зрізу знижено до 1.0% і 1.5%, tier-1 закріплено на 0.2%.
-3. Ескалація в показнику 2 підсумовувала blastRadius уражених сервісів: catalog 0.31 плюс cart 0.34 давали 0.65 і ЗАРАЗ. Замінено на максимум, бо значення сусідів по графу перетинаються.
-4. Вікно errRecent було 6 год і розмивало двогодинну регресію до 0.30%. Скорочено до 2 год.
+1. The floor of the Regressed state was 0.5%, and 0.46% did not fall into any state. Lowered to 0.3%.
+2. On paper the error share was calculated wrong (for 1.5% and 2.0% it equals 0.60%, not 0.46%), and `mock_data/evaluate.py` gave Degraded instead of Fine. The scenario values were lowered to 1.0% and 1.5%, and tier-1 was pinned at 0.2%.
+3. The escalation in indicator 2 summed the blastRadius of the affected services: catalog 0.31 plus cart 0.34 gave 0.65 and ACT NOW. Replaced with the maximum, because the values of graph neighbors overlap.
+4. The errRecent window was 6 h and blurred the two-hour regression down to 0.30%. Shortened to 2 h.
 
-**Що виявив.** Це головний аргумент за показник 5: показник 2 дивиться на абсолютний вплив і каже "добре", а користувачам справді майже добре. Але відносно норми стало вдвічі гірше, і це робота на сьогодні. Без показника 5 регресію помітили б через тиждень.
+**What it revealed.** This is the main argument for indicator 5: indicator 2 looks at absolute impact and says "fine", and users really are almost fine. But relative to the norm it got twice as bad, and that is work for today. Without indicator 5 the regression would have been noticed a week later.
 
 ---
 
-## S04. Памʼять насичується
+## S04. Memory is saturating
 
 `mock_data/s04_memory_pressure.json`
 
-**Історія.** Вівторок, 10:00. Catalog тримається, помилок немає, але памʼять упирається в request і ядро вже гальмує процес. OOM ще не було.
+**Story.** Tuesday, 10:00. Catalog is holding, there are no errors, but memory is hitting the request and the kernel is already throttling the process. No OOM yet.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
 | `golden.memPsiPct` catalog | 2.4 |
@@ -132,213 +132,213 @@
 | `golden.oomKills` catalog | 0 |
 | `golden.cpuPsiPct / ioPsiPct` catalog | 0.3 / 0.1 |
 | `golden.errPct` catalog | 0.2 |
-| `precursorMatches[]` | порожньо |
-| `saturationAsOfUnix` | 40 с тому |
+| `precursorMatches[]` | empty |
+| `saturationAsOfUnix` | 40 s ago |
 
-**Стани.** 2 Добре. 3 Назріває (memPsiPct >= 1 і memReqPct >= 90). 4 Повна. 5 Спокійна.
+**States.** 2 Fine. 3 Brewing (memPsiPct >= 1 and memReqPct >= 90). 4 Full. 5 Quiet.
 
-**Очікуване рішення: ЗАПЛАНУВАТИ.** Рядок причини: "catalog: памʼять насичується, OOM ще не було".
+**Expected decision: SCHEDULE.** Reason line: "catalog: memory is saturating, no OOM kill yet".
 
-**Перевірка.** Пройшов. Catalog tier 2, тому правило "зараз при lead < 30 хв" не застосовується. Це саме "запланувати": підняти request або знайти витік у спринті.
+**Check.** Passed. Catalog is tier 2, so the rule "act now when lead < 30 min" does not apply. This is exactly "schedule": raise the request or find the leak within the sprint.
 
-**Що виявив.** Умова хакатону обіцяє "памʼять насичується третій день", але в API є лише поточний знімок PSI. Сказати "третій день" неможливо, лише "зараз тисне". Прогалина 2.
+**What it revealed.** The hackathon brief promises "memory has been saturating for three days", but the API has only a current PSI snapshot. We cannot say "three days", only "pressure right now". Gap 2.
 
 ---
 
-## S05. Агент кластера відвалився
+## S05. Cluster agent disconnected
 
 `mock_data/s05_agent_disconnected.json`
 
-**Історія.** Середа, 15:20. WebSocket від cluster agent обірвався о 14:33. Core живий, віддає останній відомий стан. Усі лічильники виглядають чудово.
+**Story.** Wednesday, 15:20. The WebSocket from the cluster agent dropped at 14:33. Core is alive and serves the last known state. All counters look great.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
-| `clusterAgentStats[digital-purchases].connected` | false, `lastMessageUnix` 47 хв тому |
+| `clusterAgentStats[digital-purchases].connected` | false, `lastMessageUnix` 47 min ago |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
-| `serviceCoveragePct / servicesDark` | 100 / 0 (застарілі) |
-| усі `golden.*AsOfUnix` | 47 хв тому (несвіжі, поріг 5 хв) |
+| `serviceCoveragePct / servicesDark` | 100 / 0 (stale) |
+| all `golden.*AsOfUnix` | 47 min ago (stale, threshold 5 min) |
 | freshShare | 0% |
-| `signalsHistory` останні 9 кошиків | відсутні |
+| `signalsHistory` last 9 buckets | missing |
 
-**Стани.** 2 сірий (freshShare 0%). 3 сірий. 4 Наосліп (агент не підключений). 5 сірий.
+**States.** 2 greyed (freshShare 0%). 3 greyed. 4 Blind (the agent is not connected). 5 greyed.
 
-**Очікуване рішення: НАОСЛІП.** Рядок причини: "агент кластера не підключений 47 хв, флот не видно".
+**Expected decision: BLIND.** Reason line: "cluster agent disconnected for 47 min, the fleet is not visible".
 
-**Перевірка.** Пройшов. Це найважливіший зріз для відсіву: наївне читання `criticalOpen = 0` і `coverage = 100` дало б зелений екран, поки флот міг горіти.
+**Check.** Passed. This is the most important scenario for screening: a naive reading of `criticalOpen = 0` and `coverage = 100` would give a green screen while the fleet could be on fire.
 
-**Що виявив.** `serviceCoveragePct` без перевірки підключення агента бреше. Довіра має читатись з двох джерел: чи є потік і чи повний він. Тому показник 4 перевіряє підключення першим.
+**What it revealed.** `serviceCoveragePct` lies unless the agent connection is checked. Trust has to be read from two sources: whether there is a stream, and whether it is complete. That is why indicator 4 checks the connection first.
 
 ---
 
-## S06. Сплеск логів без впливу
+## S06. Log spike with no impact
 
 `mock_data/s06_log_spike.json`
 
-**Історія.** Четвер, 11:00. Reporting після оновлення бібліотеки пише 8.9 тисяч error-рядків за годину. Запити проходять, ніхто нічого не помітив. У старому моніторингу тут дзвонить пейджер.
+**Story.** Thursday, 11:00. After a library update, reporting writes 8.9 thousand error lines per hour. Requests go through, nobody noticed anything. In the old monitoring the pager goes off here.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
-| `signalsByType` за годину | log 8 913, red 0, use 3, k8s 41 |
-| `events` за годину | noise 8 790, signal 164, incident 0 |
-| `LogErrorAnomaly` для reporting | так, `errorCount 8 913` |
+| `signalsByType` per hour | log 8 913, red 0, use 3, k8s 41 |
+| `events` per hour | noise 8 790, signal 164, incident 0 |
+| `LogErrorAnomaly` for reporting | yes, `errorCount 8 913` |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
 | `golden.errPct` reporting | 0.3 (2 rps) |
-| `golden.errPct` решта | 0.1–0.3 |
+| `golden.errPct` the rest | 0.1–0.3 |
 | errRecent / errBase | 0.20% / 0.20% |
 
-**Стани.** 2 Добре. 3 Чисто. 4 Повна. 5 Спокійна.
+**States.** 2 Fine. 3 Clear. 4 Full. 5 Quiet.
 
-**Очікуване рішення: СПОКІЙНО.** Рядок причини: "reporting шумить у логах, користувачів не зачіпає".
+**Expected decision: ALL CLEAR.** Reason line: "reporting is noisy in logs, users are not affected".
 
-**Перевірка.** Пройшов. Жоден із пʼяти показників не читає `signalsByType.log` або `LogErrorAnomaly`, тому сплеск не рухає нічого. Він видимий лише в drill-in показника 5 як атрибуція.
+**Check.** Passed. None of the five indicators reads `signalsByType.log` or `LogErrorAnomaly`, so the spike moves nothing. It is visible only in the drill-in of indicator 5, as attribution.
 
-**Що виявив.** Сплеск логів без RED-впливу є аргументом нічого не робити, і набір показників це виконує без спеціального правила. Якби ми додали "лічильник лог-помилок" як шостий показник, цей зріз зламався б.
+**What it revealed.** A log spike with no RED impact is an argument to do nothing, and the indicator set does this without a special rule. If we had added an "error log counter" as a sixth indicator, this scenario would break.
 
 ---
 
-## S07. Checkout не працює
+## S07. Checkout is down
 
 `mock_data/s07_outage.json`
 
-**Історія.** Пʼятниця, 17:45. Оновлення сертифіката зламало виклик checkout до payments. Агент відкрив критичний інцидент 4 хвилини тому.
+**Story.** Friday, 17:45. A certificate update broke the call from checkout to payments. The agent opened a critical incident 4 minutes ago.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `incidentMetrics.criticalOpen / warningOpen` | 1 / 0 |
-| `incidents[0]` | checkout, `firstSeen` 4 хв тому, `rca` "TLS handshake to payments fails" |
+| `incidents[0]` | checkout, `firstSeen` 4 min ago, `rca` "TLS handshake to payments fails" |
 | `golden.errPct` checkout / payments | 38 / 12 |
-| `ready` checkout | false, `componentsReady` 2 з 3 |
-| failingShare | (85 × 38 + 60 × 12 + решта × 0.2) / 1377 = 3.05% |
-| blastMax уражених | 0.62 (checkout) |
+| `ready` checkout | false, `componentsReady` 2 of 3 |
+| failingShare | (85 × 38 + 60 × 12 + the rest × 0.2) / 1377 = 3.05% |
+| blastMax of the affected | 0.62 (checkout) |
 | `nodes[checkout].calledBy` | api-gateway, cart |
-| `signalsHistory`: errRecent (2 год) / errBase / піковий кошик | 0.31% / 0.20% / 2.99% |
+| `signalsHistory`: errRecent (2 h) / errBase / peak bucket | 0.31% / 0.20% / 2.99% |
 
-**Стани.** 2 Зламано (checkout tier 1 з errPct >= 5 і ready = false). 3 Чисто. 4 Повна. 5 Спокійна.
+**States.** 2 Broken (checkout is tier 1 with errPct >= 5 and ready = false). 3 Clear. 4 Full. 5 Quiet.
 
-**Очікуване рішення: ЗАРАЗ.** Рядок причини: "checkout не працює, зачепить ще 2 сервіси".
+**Expected decision: ACT NOW.** Reason line: "checkout is down, 2 more services will be hit".
 
-**Перевірка.** Пройшов. failingShare 3.05% сам по собі дав би лише Страждають, але правило tier-1 з errPct >= 5 підняло до Зламано. Правило потрібне: 85 rps checkout тоне в 420 rps gateway, хоча саме checkout приносить гроші.
+**Check.** Passed. A failingShare of 3.05% on its own would give only Degraded, but the tier-1 rule with errPct >= 5 raised it to Broken. The rule is needed: the 85 rps of checkout drown in the 420 rps of the gateway, although checkout is what brings in the money.
 
-Показник 5 каже Спокійна, і це чесно: до 17:41 доба справді була спокійною, а один кошик за 4 хвилини не рухає двогодинне вікно. Перша версія правила Осіла дивилась лише на криву і дала "осіла" при відкритому критичному інциденті. Тепер Осіла вимагає `openNow = 0`.
+Indicator 5 says Quiet, and that is honest: until 17:41 the day really was quiet, and one bucket over 4 minutes does not move a two-hour window. The first version of the Settled rule looked only at the curve and gave "settled" with a critical incident open. Settled now requires `openNow = 0`.
 
-**Що виявив.** Сирий blastRadius 0.62 нічого не каже інженеру. "Зачепить ще 2 сервіси" з `calledBy` каже все. Перетворення ваги на слова обовʼязкове. Друге: показники 2 і 5 не дублюють один одного, бо 2 бачить хвилину, а 5 бачить добу.
+**What it revealed.** A raw blastRadius of 0.62 tells the engineer nothing. "2 more services will be hit", derived from `calledBy`, tells everything. Turning the weight into words is mandatory. Second: indicators 2 and 5 do not duplicate each other, because 2 sees the minute and 5 sees the day.
 
 ---
 
-## S08. Два сервіси мовчать
+## S08. Two services went silent
 
 `mock_data/s08_dark_services.json`
 
-**Історія.** Субота, 09:00. Scheduler і backup не надіслали жодної події за 6 годин. Вони batch-сервіси і можуть просто спати. Або впасти в CrashLoop у namespace, який агент не бачить.
+**Story.** Saturday, 09:00. Scheduler and backup have not sent a single event in 6 hours. They are batch services and may simply be sleeping. Or they may have fallen into a CrashLoop in a namespace the agent does not see.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `serviceCoveragePct / services / servicesDark` | 83 / 12 / 2 |
-| темні за `knownServices` мінус ті, що звітують | scheduler, backup |
+| dark, as `knownServices` minus those reporting | scheduler, backup |
 | `clusterAgentStats.connected` | true |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
-| усе інше | норма |
+| everything else | normal |
 
-**Стани.** 2 Добре. 3 Чисто. 4 Частково (servicesDark 2, coverage 83). 5 Спокійна.
+**States.** 2 Fine. 3 Clear. 4 Partial (servicesDark 2, coverage 83). 5 Quiet.
 
-**Очікуване рішення: ЗАПЛАНУВАТИ.** Рядок причини: "scheduler і backup мовчать 6 год: здорові чи мертві, невідомо".
+**Expected decision: SCHEDULE.** Reason line: "scheduler and backup silent for 6 h: healthy or dead, unknown".
 
-**Перевірка.** Пройшов. Правило "Частково забороняє СПОКІЙНО" спрацювало: без нього екран був би зеленим, а бекап міг не робитись тиждень.
+**Check.** Passed. The rule "Partial forbids ALL CLEAR" fired: without it the screen would be green while the backup might not have run for a week.
 
-**Що виявив.** Нуль подій є двома протилежними станами, і API їх не розрізняє. Тому темний сервіс завжди є роботою для людини, навіть у суботу. Дискусійно: чи має batch-сервіс із розкладом "раз на добу" рахуватись темним через 6 годин. В API немає очікуваного інтервалу подій на сервіс, це кандидат у прогалини.
+**What it revealed.** Zero events means two opposite states, and the API does not tell them apart. So a dark service is always work for a human, even on a Saturday. Debatable: whether a batch service with a "once a day" schedule should count as dark after 6 hours. The API has no expected event interval per service; this is a gap candidate.
 
 ---
 
-## S09. Агент бачить збій за 18 хвилин
+## S09. Agent sees a failure 18 minutes out
 
 `mock_data/s09_precursor_imminent.json`
 
-**Історія.** Понеділок, 14:05. Нічого не зламано. Але агент бачить у payments той самий ланцюжок подій, який тричі за місяць закінчувався штормом оновлення токенів. Пройдено 4 з 5 кроків.
+**Story.** Monday, 14:05. Nothing is broken. But in payments the agent sees the same chain of events that ended in a token refresh storm three times this month. 4 of 5 steps are done.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `precursorMatches[0]` | service payments, pattern "token-refresh-storm", `confidence 0.84`, `matchedSteps 4`, `totalSteps 5` |
-| `predictionAvgLeadMs` | 1 080 000 (18 хв, перевизначено для зрізу) |
+| `predictionAvgLeadMs` | 1 080 000 (18 min, overridden for this scenario) |
 | `predictionPrecisionPct / hits / misses` | 78 / 31 / 9 |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
 | `golden.errPct` payments | 0.3 |
 | `golden.memPsiPct` payments | 0.4 |
 
-**Стани.** 2 Добре. 3 Назріває (confidence >= 0.7, 4/5 >= 0.5). 4 Повна. 5 Спокійна.
+**States.** 2 Fine. 3 Brewing (confidence >= 0.7, 4/5 >= 0.5). 4 Full. 5 Quiet.
 
-**Очікуване рішення: ЗАРАЗ.** Рядок причини: "payments: агент бачить 4 з 5 кроків до збою, зазвичай є ~18 хв".
+**Expected decision: ACT NOW.** Reason line: "payments: agent sees 4 of 5 steps to a failure, usually ~18 min of warning".
 
-**Перевірка.** Пройшов. Payments tier 1 і lead < 30 хв, правило 3 згортки дало ЗАРАЗ при нульових помилках. Це єдиний зріз, де ЗАРАЗ походить із майбутнього, а не з теперішнього.
+**Check.** Passed. Payments is tier 1 and lead < 30 min, so rule 3 of the roll-up gave ACT NOW with zero errors. This is the only scenario where ACT NOW comes from the future, not from the present.
 
-**Що виявив.** `predictionAvgLeadMs` є середнім по тенанту, не по патерну. Для патерну, що зазвичай розвивається за 3 хвилини, середнє 18 хв дасть хибне "запланувати". Потрібен lead на рівні `patterns[]`. Кандидат у прогалини.
+**What it revealed.** `predictionAvgLeadMs` is an average per tenant, not per pattern. For a pattern that usually unfolds in 3 minutes, an 18 min average would give a false "schedule". We need a lead at the `patterns[]` level. A gap candidate.
 
 ---
 
-## S10. Агент упевнений, але часто помиляється
+## S10. Agent is confident but often wrong
 
 `mock_data/s10_low_precision.json`
 
-**Історія.** Той самий збіг, що в S09, але для іншого тенанта, де агент працює другий тиждень і вгадав 8 разів з 19.
+**Story.** The same match as in S09, but for another tenant, where the agent is in its second week and got it right 8 times out of 19.
 
-**Вхідні значення.**
+**Input values.**
 
-| Поле | Значення |
+| Field | Value |
 | --- | --- |
 | `precursorMatches[0]` | service auth, `confidence 0.90`, `matchedSteps 4`, `totalSteps 5` |
 | `predictionPrecisionPct / hits / misses` | 42 / 8 / 11 |
-| `predictionAvgLeadMs` | 900 000 (15 хв) |
+| `predictionAvgLeadMs` | 900 000 (15 min) |
 | `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
-| усе інше | норма |
+| everything else | normal |
 
-**Стани.** 2 Добре. 3 Тисне (Назріває знижено на рівень, бо precision < 60 при hits + misses >= 10). 4 Повна. 5 Спокійна.
+**States.** 2 Fine. 3 Pressure (Brewing lowered by one level, because precision < 60 with hits + misses >= 10). 4 Full. 5 Quiet.
 
-**Очікуване рішення: СПОКІЙНО.** Рядок причини: "усе в нормі; агент підозрює auth, але помиляється частіше, ніж вгадує". Кільце прогнозу сіре.
+**Expected decision: ALL CLEAR.** Reason line: "all normal; agent suspects auth but is wrong more often than right". The prediction ring is grey.
 
-**Перевірка.** Пройшов, але це свідоме рішення, а не очевидність. Альтернатива ЗАПЛАНУВАТИ "розібратись, чому агент помиляється" є мета-роботою над агентом, а не над флотом, і їй місце не на цьому екрані.
+**Check.** Passed, but this is a deliberate decision, not an obvious one. The alternative, SCHEDULE "figure out why the agent is wrong", is meta-work on the agent, not on the fleet, and it does not belong on this screen.
 
-**Що виявив.** Без `predictionPrecisionPct` показник 3 дав би ЗАРАЗ за confidence 0.90, і через два хибні виклики інженер вимкнув би трекер. Довіра до прогнозу є частиною показника, а не окремою метрикою. Це також відповідь на "довіряти отриманим даним" з мети завдання.
+**What it revealed.** Without `predictionPrecisionPct` indicator 3 would give ACT NOW on confidence 0.90, and after two false calls the engineer would turn the tracker off. Trust in the prediction is part of the indicator, not a separate metric. This is also the answer to "trust the data received" from the goal of the task.
 
 ---
 
-## Зведення
+## Summary
 
-| Зріз | 2 Користувачі | 3 Назріває | 4 Довіра | 5 Доба | Відкриті | Рішення | Хто вирішив |
+| Scenario | 2 Users | 3 Brewing | 4 Trust | 5 Day | Open | Decision | Decided by |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| S01 спокійний ранок | Добре | Чисто | Повна | Спокійна | 0 | СПОКІЙНО | ніхто |
-| S02 реліз осів | Добре | Чисто | Повна | Осіла | 0 | СПОКІЙНО | ніхто |
-| S03 реліз регресував | Добре | Чисто | Повна | Погіршилась | 0 | ЗАПЛАНУВАТИ | 5 |
-| S04 памʼять | Добре | Назріває | Повна | Спокійна | 0 | ЗАПЛАНУВАТИ | 3 |
-| S05 агент відвалився | сірий | сірий | Наосліп | сірий | 0 | НАОСЛІП | 4 |
-| S06 сплеск логів | Добре | Чисто | Повна | Спокійна | 0 | СПОКІЙНО | ніхто |
-| S07 checkout не працює | Зламано | Чисто | Повна | Спокійна | 1 crit | ЗАРАЗ | 2 |
-| S08 темні сервіси | Добре | Чисто | Частково | Спокійна | 0 | ЗАПЛАНУВАТИ | 4 |
-| S09 збій за 18 хв | Добре | Назріває | Повна | Спокійна | 0 | ЗАРАЗ | 3 |
-| S10 агент помиляється | Добре | Тисне | Повна | Спокійна | 0 | СПОКІЙНО | ніхто |
+| S01 quiet morning | Fine | Clear | Full | Quiet | 0 | ALL CLEAR | none |
+| S02 release settled | Fine | Clear | Full | Settled | 0 | ALL CLEAR | none |
+| S03 release regressed | Fine | Clear | Full | Regressed | 0 | SCHEDULE | 5 |
+| S04 memory | Fine | Brewing | Full | Quiet | 0 | SCHEDULE | 3 |
+| S05 agent disconnected | greyed | greyed | Blind | greyed | 0 | BLIND | 4 |
+| S06 log spike | Fine | Clear | Full | Quiet | 0 | ALL CLEAR | none |
+| S07 checkout is down | Broken | Clear | Full | Quiet | 1 crit | ACT NOW | 2 |
+| S08 dark services | Fine | Clear | Partial | Quiet | 0 | SCHEDULE | 4 |
+| S09 failure 18 min out | Fine | Brewing | Full | Quiet | 0 | ACT NOW | 3 |
+| S10 agent is wrong | Fine | Pressure | Full | Quiet | 0 | ALL CLEAR | none |
 
-**Покриття.** Кожне з трьох рішень зустрічається не менше двох разів. Кожен із показників 2–5 хоча б раз є тим, що вирішив. Показник 1 ніколи не вирішує сам, він лише згортає, і це правильно.
+**Coverage.** Each of the three decisions occurs at least twice. Each of indicators 2–5 is the deciding one at least once. Indicator 1 never decides on its own, it only rolls up, and that is correct.
 
-**Як відтворити.** Кожен зріз є файлом у `mock_data/`, а `mock_data/evaluate.py` реалізує правила `metrics_spec.md` і звіряє результат з очікуваним. Прогін на даних зловив дві помилки, яких паперовий прогін не помітив (S03 і S07), тому таблиця вище відображає стан після обох прогонів.
+**How to reproduce.** Each scenario is a file in `mock_data/`, and `mock_data/evaluate.py` implements the rules of `metrics_spec.md` and compares the result with the expected one. The data run caught two errors that the paper run missed (S03 and S07), so the table above reflects the state after both runs.
 
-**Що змінилось у `metrics_spec.md` після прогону.**
+**What changed in `metrics_spec.md` after the run.**
 
-1. Підлогу стану Погіршилась у показнику 5 знижено з 0.5% до 0.3% (S03, папір).
-2. Вікно errRecent у показнику 5 скорочено з 6 до 2 год (S03, дані).
-3. Ескалація в показнику 2 рахує максимум blastRadius замість суми (S03, дані).
-4. Стан Осіла в показнику 5 вимагає нуль відкритих інцидентів (S07, дані).
-5. Стан Частково в показнику 4 отримав обовʼязковий рядок причини з іменами темних сервісів (S08): без імен "запланувати" не має адресата.
-6. Правило зниження прогнозу при низькій точності зафіксовано як частину показника 3, а не як окремий індикатор (S10).
+1. The floor of the Regressed state in indicator 5 was lowered from 0.5% to 0.3% (S03, paper).
+2. The errRecent window in indicator 5 was shortened from 6 to 2 h (S03, data).
+3. The escalation in indicator 2 takes the maximum blastRadius instead of the sum (S03, data).
+4. The Settled state in indicator 5 requires zero open incidents (S07, data).
+5. The Partial state in indicator 4 got a mandatory reason line with the names of the dark services (S08): without names, "schedule" has no addressee.
+6. The rule that downgrades a prediction at low precision is fixed as part of indicator 3, not as a separate indicator (S10).
 
-**Кандидати в прогалини, які виявив прогін** (доповнюють розділ 5 у `metrics_catalog_triage.md`).
+**Gap candidates revealed by the run** (they extend section 5 in `metrics_catalog_triage.md`).
 
-- Немає очікуваного інтервалу подій на сервіс, тому batch-сервіс не відрізнити від мертвого (S08).
-- `predictionAvgLeadMs` є середнім по тенанту, а не по патерну (S09).
+- There is no expected event interval per service, so a batch service cannot be told apart from a dead one (S08).
+- `predictionAvgLeadMs` is an average per tenant, not per pattern (S09).

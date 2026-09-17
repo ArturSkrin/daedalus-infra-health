@@ -1,49 +1,49 @@
 # design_rationale.md
 
-## Від чого ми відштовхнулись
+## Where we started from
 
-Агент уже вирішив. Він прочитав мільйони подій, відсіяв шум, відкрив або не відкрив інцидент, побачив або не побачив передвісник. Екран не має допомагати інженеру вирішити, він має показати, що вирішено, і дати підстави повірити. Тому ми не питали "які метрики важливі", а питали "без якого числа інженер ухвалив би інше рішення". Таких чисел виявилось мало.
+The agent has already decided. It read millions of events, filtered out the noise, opened or did not open an incident, saw or did not see a precursor. The screen is not there to help the engineer decide; it is there to show what was decided and give grounds to believe it. So we did not ask "which metrics are important", we asked "without which number would the engineer make a different decision". There turned out to be few such numbers.
 
-Повний розбір каталогу з 45 полів лежить у `metrics_catalog_triage.md`: 14 полів змінюють рішення, 16 пояснюють його, 6 не змінюють нічого. Пʼять показників зібрано з перших 14, решта пішла в drill-in або нікуди.
+The full breakdown of the 45-field catalog is in `metrics_catalog_triage.md`: 14 fields change the decision, 16 explain it, 6 change nothing. The five indicators are built from the first 14; the rest went into the drill-in or nowhere.
 
-## Чому саме ці пʼять
+## Why these five
 
-**Стан флоту одним словом.** Фітнес-трекер відкривають, щоб побачити одне слово: готовий, відпочинь, тренуйся. Наш екран так само: СПОКІЙНО, ЗАПЛАНУВАТИ, ЗАРАЗ. Це не метрика, а згортка чотирьох інших за правилами пріоритету, і саме вона робить стан "все гаразд" досяжним: він визначений як відсутність підстав для двох інших рішень.
+**Fleet state in one word.** People open a fitness tracker to see one word: ready, rest, train. Our screen works the same way: ALL CLEAR, SCHEDULE, ACT NOW. It is not a metric but a roll-up of the other four under priority rules, and it is what makes the "everything is fine" state reachable: it is defined as the absence of grounds for the other two decisions.
 
-**Користувачі зараз.** Єдиний показник із теперішнього. Це RED, перетворений на частку трафіку з помилками, зважену на місце сервісу в графі. Він відповідає лише на одне: чи страждають люди прямо зараз. p99 сюди не потрапив свідомо, бо в API немає базової лінії латентності на сервіс, а поріг без бази є просто числом.
+**Users now.** The only indicator from the present. It is RED turned into the share of traffic with errors, weighted by the service's place in the graph. It answers one thing only: are people suffering right now. p99 was left out on purpose, because the API has no latency baseline per service, and a threshold without a baseline is just a number.
 
-**Що назріває.** Єдиний показник із майбутнього і найцінніший у наборі. Агент має два незалежні способи бачити наперед: збіг ланцюжка подій із відомим патерном (`precursorMatches`) і фізика ресурсу (PSI). Обидва зібрано в одне кільце, бо інженеру байдуже, чому назріває, йому важливо скільки є часу. Довіра до цього показника вбудована: якщо агент вгадує рідше, ніж помиляється, прогноз тьмяніє і не може дати ЗАРАЗ.
+**What's brewing.** The only indicator from the future and the most valuable in the set. The agent has two independent ways to see ahead: a match of an event chain against a known pattern (`precursorMatches`) and resource physics (PSI). Both are combined into one ring, because the engineer does not care why something is brewing, they care how much time there is. Trust in this indicator is built in: if the agent is right less often than it is wrong, the prediction dims and cannot give ACT NOW.
 
-**Чи можна вірити.** Умова хакатону сказала це прямо: нуль подій означає або здоровʼя, або відсутність даних. Показник перевіряє спочатку, чи є потік від агента кластера, потім, чи він повний. Без нього зріз "агент відвалився" виглядав би як найспокійніший ранок у році. Темні сервіси ведуть до ЗАПЛАНУВАТИ, не до СПОКІЙНО, бо розрізнити сплячий batch від мертвого з API неможливо.
+**Can we trust it.** The hackathon brief said it directly: zero events means either health or no data. The indicator first checks whether there is a stream from the cluster agent, then whether it is complete. Without it the "agent disconnected" scenario would look like the quietest morning of the year. Dark services lead to SCHEDULE, not to ALL CLEAR, because the API gives no way to tell a sleeping batch job from a dead one.
 
-**Як пройшла доба.** Цінність у спокійний день. Інженер відкриває трекер вранці і після релізу не для того, щоб знайти біду, а щоб побачити, що її не було, і що агент зробив сам. Показник порівнює останні дві години з попередніми двадцятьма двома і читає, скільки інцидентів агент закрив без людини. Він же ловить тиху регресію, якої показник 2 не бачить, бо абсолютний вплив малий, а відносно норми удвічі гірше.
+**How the day went.** The value on a quiet day. The engineer opens the tracker in the morning and after a release not to find trouble, but to see that there was none and what the agent did on its own. The indicator compares the last two hours with the previous twenty-two and reads how many incidents the agent closed without a human. It also catches the quiet regression that indicator 2 does not see, because the absolute impact is small while relative to the norm it is twice as bad.
 
-## Чому не інші
+## Why not others
 
-**Не SNR і не event mix.** Це найчастіша помилка: показати, скільки шуму відсіяно. Число вражає, але жодне з трьох рішень від нього не залежить. Воно пояснює довіру до агента і живе в drill-in показника 4.
+**Not SNR and not event mix.** This is the most common mistake: showing how much noise was filtered out. The number is impressive, but none of the three decisions depends on it. It explains trust in the agent and lives in the drill-in of indicator 4.
 
-**Не MTTR, MTTD, resolution rate.** Це цілі якості агента, а не стан флоту. Вони можуть бути виконані на 100% в момент, коли треба бігти. Каталог додає ще один аргумент: вони живуть у памʼяті core і скидаються при рестарті, тобто кільце може рухатись без змін у кластері.
+**Not MTTR, MTTD, resolution rate.** These are agent quality goals, not fleet state. They can be 100% met at the moment when you need to run. The catalog adds one more argument: they live in core memory and reset on restart, so the ring can move with no change in the cluster.
 
-**Не лічильник лог-помилок.** Сплеск логів без впливу на запити є аргументом нічого не робити. Ми перевірили це зрізом S06: жоден із пʼяти показників не читає `signalsByType.log`, тому 8.9 тисяч error-рядків не рухають екран. Якби лог-помилки стали шостим показником, цей зріз зламався б.
+**Not an error log counter.** A log spike with no impact on requests is an argument to do nothing. We checked this with scenario S06: none of the five indicators reads `signalsByType.log`, so 8.9 thousand error lines do not move the screen. If log errors became a sixth indicator, this scenario would break.
 
-**Не бал 0–100.** Композитний бал ховає, що саме змінилось, і суперечить сам собі: на еталонному екрані "100% of goals" стоїть поруч зі станом DEGRADED і відкритим критичним інцидентом. Центр екрана має займати рішення.
+**Not a 0–100 score.** A composite score hides what exactly changed and contradicts itself: on the reference screen "100% of goals" sits next to the DEGRADED state and an open critical incident. The center of the screen should be taken by the decision.
 
-**Не сирі величини.** errPct, PSI, p99, blastRadius існують у формулах і в drill-in. На екрані є "страждає 1.2% запитів у 2 сервісах", "зачепить ще 2 сервіси", "памʼять насичується". Інженер не має знати, що PSI існує.
+**Not raw values.** errPct, PSI, p99, blastRadius exist in the formulas and in the drill-in. The screen shows "1.2% of requests degraded in 2 services", "2 more services will be hit", "memory is saturating". The engineer does not need to know that PSI exists.
 
-## Що виявив прогін
+## What the run revealed
 
-Набір перевірено двічі: на папері і на згенерованих даних через `mock_data/evaluate.py`. Паперовий прогін зловив одне (підлога показника 5). Прогін на даних зловив ще три, яких папір не помітив: хибну ручну арифметику частки помилок, подвійний рахунок blast radius при підсумовуванні сусідів по графу, і вікно 6 годин, яке розмивало двогодинну регресію. Усі шість правок перелічено в кінці `scenarios.md`. Це і є аргумент за метод: набір показників без сценаріїв є списком побажань.
+The set was checked twice: on paper and on generated data through `mock_data/evaluate.py`. The paper run caught one thing (the floor of indicator 5). The data run caught three more that paper missed: wrong manual arithmetic of the error share, double counting of blast radius when summing graph neighbors, and a 6-hour window that blurred a two-hour regression. All six fixes are listed at the end of `scenarios.md`. This is the argument for the method: an indicator set without scenarios is a wish list.
 
-## Прогалини в каталозі
+## Gaps in the catalog
 
-Шість записано в `metrics_catalog_triage.md`, дві додав прогін. Три, які ми виносимо на окрему номінацію:
+Six are recorded in `metrics_catalog_triage.md`, and the run added two. The three we submit for the separate nomination:
 
-1. **Немає події релізу.** Умова каже, що трекер відкривають після релізу, а в API немає маркера rollout. Показник 5 змушений відповідати "як пройшла доба" замість "як пройшов реліз".
-2. **Немає історії USE.** "Памʼять насичується третій день" з умови неможливо порахувати: PSI є лише як поточний знімок.
-3. **Безпека невидима.** Одна з трьох цілей системи не має жодного поля в API, і каталог визнає це сам.
+1. **No release event.** The brief says the tracker is opened after a release, but the API has no rollout marker. Indicator 5 is forced to answer "how the day went" instead of "how the release went".
+2. **No USE history.** "Memory has been saturating for three days" from the brief cannot be computed: PSI exists only as a current snapshot.
+3. **Security is invisible.** One of the three goals of the system has no field in the API at all, and the catalog admits this itself.
 
-І один аргумент проти показника, який організатори вважають основним: **відсоток виконання цілей** (awareness, warning, recovery) у центрі еталонного екрана. Він вимірює агента, не флот, і не змінює жодного з трьох рішень.
+And one argument against the indicator that the organizers consider the main one: the **goal completion percentage** (awareness, warning, recovery) in the center of the reference screen. It measures the agent, not the fleet, and changes none of the three decisions.
 
-## Годинник і телефон
+## Watch and phone
 
-На телефоні всі пʼять показників видно без прокрутки: слово в центрі, чотири кільця навколо, черга під ними. На годиннику лишаються три грані: чотири кільця зі словом, одна відкрита річ із кнопкою "запланував", і час до найближчого збою з показника 3. Підтвердження з запʼястя дозволене лише для ЗАПЛАНУВАТИ. ЗАРАЗ вимагає телефону, бо вимагає контексту.
+On the phone all five indicators are visible without scrolling: the word in the center, four rings around it, the queue below them. On the watch three faces remain: four rings with the word, one open item with a "scheduled" button, and the time to the nearest failure from indicator 3. Confirming from the wrist is allowed only for SCHEDULE. ACT NOW requires the phone, because it requires context.

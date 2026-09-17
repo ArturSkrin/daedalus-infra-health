@@ -1,106 +1,108 @@
-# metrics_spec.md: пʼять показників головного екрану
+# metrics_spec.md: five indicators of the main screen
 
-Кожен показник описано за одною схемою: що бачить інженер, яке рішення змінює, поріг, з яких полів API рахується, горизонт, індикатор довіри. Поля беруться з каталогу Triage ([reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md), 2026-09-14). Усі per-tenant поля читаються з `tenantStats.tenants[<tenant>]` на `GET /v2/agent/status`, якщо не вказано інше.
+Each indicator is described with the same scheme: what the engineer sees, which decision it changes, the threshold, which API fields it is computed from, the horizon, the trust indicator. Fields come from the Triage catalog ([reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md), 2026-09-14). All per-tenant fields are read from `tenantStats.tenants[<tenant>]` on `GET /v2/agent/status`, unless stated otherwise.
 
-Три рішення, які має підказати екран:
+The rules below are implemented once, in `backend/engine.py`, and checked against every scenario by `tests/test_scenarios.py`. State codes in the code map to the words here as listed in `mock_data/README.md`.
 
-| Рішення | Слово на екрані | Що робить інженер |
+Three decisions the screen has to suggest:
+
+| Decision | Word on screen | What the engineer does |
 | --- | --- | --- |
-| втрутитись зараз | **ЗАРАЗ** | відкриває інцидент, діє сьогодні |
-| запланувати роботу | **ЗАПЛАНУВАТИ** | створює тікет у спринт, не сьогодні |
-| нічого не робити | **СПОКІЙНО** | закриває застосунок |
+| intervene now | **ACT NOW** | opens the incident, acts today |
+| schedule work | **SCHEDULE** | creates a ticket for the sprint, not today |
+| do nothing | **ALL CLEAR** | closes the app |
 
-Плюс четвертий, службовий стан **НАОСЛІП**: даним не можна вірити, і єдина дія полягає в тому, щоб полагодити збір. Він не є четвертим рішенням, це відсутність підстав для будь-якого з трьох.
+Plus a fourth, service state **BLIND**: the data cannot be trusted, and the only action is to fix collection. It is not a fourth decision, it is the absence of grounds for any of the three.
 
-## Спільні правила
+## Shared rules
 
-- **Відсутнє поле рендериться як прочерк, не як 0.** Каталог: "Zero is not always zero". Кожен показник нижче називає поле, яке перевіряється першим.
-- **Свіжість.** Кожен `golden.*` блок на `/v2/agent/applications` має власний `*AsOfUnix`. Блок вважається свіжим, якщо `now - asOfUnix <= 300 с` (5 вікон агента по 60 с). Несвіжий блок виключається з формул, а не читається як нуль.
-- **Тенант.** Показуємо лише `tenantStats.tenants[<tenant>]`. Якщо блоку немає, показник 4 переходить у НАОСЛІП, інші не рендеряться.
-- **Ваги сервісів.** `blastRadius` і `tier` беруться з `/v2/agent/graph` `nodes[]`. Tier 1 означає сервіс на шляху користувача. На екрані ці числа не показуються, вони лише вага.
-- **Сирі величини не виходять на головний екран.** Помилки, PSI, p99 живуть у drill-in.
+- **A missing field renders as a dash, not as 0.** Catalog: "Zero is not always zero". Each indicator below names the field that is checked first.
+- **Freshness.** Each `golden.*` block on `/v2/agent/applications` has its own `*AsOfUnix`. A block is fresh if `now - asOfUnix <= 300 s` (5 agent windows of 60 s). A stale block is excluded from the formulas, not read as zero.
+- **Tenant.** We show only `tenantStats.tenants[<tenant>]`. If the block is missing, indicator 4 goes to BLIND, and the others are not rendered.
+- **Service weights.** `blastRadius` and `tier` come from `/v2/agent/graph` `nodes[]`. Tier 1 means a service on the user path. These numbers are not shown on screen, they are only a weight.
+- **Raw values do not reach the main screen.** Errors, PSI, p99 live in the drill-in.
 
 ---
 
-## 1. Стан флоту
+## 1. Fleet state
 
-**Що бачить інженер.** Одне слово в центрі: СПОКІЙНО / ЗАПЛАНУВАТИ / ЗАРАЗ / НАОСЛІП. Під ним один рядок причини, згенерований з показника, який дав це слово: "checkout: страждає 6% запитів" або "все в нормі, агент закрив 3 сам".
+**What the engineer sees.** One word in the center: ALL CLEAR / SCHEDULE / ACT NOW / BLIND. Below it, one reason line generated from the indicator that produced the word: "checkout: 6% of requests are failing" or "all good, the agent closed 3 on its own".
 
-**Рішення.** Це і є рішення. Показник не вимірює нічого сам, він згортає показники 2–5 за правилами пріоритету.
+**Decision.** This is the decision. The indicator measures nothing itself, it rolls up indicators 2–5 by priority rules.
 
-**Правило згортки (перше, що спрацювало, перемагає).**
+**Roll-up rule (the first one that fires wins).**
 
-| # | Умова | Слово |
+| # | Condition | Word |
 | --- | --- | --- |
-| 1 | показник 4 = Наосліп | НАОСЛІП |
-| 2 | показник 2 = Зламано, або `incidentMetrics.criticalOpen > 0` | ЗАРАЗ |
-| 3 | показник 3 = Назріває і lead < 30 хв і сервіс tier 1 | ЗАРАЗ |
-| 4 | показник 2 = Страждають, або показник 3 = Назріває, або показник 5 = Погіршилась, або `incidentMetrics.warningOpen > 0`, або показник 4 = Частково | ЗАПЛАНУВАТИ |
-| 5 | інакше | СПОКІЙНО |
+| 1 | indicator 4 = Blind | BLIND |
+| 2 | indicator 2 = Broken, or `incidentMetrics.criticalOpen > 0` | ACT NOW |
+| 3 | indicator 3 = Brewing and lead < 30 min and the service is tier 1 | ACT NOW |
+| 4 | indicator 2 = Degraded, or indicator 3 = Brewing, or indicator 5 = Regressed, or `incidentMetrics.warningOpen > 0`, or indicator 4 = Partial | SCHEDULE |
+| 5 | otherwise | ALL CLEAR |
 
-**Чому саме так.** СПОКІЙНО досяжне лише коли всі чотири показники в зеленому. Це і є вимога "має існувати стан, який означає, що робити нічого не треба": він визначений через відсутність підстав, а не через окрему метрику.
+**Why this way.** ALL CLEAR is reachable only when all four indicators are green. This is the requirement "there must be a state that means nothing needs to be done": it is defined through the absence of grounds, not through a separate metric.
 
-**Поля API.** `incidentMetrics.criticalOpen`, `incidentMetrics.warningOpen` з `GET /v2/agent/incidents?tenant=`. Решта через показники 2–5.
+**API fields.** `incidentMetrics.criticalOpen`, `incidentMetrics.warningOpen` from `GET /v2/agent/incidents?tenant=`. The rest through indicators 2–5.
 
-**Горизонт.** Успадковує від показника, який спрацював: зараз (2), години (3), доба (5).
+**Horizon.** Inherited from the indicator that fired: now (2), hours (3), day (5).
 
-**Довіра.** Слово тьмяніє, якщо показник 4 = Частково, і замінюється на НАОСЛІП, якщо показник 4 = Наосліп.
+**Trust.** The word dims if indicator 4 = Partial, and is replaced with BLIND if indicator 4 = Blind.
 
-**Drill-in.** Список правил вище з підсвіченим тим, що спрацювало. Це єдине місце, де інженер бачить логіку.
+**Drill-in.** The list of rules above with the one that fired highlighted. This is the only place where the engineer sees the logic.
 
 ---
 
-## 2. Користувачі зараз
+## 2. Users now
 
-**Що бачить інженер.** Кільце і підпис: "усі запити проходять" / "страждає 1.2% запитів у 2 сервісах" / "checkout не працює". Це вплив на людину зараз, RED як стан.
+**What the engineer sees.** A ring and a caption: "all requests are going through" / "1.2% of requests are failing in 2 services" / "checkout is down". This is the impact on a person right now, RED as a state.
 
-**Рішення.**
+**Decision.**
 
-| Стан | Умова | Рішення |
+| State | Condition | Decision |
 | --- | --- | --- |
-| Добре | `failingShare < 0.5%` і жоден tier-1 сервіс не має `errPct >= 1%` | нічого |
-| Страждають | `0.5% <= failingShare < 5%`, або будь-який tier-1 сервіс має `1% <= errPct < 5%` | запланувати; **зараз**, якщо найбільший `blastRadius` серед уражених сервісів >= 0.5 (на практиці: уражений сервіс на шляху користувача) |
-| Зламано | `failingShare >= 5%`, або будь-який tier-1 сервіс має `errPct >= 5%`, або tier-1 сервіс має `ready = false` | зараз |
+| Fine | `failingShare < 0.5%` and no tier-1 service has `errPct >= 1%` | nothing |
+| Degraded | `0.5% <= failingShare < 5%`, or any tier-1 service has `1% <= errPct < 5%` | schedule; **now**, if the largest `blastRadius` among the affected services is >= 0.5 (in practice: the affected service is on the user path) |
+| Broken | `failingShare >= 5%`, or any tier-1 service has `errPct >= 5%`, or a tier-1 service has `ready = false` | now |
 
-**Формула.** По всіх записах `GET /v2/agent/applications?tenant=` зі свіжим `golden.rateAsOfUnix`:
+**Formula.** Over all records of `GET /v2/agent/applications?tenant=` with a fresh `golden.rateAsOfUnix`:
 
 ```
 failingShare = Σ(reqPerSec_i × errPct_i / 100) / Σ(reqPerSec_i)
 affected     = { i : errPct_i >= 1% }
-blastMax     = max blastRadius_i for i in affected   (з /v2/agent/graph)
+blastMax     = max blastRadius_i for i in affected   (from /v2/agent/graph)
 ```
 
-Тенант-широкого RED в API немає (каталог, розділ "Collected, no per-tenant field"), тому формула наша. Вона зважує помилки на трафік, щоб 50% помилок у сервісі з 0.1 rps не піднімали тривогу.
+There is no tenant-wide RED in the API (catalog, section "Collected, no per-tenant field"), so the formula is ours. It weights errors by traffic, so that 50% errors in a service with 0.1 rps do not raise an alarm.
 
-Береться максимум, а не сума blastRadius: значення сусідніх сервісів перетинаються по графу, і сума двох tier-2 сервісів (0.31 + 0.34) удавала б важливість одного tier-1. Перша версія мала суму, і зріз S03 через неї давав ЗАРАЗ замість ЗАПЛАНУВАТИ.
+We take the maximum, not the sum of blastRadius: the values of neighboring services overlap across the graph, and the sum of two tier-2 services (0.31 + 0.34) would fake the importance of one tier-1 service. The first version used the sum, and because of it scenario S03 gave ACT NOW instead of SCHEDULE.
 
-**Поля.** `golden.reqPerSec`, `golden.errPct`, `golden.rateAsOfUnix`, `ready`, `observedAt` (`/v2/agent/applications`); `nodes[].blastRadius`, `nodes[].tier` (`/v2/agent/graph`); `incidentMetrics.criticalOpen` (`/v2/agent/incidents`).
+**Fields.** `golden.reqPerSec`, `golden.errPct`, `golden.rateAsOfUnix`, `ready`, `observedAt` (`/v2/agent/applications`); `nodes[].blastRadius`, `nodes[].tier` (`/v2/agent/graph`); `incidentMetrics.criticalOpen` (`/v2/agent/incidents`).
 
-**Що свідомо не використано.** `golden.p99Ms` показується лише в drill-in. В API немає базової лінії p99 на сервіс (у `baselines[]` є mttr, mttd, blastRadius, reopenRate, incidentRate, але не латентність), тому поріг для p99 не формулюється, а показник без порога є просто числом.
+**Deliberately not used.** `golden.p99Ms` is shown only in the drill-in. The API has no per-service p99 baseline (`baselines[]` has mttr, mttd, blastRadius, reopenRate, incidentRate, but no latency), so a threshold for p99 cannot be formulated, and an indicator without a threshold is just a number.
 
-**Горизонт.** Теперішнє: останнє вікно агента.
+**Horizon.** The present: the last agent window.
 
-**Довіра.** Частка трафіку зі свіжим `rateAsOfUnix`: `freshShare = Σ reqPerSec(fresh) / Σ reqPerSec(all)`. Якщо `freshShare < 90%`, кільце сіре з підписом "бачимо N з M сервісів". Якщо `Σ reqPerSec = 0` або жоден запис не має `rateAsOfUnix`, прочерк.
+**Trust.** The share of traffic with a fresh `rateAsOfUnix`: `freshShare = Σ reqPerSec(fresh) / Σ reqPerSec(all)`. If `freshShare < 90%`, the ring is gray with the caption "we see N of M services". If `Σ reqPerSec = 0` or no record has `rateAsOfUnix`, a dash.
 
-**Drill-in.** Список уражених сервісів, для кожного: errPct, reqPerSec, p99Ms, blastRadius, `calledBy` (кого зачепить далі), відкритий інцидент із `rca` і `investigationPlan`.
+**Drill-in.** The list of affected services, for each: errPct, reqPerSec, p99Ms, blastRadius, `calledBy` (who gets hit next), the open incident with `rca` and `investigationPlan`.
 
 ---
 
-## 3. Що назріває
+## 3. What's brewing
 
-**Що бачить інженер.** Кільце і підпис: "нічого не назріває" / "тисне памʼять у catalog, часу є" / "агент бачить 3 з 5 кроків до збою payments, зазвичай є ~40 хв". Це єдиний показник із горизонтом у майбутнє.
+**What the engineer sees.** A ring and a caption: "nothing is brewing" / "memory pressure in catalog, there is time" / "agent sees 3 of 5 steps to a payments failure, usually ~40 min of warning". This is the only indicator with a horizon in the future.
 
-**Рішення.**
+**Decision.**
 
-| Стан | Умова | Рішення |
+| State | Condition | Decision |
 | --- | --- | --- |
-| Чисто | немає збігів і немає тиску | нічого |
-| Тисне | precursor з `0.5 <= confidence < 0.7`, або `PSI >= 1%` без інших ознак | нічого, згадка в drill-in |
-| Назріває | precursor з `confidence >= 0.7` і `matchedSteps/totalSteps >= 0.5`; або `memPsiPct >= 1%` і `memReqPct >= 90%` в одному сервісі; або `oomKills > 0` за свіже вікно | запланувати; **зараз**, якщо сервіс tier 1 і `lead < 30 хв` |
+| Clear | no matches and no pressure | nothing |
+| Pressure | a precursor with `0.5 <= confidence < 0.7`, or `PSI >= 1%` with no other signs | nothing, a mention in the drill-in |
+| Brewing | a precursor with `confidence >= 0.7` and `matchedSteps/totalSteps >= 0.5`; or `memPsiPct >= 1%` and `memReqPct >= 90%` in the same service; or `oomKills > 0` in a fresh window | schedule; **now**, if the service is tier 1 and `lead < 30 min` |
 
-`lead` дорівнює `predictionAvgLeadMs` тенанта. Якщо `predictionHits = 0`, lead невідомий і правило "зараз" не спрацьовує: показник дає лише "запланувати".
+`lead` equals the tenant's `predictionAvgLeadMs`. If `predictionHits = 0`, the lead is unknown and the "now" rule does not fire: the indicator gives only "schedule".
 
-**Формула.** Два незалежні джерела, будь-яке з них піднімає стан:
+**Formula.** Two independent sources, either of them raises the state:
 
 ```
 precursorLevel = max over precursorMatches[] of
@@ -109,86 +111,86 @@ pressureLevel  = any app with fresh saturationAsOfUnix where
                  memPsiPct >= 1 and memReqPct >= 90, or oomKills > 0
 ```
 
-**Поля.** `precursorMatches[].confidence`, `.matchedSteps`, `.totalSteps`, `.service`, `patterns[]` (`/v2/agent/analytics?tenant=`); `predictionAvgLeadMs`, `predictionHits`, `predictionMisses`, `predictionPrecisionPct` (status); `golden.memPsiPct`, `golden.cpuPsiPct`, `golden.ioPsiPct`, `golden.oomKills`, `golden.memReqPct`, `golden.saturationAsOfUnix`, `golden.utilizationAsOfUnix` (`/v2/agent/applications`).
+**Fields.** `precursorMatches[].confidence`, `.matchedSteps`, `.totalSteps`, `.service`, `patterns[]` (`/v2/agent/analytics?tenant=`); `predictionAvgLeadMs`, `predictionHits`, `predictionMisses`, `predictionPrecisionPct` (status); `golden.memPsiPct`, `golden.cpuPsiPct`, `golden.ioPsiPct`, `golden.oomKills`, `golden.memReqPct`, `golden.saturationAsOfUnix`, `golden.utilizationAsOfUnix` (`/v2/agent/applications`).
 
-**Горизонт.** Для precursor: `predictionAvgLeadMs` (від хвилин до годин). Для PSI: наступні години, без точної цифри, бо історії USE в API немає (див. прогалини).
+**Horizon.** For a precursor: `predictionAvgLeadMs` (from minutes to hours). For PSI: the next hours, without an exact figure, because the API has no USE history (see gaps).
 
-**Довіра.** `predictionPrecisionPct` при `predictionHits + predictionMisses >= 10`. Якщо `< 60%`, підпис "агент часто помиляється", стан знижується на один рівень (Назріває стає Тисне) і "зараз" не спрацьовує. Якщо збігів немає, довіра не показується. Для PSI довіра дорівнює свіжості `saturationAsOfUnix`.
+**Trust.** `predictionPrecisionPct` when `predictionHits + predictionMisses >= 10`. If `< 60%`, the caption is "the agent is often wrong", the state drops by one level (Brewing becomes Pressure) and "now" does not fire. If there are no matches, trust is not shown. For PSI, trust equals the freshness of `saturationAsOfUnix`.
 
-**Drill-in.** Патерн, що збігся: назва, кроки, які вже пройдені, які лишились, минулі інциденти цього патерну. Для тиску: сервіс, PSI по трьох ресурсах, memReqPct, memNodePct.
-
----
-
-## 4. Чи можна вірити
-
-**Що бачить інженер.** Кільце і підпис: "бачимо всі 12 сервісів, дані 40 с" / "3 сервіси мовчать" / "агент кластера не підключений". Це відповідь на "нуль подій означає здоровʼя чи відсутність даних".
-
-**Рішення.**
-
-| Стан | Умова | Наслідок для решти екрану |
-| --- | --- | --- |
-| Повна | агент підключений, `serviceCoveragePct >= 95`, `servicesDark = 0`, `unmappedServices = 0`, `freshShare >= 90%` | решта показників як є |
-| Частково | агент підключений і (`80 <= coverage < 95`, або `1 <= servicesDark <= 2`, або `unmappedServices > 0`, або `freshShare < 90%`) | показник 1 не може дати СПОКІЙНО, мінімум ЗАПЛАНУВАТИ; рядок причини обовʼязково називає сервіси поіменно: "scheduler і backup мовчать 6 год" |
-| Наосліп | тенант відсутній у `tenantStats.tenants`, або агент кластера не підключений, або `coverage < 80`, або `servicesDark >= 3` | показники 2, 3, 5 сірі; показник 1 = НАОСЛІП |
-
-**Чому темні сервіси ведуть до "запланувати", а не "нічого".** Сервіс, який не шле подій, може бути здоровим або мертвим для збору. Розрізнити з API неможливо, тому це робота на сьогодні або завтра, але не привід закрити застосунок зі спокійною душею.
-
-**Поля.** `serviceCoveragePct`, `services`, `servicesDark`, `knownServices`, `unmappedServices`, `unmappedNames`, `clusterAgentStats`, `gossip` (status); `golden.*AsOfUnix`, `observedAt` (`/v2/agent/applications`).
-
-**Горизонт.** Теперішнє.
-
-**Довіра.** Показник сам є довірою. Єдиний його власний "прочерк": `services = 0`, тоді покриття не має сенсу, і стан одразу Наосліп.
-
-**Drill-in.** Список темних і незмаплених сервісів по імені, час останньої події від кожного, стан підключення агентів по кластерах, найстаріший `asOfUnix`.
+**Drill-in.** The matched pattern: name, steps already passed, steps remaining, past incidents of this pattern. For pressure: the service, PSI for the three resources, memReqPct, memNodePct.
 
 ---
 
-## 5. Як пройшла доба
+## 4. Can we trust it
 
-**Що бачить інженер.** Кільце і підпис: "спокійна доба, агент закрив 3 сам" / "був сплеск о 09:40, осів" / "помилок утричі більше за норму останні 2 год". Це цінність у спокійний день: інженер відкриває трекер вранці і після релізу, щоб побачити, чи щось змінилось.
+**What the engineer sees.** A ring and a caption: "we see all 12 services, data is 40 s old" / "3 services are silent" / "cluster agent is not connected". This is the answer to "do zero events mean health or missing data".
 
-**Рішення.**
+**Decision.**
 
-| Стан | Умова | Рішення |
+| State | Condition | Consequence for the rest of the screen |
 | --- | --- | --- |
-| Спокійна | `errRecent <= 2 × errBase`, `repeatRatePct <= 20`, `incidentsToday <= weeklyMedian / 7` | нічого |
-| Осіла | у вікні 24 год був кошик з `errBucket > 3 × errBase`, але `errRecent <= errBase × 1.5`, і `incidents.openNow = 0` | нічого |
-| Погіршилась | `errRecent > 2 × errBase` і `errRecent >= 0.3%`, або `repeatRatePct > 20`, або `incidentsToday > 2 × weeklyMedian / 7` | запланувати |
+| Full | the agent is connected, `serviceCoveragePct >= 95`, `servicesDark = 0`, `unmappedServices = 0`, `freshShare >= 90%` | the other indicators as is |
+| Partial | the agent is connected and (`80 <= coverage < 95`, or `1 <= servicesDark <= 2`, or `unmappedServices > 0`, or `freshShare < 90%`) | indicator 1 cannot give ALL CLEAR, SCHEDULE at minimum; the reason line must name the services explicitly: "scheduler and backup silent for 6 h" |
+| Blind | the tenant is missing from `tenantStats.tenants`, or the cluster agent is not connected, or `coverage < 80`, or `servicesDark >= 3` | indicators 2, 3, 5 are gray; indicator 1 = BLIND |
 
-Підлога 0.3% захищає від шуму на малому трафіку. Перша версія мала 0.5%, і зріз S03 (реліз регресував до 0.46%) не потрапляв у жоден стан. Умова `openNow = 0` для Осіла зʼявилась після зрізу S07: без неї крива помилок казала "осіло" під час відкритого критичного інциденту. Див. `scenarios.md`.
+**Why dark services lead to "schedule" and not "nothing".** A service that sends no events may be healthy or dead for collection. The API cannot tell the two apart, so this is work for today or tomorrow, but not a reason to close the app with an easy mind.
 
-**Формула.** З `signalsHistory[]` (5-хвилинні кошики за 24 год, поля `.requests`, `.requestErrors`):
+**Fields.** `serviceCoveragePct`, `services`, `servicesDark`, `knownServices`, `unmappedServices`, `unmappedNames`, `clusterAgentStats`, `gossip` (status); `golden.*AsOfUnix`, `observedAt` (`/v2/agent/applications`).
+
+**Horizon.** The present.
+
+**Trust.** The indicator is trust itself. Its only own "dash": `services = 0`, in which case coverage is meaningless and the state is Blind right away.
+
+**Drill-in.** The list of dark and unmapped services by name, the time of the last event from each, agent connection state per cluster, the oldest `asOfUnix`.
+
+---
+
+## 5. How the day went
+
+**What the engineer sees.** A ring and a caption: "quiet day, the agent closed 3 on its own" / "there was a spike at 09:40, it settled" / "three times more errors than normal over the last 2 h". This is the value on a quiet day: the engineer opens the tracker in the morning and after a release to see whether anything has changed.
+
+**Decision.**
+
+| State | Condition | Decision |
+| --- | --- | --- |
+| Quiet | `errRecent <= 2 × errBase`, `repeatRatePct <= 20`, `incidentsToday <= weeklyMedian / 7` | nothing |
+| Settled | within the 24 h window there was a bucket with `errBucket > 3 × errBase`, but `errRecent <= errBase × 1.5`, and `incidents.openNow = 0` | nothing |
+| Regressed | `errRecent > 2 × errBase` and `errRecent >= 0.3%`, or `repeatRatePct > 20`, or `incidentsToday > 2 × weeklyMedian / 7` | schedule |
+
+The 0.3% floor protects against noise on low traffic. The first version had 0.5%, and scenario S03 (a release regressed to 0.46%) did not fall into any state. The `openNow = 0` condition for Settled appeared after scenario S07: without it the error curve said "settled" during an open critical incident. See `scenarios.md`.
+
+**Formula.** From `signalsHistory[]` (5-minute buckets over 24 h, fields `.requests`, `.requestErrors`):
 
 ```
-errRecent = Σ requestErrors / Σ requests    за останні 2 год (24 кошики)
-errBase   = Σ requestErrors / Σ requests    за попередні 22 год (264 кошики)
-errBucket = requestErrors / requests        для кожного кошика
-weeklyMedian = медіана baselines[].weeklyIncidentCounts за останні 4 тижні, сума по сервісах
+errRecent = Σ requestErrors / Σ requests    over the last 2 h (24 buckets)
+errBase   = Σ requestErrors / Σ requests    over the preceding 22 h (264 buckets)
+errBucket = requestErrors / requests        for each bucket
+weeklyMedian = median of baselines[].weeklyIncidentCounts over the last 4 weeks, summed across services
 ```
 
-Вікно 2 год замість початкових 6 год: регресія після релізу о 11:00 при перегляді о 13:10 розмивалась шістьма годинами до 0.30% і не долала поріг. Дві години відповідають тому, як інженер реально перевіряє реліз.
+A 2 h window instead of the initial 6 h: a regression after a release at 11:00, viewed at 13:10, was diluted by six hours down to 0.30% and did not cross the threshold. Two hours match how an engineer actually checks a release.
 
-**Поля.** `signalsHistory[].requests`, `.requestErrors`, `autoResolvedPct`, `repeatRatePct`, `sampledIncidents`, `incidents.openNow` (status); `baselines[].weeklyIncidentCounts`, `baselines[].incidentRateWeek` (`/v2/agent/analytics`); `incidents[].firstSeen` для підрахунку `incidentsToday` (`/v2/agent/incidents`).
+**Fields.** `signalsHistory[].requests`, `.requestErrors`, `autoResolvedPct`, `repeatRatePct`, `sampledIncidents`, `incidents.openNow` (status); `baselines[].weeklyIncidentCounts`, `baselines[].incidentRateWeek` (`/v2/agent/analytics`); `incidents[].firstSeen` for counting `incidentsToday` (`/v2/agent/incidents`).
 
-**Горизонт.** Минула доба з тенденцією в поточний день. Це не прогноз, а контекст для "нічого не робити".
+**Horizon.** The past day with the trend into the current day. This is not a forecast, it is context for "do nothing".
 
-**Довіра.** `signalsHistory` має містити не менше 230 з 288 кошиків (80%). `repeatRatePct` і `autoResolvedPct` показуються лише при `sampledIncidents > 0`. Якщо `Σ requests` за базове вікно < 1000, `errBase` не рахується і стан обмежений "Спокійна" або прочерк.
+**Trust.** `signalsHistory` must contain at least 230 of 288 buckets (80%). `repeatRatePct` and `autoResolvedPct` are shown only when `sampledIncidents > 0`. If `Σ requests` over the base window is < 1000, `errBase` is not computed and the state is limited to "Quiet" or a dash.
 
-**Прогалина, яку цей показник виявляє.** В API немає події деплою або релізу. Показник відповідає "як пройшла доба", хоча умова хоче "як пройшов реліз". Із маркером `Deploy{service, time}` вікна `errRecent` / `errBase` розділялись би моментом релізу, і показник ставав би точнішим. Записано в `metrics_catalog_triage.md`, розділ 5.
+**The gap this indicator exposes.** The API has no deploy or release event. The indicator answers "how the day went", while the brief wants "how the release went". With a `Deploy{service, time}` marker, the `errRecent` / `errBase` windows would be split at the moment of the release, and the indicator would become more accurate. Recorded in `metrics_catalog_triage.md`, section 5.
 
-**Drill-in.** Sparkline 24 год з підсвіченим сплеском, список інцидентів за добу зі статусом "закрив агент" / "закрила людина" / "відкритий", `signalsByType` для атрибуції сплеску (log / red / use / k8s).
+**Drill-in.** A 24 h sparkline with the spike highlighted, the list of incidents for the day with the status "closed by agent" / "closed by human" / "open", `signalsByType` for spike attribution (log / red / use / k8s).
 
 ---
 
-## Перевірка вимог
+## Requirements check
 
-| Вимога | Як виконано |
+| Requirement | How it is met |
 | --- | --- |
-| Не більше 5 показників | рівно 5, черга інцидентів є списком під ними, а не показником |
-| Хоча б один у майбутнє | показник 3 через `precursorMatches` і PSI |
-| Видно, коли даним не можна довіряти | показник 4 плюс індикатор довіри в кожному з 2, 3, 5 |
-| Існує стан "все гаразд" | СПОКІЙНО: показник 2 Добре, 3 Чисто, 4 Повна, 5 Спокійна або Осіла, `warningOpen = 0` |
-| Без назв фреймворку і сирих величин | на екрані слова і частки; errPct, PSI, p99, blastRadius лише в drill-in |
-| USE, RED, SIG стали станом, а не розділами | RED = показник 2, USE = половина показника 3, SIG = довіра в 3 і 4 плюс формули, що ігнорують сплеск логів без впливу |
-| Сплеск log errors без RED-впливу = нічого не робити | жоден показник не читає `signalsByType.log` або `LogErrorAnomaly`; сплеск видно лише в drill-in показника 5 |
-| Тихі сервіси не плутаються зі здоровими | `servicesDark` у показнику 4 веде до ЗАПЛАНУВАТИ, не до СПОКІЙНО |
+| No more than 5 indicators | exactly 5, the incident queue is a list below them, not an indicator |
+| At least one looks into the future | indicator 3 through `precursorMatches` and PSI |
+| It is visible when the data cannot be trusted | indicator 4 plus a trust indicator in each of 2, 3, 5 |
+| An "all is well" state exists | ALL CLEAR: indicator 2 Fine, 3 Clear, 4 Full, 5 Quiet or Settled, `warningOpen = 0` |
+| No framework names and no raw values | words and shares on screen; errPct, PSI, p99, blastRadius only in the drill-in |
+| USE, RED, SIG became a state, not sections | RED = indicator 2, USE = half of indicator 3, SIG = trust in 3 and 4 plus formulas that ignore a log spike without impact |
+| A log errors spike without RED impact = do nothing | no indicator reads `signalsByType.log` or `LogErrorAnomaly`; the spike is visible only in the drill-in of indicator 5 |
+| Silent services are not confused with healthy ones | `servicesDark` in indicator 4 leads to SCHEDULE, not to ALL CLEAR |
