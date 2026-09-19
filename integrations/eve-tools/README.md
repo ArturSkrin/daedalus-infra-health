@@ -21,7 +21,7 @@ The shim does not classify events, write an RCA or predict anything. Where a rea
 docker compose -f docker-compose.yaml -f docker-compose.eve.yaml up -d --build
 ```
 
-Run this in the tracker repository with the EVE stack already up: the override joins EVE's network as an external one. Then open `/?live=1`.
+Run this in the tracker repository with the EVE stack already up: the override joins EVE's network as an external one. Then open the tracker. With a live source configured it opens live data by itself; the demo scenarios stay in the list in the header, and `/?live=1` or `/?scenario=s07_outage` force either one.
 
 Both `-f` files are required. A plain `docker compose up` starts the tracker in demo mode only: no collector, and `/?live=1` answers "live mode is not configured".
 
@@ -35,13 +35,13 @@ EVE's compose file declares one named network, `proxy`, and only `nginx` is atta
 
 ## Step 1. Let the collector reach the app
 
-Copy [`docker-compose.override.yaml`](docker-compose.override.yaml) next to EVE's `docker-compose.yaml` and run `docker compose up -d` there. It attaches `app` to `proxy`. The database stays private on purpose.
+Already in EVE's `main`: [`docker-compose.override.yaml`](docker-compose.override.yaml) sits next to its `docker-compose.yaml`, and compose merges it by itself. It attaches `app` to `proxy`. The database stays private on purpose.
 
 The screen now judges users from probes and says **SCHEDULE**: resource pressure is not collected, so the forecast is blind. That is a real task for a human, which is step 2.
 
 ## Step 2. Let the app speak for itself
 
-Copy [`vitals.ts`](vitals.ts) to `server/vitals.ts` in EVE and add three lines to `server/index.ts`, right after `app.use(express.urlencoded(...))`:
+Already in EVE's `main`: [`vitals.ts`](vitals.ts) is `server/vitals.ts` there, wired into `server/index.ts` right after the body parsers. For another Express app it is the same file plus three lines:
 
 ```ts
 import { vitalsMiddleware, registerVitals } from "./vitals";
@@ -49,16 +49,42 @@ app.use(vitalsMiddleware);
 registerVitals(app);
 ```
 
-Rebuild the app. `GET /internal/vitals` now returns cumulative request, error and duration counters for `/api`, the state of the database connection, and PSI, memory and OOM kills read from the container's own cgroup. No privileges and no `docker.sock` are involved: a container can always read its own cgroup files. This is the same idea the hackathon brief describes for USE, done from the inside.
+Pull and rebuild EVE (`git pull && docker compose up -d --build`). `GET /internal/vitals` now returns cumulative request, error and duration counters for `/api`, the state of the database connection, and PSI, memory and OOM kills read from the container's own cgroup. No privileges and no `docker.sock` are involved: a container can always read its own cgroup files. This is the same idea the hackathon brief describes for USE, done from the inside.
 
 With this the fleet is three services (`db` is discovered through the app), trust is **Full**, and the screen says **ALL CLEAR**, dimmed until a day of history exists.
 
 ## Keep /internal/ off the internet
 
-EVE's nginx config is not in its repository, so check it. If it proxies every path to the app, `/internal/vitals` is reachable from outside. It holds only counters, but it does not belong there. Do one of these:
+EVE's nginx listens on a public port and its config is not in the repository; the k8s ingress forwards every path too. So the endpoint protects itself first: it answers 404 to any request carrying `X-Forwarded-For`, `X-Real-IP`, `X-Forwarded-Host` or `Forwarded`, which is every request that came through a reverse proxy configured the usual way. The collector calls the app directly over the Docker network and carries none of them. That is a safety net, not a guarantee: a proxy that sets no such header would pass. Check from outside (`curl -i http://<server>/internal/vitals` must be 404), and for certainty do one of these:
 
 - add `location /internal/ { return 404; }` to the public server block, or
 - set `VITALS_TOKEN` in EVE's `.env` and the same value in the tracker's environment; without the token the endpoint answers 404.
+
+## Verifying the whole chain
+
+Run these on the host where both stacks live. `TR` is shorthand for the tracker's compose command, `EVE` for EVE's.
+
+```bash
+TR="docker compose -f docker-compose.yaml -f docker-compose.eve.yaml"   # in the tracker folder
+EVE="docker compose"                                                  # in the EVE folder
+```
+
+| # | Do | Expect on the screen | Proves |
+| --- | --- | --- | --- |
+| 1 | open `/debug/targets` on the collector (command below) | every target `reachable`, `app` has `hasVitals: true`, `db` is `known` | network and endpoint |
+| 2 | open the tracker | **ALL CLEAR**, dimmed; Can we trust it: "seeing all 3 services"; header pill says Live · eve-tools | the happy path |
+| 3 | `for i in $(seq 200); do curl -s -o /dev/null http://localhost/api/scan/progress; done` | Users now drill-in: `app` traffic jumps from ~0.07/s to several per second | real request counters, not only probes |
+| 4 | `$EVE stop app` | within 30 s **ACT NOW**, "app is down" or "nginx is down", two critical incidents in the queue | outage detection |
+| 5 | `$EVE start app` | within about a minute back to **ALL CLEAR**; the incident moves to "Handled by the agent today" | auto-resolve, probes ageing out |
+| 6 | `$EVE stop db`, wait 30 s, then `$EVE start db` | **ACT NOW**, reason names `app`; a warning incident for `db` | the database is watched through the app |
+| 7 | `docker update --cpus 0.2 eve-online-tools-app-1`, then `docker exec eve-online-tools-app-1 sh -c 'for i in 1 2 3 4; do (timeout 180 sh -c "while :; do :; done" &) ; done'` | after 1 to 2 min What's brewing: **Brewing**, "app: CPU stall is slowing it down", word **SCHEDULE**; undo with `docker update --cpus 0 ...` | USE through PSI from the container's own cgroup |
+| 8 | `docker update --memory 400m --memory-swap 400m eve-online-tools-app-1` | What's brewing drill-in shows "Mem vs request" for `app` | memory share appears only with a limit |
+| 9 | `$TR restart collector` | "h of history" in the reason line keeps growing instead of resetting | history persists on the volume |
+| 10 | `$TR stop collector` | within 30 s the tracker shows an error banner, not a green screen | a dead collector is never read as calm |
+| 11 | from another machine: `curl -i http://<server>/internal/vitals` | `404` | the endpoint is not public |
+| 12 | leave it running for 19 h | How the day went turns from — to **Quiet**, and ALL CLEAR is no longer dimmed | the day indicator needs a day |
+
+Step 7 needs a CPU limit because pressure is time spent waiting for a resource: on an idle multi-core host four busy loops wait for nothing, and PSI stays at zero however hot the CPU runs. That is the point the hackathon brief makes about PSI against utilisation.
 
 ## When a target stays dark
 

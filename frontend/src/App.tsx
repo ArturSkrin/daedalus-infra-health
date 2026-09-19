@@ -11,15 +11,18 @@ import type { DrillTarget, ScenarioListItem, View } from './types'
 const DEFAULT_SCENARIO = 's01_calm'
 const LIVE_REFRESH_MS = 30_000
 
-function initialSelection(): string {
+// What the URL asks for, or null when it asks for nothing. With no explicit choice the app opens live data
+// when the backend has a live source, and the first demo scenario otherwise: someone who wired a real
+// application in wants to see it, not a mock, and a judge without a backend still lands on S01.
+function requestedSelection(): string | null {
   const params = new URLSearchParams(window.location.search)
   if (params.has('live')) return LIVE
-  return params.get('scenario') ?? DEFAULT_SCENARIO
+  return params.get('scenario')
 }
 
 function App() {
   const [scenarios, setScenarios] = useState<ScenarioListItem[]>([])
-  const [selected, setSelected] = useState(initialSelection)
+  const [selected, setSelected] = useState<string | null>(requestedSelection)
   const [view, setView] = useState<View | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(false)
@@ -30,10 +33,14 @@ function App() {
 
   useEffect(() => {
     loadScenarios().then(setScenarios).catch((e: Error) => setError(e.message))
-    checkLive().then(setLive)
+    checkLive().then((available) => {
+      setLive(available)
+      setSelected((current) => current ?? (available ? LIVE : DEFAULT_SCENARIO))
+    })
   }, [])
 
   useEffect(() => {
+    if (selected === null) return
     let cancelled = false
     const load = () =>
       (selected === LIVE ? loadLive() : loadScenario(selected))
@@ -42,7 +49,13 @@ function App() {
           setView(v)
           setError(null)
         })
-        .catch((e: Error) => !cancelled && setError(e.message))
+        .catch((e: Error) => {
+          if (cancelled) return
+          setError(e.message)
+          // A live source that stopped answering must not leave the last good screen up: a stale ALL CLEAR
+          // under an error banner is still an ALL CLEAR to someone glancing at it.
+          if (selected === LIVE) setView(null)
+        })
 
     load()
     const timer = selected === LIVE ? window.setInterval(load, LIVE_REFRESH_MS) : undefined
@@ -67,7 +80,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-bg px-3 py-3 sm:px-4 sm:py-5 lg:px-10 lg:py-9">
-      <Header view={view} scenarios={scenarios} selected={selected} liveAvailable={live} onSelect={pick} />
+      <Header view={view} scenarios={scenarios} selected={selected ?? DEFAULT_SCENARIO} liveAvailable={live} onSelect={pick} />
 
       <main className="mx-auto flex max-w-6xl flex-col gap-3 sm:gap-4 lg:gap-6">
         {error && (

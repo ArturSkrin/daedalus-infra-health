@@ -1,4 +1,4 @@
-// Drop this file into Eve-Online-Tools as server/vitals.ts.
+// Vitals endpoint for the Daedalus infra health tracker (https://github.com/ArturSkrin/daedalus-infra-health).
 //
 // It gives the Daedalus collector what a Triage cluster agent would otherwise measure from outside:
 //   - RED: cumulative request, error and duration counters for /api (the collector turns them into rates),
@@ -6,14 +6,10 @@
 //     No privileges and no docker.sock are needed: a container may always read its own cgroup files.
 //   - readiness of what the app depends on: its Postgres database.
 //
-// Wire it up in server/index.ts, right after `app.use(express.urlencoded(...))`:
-//
-//     import { vitalsMiddleware, registerVitals } from "./vitals";
-//     app.use(vitalsMiddleware);
-//     registerVitals(app);
+// Wired in from server/index.ts, right after the body parsers.
 //
 // Set VITALS_TOKEN in .env to require the same token from the collector. Without it the endpoint is open,
-// which is acceptable only while nginx does not proxy /internal/ to the outside (see README.md next to this file).
+// which is acceptable only while nginx does not proxy /internal/ to the outside (see integrations/eve-tools/README.md in the tracker repository).
 
 import type { Express, NextFunction, Request, Response } from "express";
 import { readFileSync } from "fs";
@@ -86,8 +82,14 @@ async function checkDb(): Promise<{ ok: boolean; ms: number; error?: string }> {
   }
 }
 
+// A request that came through a reverse proxy carries one of these. The collector calls the app directly over
+// the Docker network and carries none, so anything forwarded from the outside gets a 404 even when nginx or an
+// ingress proxies every path. This is a safety net, not a substitute for VITALS_TOKEN or a deny rule in nginx.
+const PROXY_HEADERS = ["x-forwarded-for", "x-real-ip", "x-forwarded-host", "forwarded"];
+
 export function registerVitals(app: Express) {
   app.get("/internal/vitals", async (req: Request, res: Response) => {
+    if (PROXY_HEADERS.some((name) => req.header(name))) return res.status(404).end();
     const token = process.env.VITALS_TOKEN;
     if (token && req.header("x-vitals-token") !== token) return res.status(404).end();
 
