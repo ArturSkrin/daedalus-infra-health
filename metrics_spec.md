@@ -102,9 +102,11 @@ We take the maximum, not the sum of blastRadius: the values of neighboring servi
 | — | no service has fresh resource-pressure data and there is no pattern match: "nothing is brewing" would be a guess | none from this indicator; indicator 4 goes Partial |
 | Clear | no matches and no pressure, with fresh resource data to back it | nothing |
 | Pressure | a precursor with `0.5 <= confidence < 0.7`, or `PSI >= 1%` with no other signs | nothing, a mention in the drill-in |
-| Brewing | a precursor with `confidence >= 0.7` and `matchedSteps/totalSteps >= 0.5`; or `memPsiPct >= 1%` and `memReqPct >= 90%` in the same service; or `oomKills > 0` in a fresh window | schedule; **now**, if the service is tier 1 and `lead < 30 min` |
+| Brewing | a precursor with `confidence >= 0.7` and `matchedSteps/totalSteps >= 0.5`; or `memPsiPct >= 1%` and `memReqPct >= 90%` in the same service; or `oomKills > 0` in a fresh window; or any resource stall (CPU, memory, disk PSI) `>= 10%` in one service | schedule; **now**, if the service is tier 1 and `lead < 30 min` and the agent has at least 10 past predictions |
 
-`lead` equals the tenant's `predictionAvgLeadMs`. If `predictionHits = 0`, the lead is unknown and the "now" rule does not fire: the indicator gives only "schedule".
+`lead` equals the tenant's `predictionAvgLeadMs`. If `predictionHits = 0`, the lead is unknown and the "now" rule does not fire: the indicator gives only "schedule". The same holds while `predictionHits + predictionMisses < 10`: one lucky prediction is 100% precision, and "usually N min of warning" from a handful of cases is not a usual anything. An agent with a short track record can ask for a ticket, not for a person right now.
+
+**Why a 10% stall counts on its own.** Memory has a cliff, the OOM kill, so it gets the early rule (1% stall at 90% of the request). CPU and disk have no cliff, but a service stalled a tenth of the time is already failing slowly. `ResourcePressureAnomaly` never opens an incident (catalog), so if this indicator stays silent, nobody says it.
 
 **Formula.** Two independent sources, either of them raises the state:
 
@@ -134,8 +136,10 @@ pressureLevel  = any app with fresh saturationAsOfUnix where
 | State | Condition | Consequence for the rest of the screen |
 | --- | --- | --- |
 | Full | the agent is connected, `serviceCoveragePct >= 95`, `servicesDark = 0`, `unmappedServices = 0`, `freshShare >= 90%` | the other indicators as is |
-| Partial | the agent is connected and (`80 <= coverage < 95`, or `1 <= servicesDark <= 2`, or `unmappedServices > 0`, or `freshShare < 90%`, or fewer than 90% of services have fresh resource-pressure data) | indicator 1 cannot give ALL CLEAR, SCHEDULE at minimum; the reason line must name the services explicitly: "scheduler and backup silent for 6 h" |
+| Partial | the agent is connected and (`80 <= coverage < 95`, or `1 <= servicesDark <= 2`, or `unmappedServices > 0`, or `freshShare < 90%`, or fewer than 90% of services have fresh resource-pressure data, or `events.unknown` is 20% or more of all classified events) | indicator 1 cannot give ALL CLEAR, SCHEDULE at minimum; the reason line must name the services explicitly: "scheduler and backup silent for 6 h" |
 | Blind | the tenant is missing from `tenantStats.tenants`, or the cluster agent is not connected, or the core does not report the agent link and no service has fresh data, or `coverage < 80`, or `servicesDark >= 3` | indicators 2, 3, 5 are gray; indicator 1 = BLIND |
+
+**Why unclassified events are here and SNR is not.** The screen shows what the agent decided. If the agent could not classify a fifth of what it saw, its silence is not evidence of calm, and a human can look into why. `snrPct` looks like the same kind of signal, but it has no baseline in the API: in our fixture a quiet day is 0.7% (96 signals in 14 thousand noise events), so a "collapse" cannot be told apart from a normal noisy fleet. No baseline, no threshold, same reasoning as for p99.
 
 **Why dark services lead to "schedule" and not "nothing".** A service that sends no events may be healthy or dead for collection. The API cannot tell the two apart, so this is work for today or tomorrow, but not a reason to close the app with an easy mind.
 

@@ -40,8 +40,12 @@ def trust(b: Bundle) -> tuple[str, dict]:
     measured = [s for s in b.services.values() if s.saturation]
     fresh_resources = 100 * sum(_fresh(s.saturation.age_s) for s in measured) / len(measured) if measured else 0.0
 
+    classified = sum(b.events.get(k, 0) for k in ("noise", "signal", "incident", "unknown"))
+    unclassified = 100 * b.events.get("unknown", 0) / classified if classified else 0.0
+
     info = {
         "coverage": b.coverage_pct, "dark": b.dark_count or 0, "unmapped": b.unmapped,
+        "unclassifiedShare": round(unclassified, 1),
         "freshShare": round(fresh_share, 1), "freshResourcesShare": round(fresh_resources, 1),
         "agentConnected": b.agent_connected, "reasons": [],
     }
@@ -71,6 +75,10 @@ def trust(b: Bundle) -> tuple[str, dict]:
         reasons.append("low_coverage")
     if b.unmapped > 0:
         reasons.append("unmapped_services")
+    # The screen shows what the agent decided. If the agent could not classify a fifth of what it saw,
+    # its silence is not evidence of calm, and that is something a human can look into.
+    if unclassified >= T.TRUST_UNCLASSIFIED_SHARE_PCT:
+        reasons.append("unclassified_events")
     if fresh_share < T.TRUST_FRESH_SHARE_PCT:
         reasons.append("stale_traffic")
     # Without fresh resource data the forecast is blind, and that is a collection problem a human can fix.
@@ -133,7 +141,8 @@ def forecast(b: Bundle) -> tuple[str, dict]:
     info: dict = {
         "precision": b.prediction_precision_pct, "hits": b.prediction_hits, "misses": b.prediction_misses,
         "leadMin": round(b.prediction_lead_ms / 60000) if b.prediction_lead_ms else None,
-        "pressure": [], "watch": [], "match": None, "service": None, "downgraded": False, "actNow": False,
+        "pressure": [], "stalled": [], "stalledResource": None, "watch": [], "match": None, "service": None,
+        "downgraded": False, "actNow": False, "unproven": sampled < T.FORECAST_MIN_SAMPLES,
     }
 
     best = max(b.precursors, key=_weighted, default=None)
@@ -151,6 +160,10 @@ def forecast(b: Bundle) -> tuple[str, dict]:
                       and (sat.mem_of_request_pct or 0) >= T.PRESSURE_MEM_OF_REQUEST_PCT)
         if saturating or (sat.oom_kills or 0) > 0:
             info["pressure"].append(s.name)
+        elif sat.worst_stall_pct >= T.PRESSURE_SEVERE_STALL_PCT:
+            # CPU or disk has no cliff like OOM, but a service stalled a tenth of the time is already failing slowly,
+            # and the agent opens no incident for resource pressure. Nobody else would say it.
+            info["stalled"].append(s.name)
         elif sat.worst_stall_pct >= T.PRESSURE_STALL_PCT:
             info["watch"].append(s.name)
     info["oomStarted"] = any((b.service(n).saturation.oom_kills or 0) > 0 for n in info["pressure"])
@@ -161,6 +174,11 @@ def forecast(b: Bundle) -> tuple[str, dict]:
 
     if info["pressure"]:
         state, info["service"] = "brewing", info["pressure"][0]
+    elif info["stalled"]:
+        state, info["service"] = "brewing", info["stalled"][0]
+        sat = b.service(info["service"]).saturation
+        stalls = {"CPU": sat.cpu_stall_pct or 0, "memory": sat.mem_stall_pct or 0, "disk": sat.io_stall_pct or 0}
+        info["stalledResource"] = max(stalls, key=stalls.get)
     elif level >= T.PRECURSOR_BREWING_CONFIDENCE:
         state, info["service"] = "brewing", best.service
         unreliable = (sampled >= T.FORECAST_MIN_SAMPLES and b.prediction_precision_pct is not None
@@ -178,6 +196,9 @@ def forecast(b: Bundle) -> tuple[str, dict]:
         state == "brewing" and not info["downgraded"]
         and b.service(info["service"]).tier == T.USER_PATH_TIER
         and b.prediction_lead_ms is not None and b.prediction_lead_ms < T.ACT_NOW_LEAD_MS
+        # "usually N min of warning" from a handful of predictions is not a usual anything:
+        # an agent with a short track record can ask for a ticket, not for a person right now
+        and not info["unproven"]
     )
     return state, info
 

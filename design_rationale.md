@@ -32,7 +32,7 @@ The full breakdown of the 45-field catalog is in `metrics_catalog_triage.md`: 14
 
 ## What the run revealed
 
-The set was checked twice: on paper and on generated data through `mock_data/evaluate.py`. The paper run caught one thing (the floor of indicator 5). The data run caught three more that paper missed: wrong manual arithmetic of the error share, double counting of blast radius when summing graph neighbors, and a 6-hour window that blurred a two-hour regression. A later review of the code against incomplete input caught three more: an unknown indicator passed as green, absent resource-pressure data read as "no pressure", and readiness ignored when traffic data was stale. All nine fixes are listed at the end of `scenarios.md`. This is the argument for the method: an indicator set without scenarios is a wish list.
+The set was checked twice: on paper and on generated data through `mock_data/evaluate.py`. The paper run caught one thing (the floor of indicator 5). The data run caught three more that paper missed: wrong manual arithmetic of the error share, double counting of blast radius when summing graph neighbors, and a 6-hour window that blurred a two-hour regression. A later review of the code against incomplete input caught three more: an unknown indicator passed as green, absent resource-pressure data read as "no pressure", and readiness ignored when traffic data was stale. A mock defense against our own rules caught four more. All thirteen fixes, and three limits we chose to name rather than hide, are listed at the end of `scenarios.md`. This is the argument for the method: an indicator set without scenarios is a wish list.
 
 ## Gaps in the catalog
 

@@ -368,6 +368,15 @@ Indicator 5 says Quiet, and that is honest: until 17:41 the day really was quiet
 8. Absent resource-pressure data makes indicator 3 unknown and indicator 4 Partial instead of reading as "no pressure" (code review).
 9. A tier-1 service that is not ready is Broken even when its traffic data is stale (boundary tests).
 
+Four more came from a mock defense, where one of us played the mentor and attacked the rules with cases outside the scenarios. Each was reproduced on the code first, then fixed, then pinned with a test on both sides of the line.
+
+10. A settled spike said "the agent closed it on its own" even when no incident had ever been opened. The line now credits the agent only when an agent-resolved incident exists.
+11. An agent with a single lucky prediction (100% precision) could give ACT NOW. A forecast now needs 10 past predictions before it may say ACT NOW; below that it gives SCHEDULE.
+12. A 40% CPU stall on checkout gave Pressure and ALL CLEAR, because only memory could reach Brewing, and the agent opens no incident for resource pressure. Any resource stalled 10% of the time is now Brewing.
+13. With 40% of events unclassified by the agent the screen stayed ALL CLEAR. From 20% indicator 4 is now Partial. `snrPct` was tried for the same role and rejected: it has no baseline.
+
+The same session found three limits we did not fix, and we name them instead: traffic dropping to zero with no errors is invisible (no per-service rate baseline), a regression older than 24 h becomes the norm (the API keeps 24 h of history), and latency with no errors is invisible (no p99 baseline).
+
 **Gap candidates revealed by the run** (they extend section 5 in `metrics_catalog_triage.md`).
 
 - There is no expected event interval per service, so a batch service cannot be told apart from a dead one (S08).

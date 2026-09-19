@@ -156,3 +156,53 @@ def test_explanations_quote_the_real_thresholds():
     assert f"{T.USERS_DEGRADED_SHARE_PCT:g}%" in text["users"]
     assert f"{T.FORECAST_MIN_PRECISION_PCT}%" in text["forecast"]
     assert f"{T.TRUST_FULL_COVERAGE_PCT}%" in text["trust"]
+
+
+# --- found by playing the mentor against our own rules -------------------------
+
+@pytest.mark.parametrize("hits, misses, word", [(1, 0, "schedule"), (9, 0, "schedule"), (10, 0, "act_now")])
+def test_agent_without_a_track_record_cannot_say_act_now(calm, hits, misses, word):
+    """One lucky prediction is 100 % precision. It may ask for a ticket, not for a person right now."""
+    calm["analytics"]["precursorMatches"] = precursor("payments", confidence=0.95)
+    tenant_of(calm).update(predictionHits=hits, predictionMisses=misses, predictionPrecisionPct=100, predictionAvgLeadMs=10 * 60_000)
+    result = verdict(calm)
+    assert result["states"]["forecast"] == "brewing"
+    assert result["verdict"] == word
+
+
+@pytest.mark.parametrize("resource, key", [("CPU", "cpuPsiPct"), ("disk", "ioPsiPct"), ("memory", "memPsiPct")])
+@pytest.mark.parametrize("stall, state", [(9.9, "pressure"), (10.0, "brewing")])
+def test_severe_stall_of_any_resource_is_brewing(calm, resource, key, stall, state):
+    """The agent opens no incident for resource pressure, so a stalled service must not pass as ALL CLEAR."""
+    app_of(calm, "catalog")["golden"][key] = stall
+    result = verdict(calm)
+    assert result["states"]["forecast"] == state
+    assert result["verdict"] == ("schedule" if state == "brewing" else "all_clear")
+    if state == "brewing":
+        assert result["detail"]["forecast"]["stalledResource"] == resource
+
+
+@pytest.mark.parametrize("unknown, state", [(3_500, "full"), (3_600, "partial")])     # 19.7 % and 20.1 % of events
+def test_unclassified_events_are_a_trust_problem(calm, unknown, state):
+    tenant_of(calm)["events"] = {"noise": 14_210, "signal": 96, "incident": 0, "unknown": unknown, "drift": 0}
+    result = verdict(calm)
+    assert result["states"]["trust"] == state
+    if state == "partial":
+        assert result["detail"]["trust"]["reasons"] == ["unclassified_events"]
+        assert result["verdict"] == "schedule"
+
+
+def test_signal_share_alone_never_moves_the_screen(calm):
+    """snrPct has no baseline in the API: 0.7 % is this fleet on a quiet day, so it cannot be thresholded."""
+    tenant_of(calm)["snrPct"] = 0.01
+    assert verdict(calm)["verdict"] == "all_clear"
+
+
+def test_settled_spike_does_not_credit_the_agent_for_an_incident_that_never_existed(calm):
+    from backend.presentation import build_view
+
+    for bucket in tenant_of(calm)["signalsHistory"][100:103]:
+        bucket["requestErrors"] = int(bucket["requests"] * 0.02)
+    view = build_view(calm, verdict(calm))
+    assert "never needed an incident" in view["decision"]["reason"]
+    assert "agent closed" not in view["decision"]["reason"]

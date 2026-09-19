@@ -23,8 +23,9 @@ PRECURSOR_PRESSURE_CONFIDENCE = 0.5
 PRECURSOR_MIN_PROGRESS = 0.5       # matchedSteps / totalSteps; below it confidence is halved
 PRESSURE_STALL_PCT = 1.0           # PSI, any resource
 PRESSURE_MEM_OF_REQUEST_PCT = 90   # memory stall only counts as saturating above this share of the request
+PRESSURE_SEVERE_STALL_PCT = 10.0   # any resource stalled this much is brewing on its own, memory or not
 FORECAST_MIN_PRECISION_PCT = 60    # below it a forecast is dimmed and cannot move the verdict
-FORECAST_MIN_SAMPLES = 10          # hits + misses needed before precision is believed
+FORECAST_MIN_SAMPLES = 10          # hits + misses needed before precision is believed, and before a forecast may say ACT NOW
 ACT_NOW_LEAD_MS = 30 * 60 * 1000   # user-path service with less warning than this: ACT NOW
 
 # --- 4. Can we trust it ---------------------------------------------------
@@ -32,6 +33,7 @@ TRUST_FULL_COVERAGE_PCT = 95
 TRUST_BLIND_COVERAGE_PCT = 80
 TRUST_BLIND_DARK_SERVICES = 3
 TRUST_FRESH_SHARE_PCT = 90         # share of traffic (rate) or of services (resources) with fresh data
+TRUST_UNCLASSIFIED_SHARE_PCT = 20  # events the agent could not classify; above this its triage is not the full picture
 
 # --- 5. How the day went --------------------------------------------------
 DAY_RECENT_BUCKETS = 24            # last 2 h of 5-minute buckets, compared with the rest
@@ -63,13 +65,15 @@ def explain() -> dict[str, str]:
         "forecast": (
             f"Brewing when the agent matches at least {_n(PRECURSOR_MIN_PROGRESS * 100)}% of a known failure pattern with "
             f"{_n(PRECURSOR_BREWING_CONFIDENCE * 100)}% confidence, or when memory stalls while usage is above "
-            f"{PRESSURE_MEM_OF_REQUEST_PCT}% of its request: schedule, and act now if it is a user-path service with under "
-            f"{ACT_NOW_LEAD_MS // 60000} min of usual warning. A forecast from an agent that is right less than "
-            f"{FORECAST_MIN_PRECISION_PCT}% of the time is dimmed and cannot move the verdict."
+            f"{PRESSURE_MEM_OF_REQUEST_PCT}% of its request, or when any resource stalls a service {_n(PRESSURE_SEVERE_STALL_PCT)}% "
+            f"of the time: schedule, and act now if it is a user-path service with under {ACT_NOW_LEAD_MS // 60000} min of usual "
+            f"warning and the agent has at least {FORECAST_MIN_SAMPLES} past predictions to judge it by. A forecast from an agent "
+            f"that is right less than {FORECAST_MIN_PRECISION_PCT}% of the time is dimmed and cannot move the verdict."
         ),
         "trust": (
             f"Full when the cluster agent is connected, {TRUST_FULL_COVERAGE_PCT}% of services report, none are silent, and "
-            f"data is under {FRESH_S // 60} min old. Partial blocks ALL CLEAR, because a silent service is either healthy or dead "
+            f"data is under {FRESH_S // 60} min old. Partial, which also covers an agent that could not classify "
+            f"{TRUST_UNCLASSIFIED_SHARE_PCT}% of events, blocks ALL CLEAR, because a silent service is either healthy or dead "
             f"and the data cannot tell which. Blind, under {TRUST_BLIND_COVERAGE_PCT}% coverage or with the agent gone, greys "
             f"out everything else."
         ),

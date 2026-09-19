@@ -136,6 +136,11 @@ def forecast_caption(b: Bundle, state: str, info: dict) -> str:
     if state == "brewing" and info.get("pressure"):
         tail = "OOM kills have started" if info.get("oomStarted") else "no OOM kill yet"
         return f"{service}: memory is saturating, {tail}"
+    if state == "brewing" and info.get("stalled"):
+        return f"{service}: {info['stalledResource']} stall is slowing it down"
+    if state == "brewing" and match and info.get("unproven"):
+        return (f"{match['matched']} of {match['total']} steps to a {service} failure, "
+                "the agent's track record is too short to call it urgent")
     if state == "brewing" and match:
         lead = f", usually ~{info['leadMin']} min of warning" if info.get("leadMin") else ""
         return f"{match['matched']} of {match['total']} steps to a {service} failure{lead}"
@@ -151,6 +156,7 @@ TRUST_REASONS = {
     "no_fresh_data": "no fresh data from any service",
     "low_coverage": "not enough of the fleet is reporting",
     "unmapped_services": "some services are not in the service graph",
+    "unclassified_events": "the agent could not classify a large share of events, so its silence is not proof of calm",
     "stale_traffic": "traffic data is stale for part of the fleet",
     "stale_resources": "resource pressure data is stale, so the forecast is blind",
     "no_resource_data": "resource pressure is not collected, so the forecast is blind",
@@ -168,6 +174,8 @@ def trust_caption(b: Bundle, state: str, info: dict) -> str:
             return f"{join_names([d.name for d in b.dark])} silent for {age_text(longest)}"
         return f"{plural(info['dark'], 'service')} went silent"
     if reasons:
+        if reasons[0] == "unclassified_events":
+            return f"agent could not classify {info['unclassifiedShare']:g}% of events"
         if reasons[0] == "unmapped_services":
             return f"{plural(info['unmapped'], 'service')} not in the service graph"
         if reasons[0] == "stale_traffic":
@@ -191,7 +199,9 @@ def day_caption(b: Bundle, state: str, info: dict) -> str:
             return f"{info['repeatRate']:g}% of incidents keep coming back"
         return f"{plural(info['incidentsToday'], 'incident')} today, more than usual"
     if state == "settled":
-        return f"{info.get('spikeAt') or 'earlier'} spike settled, the agent closed it on its own"
+        closed_by_agent = any(i.resolved_by == "agent" for i in b.incidents)
+        tail = "the agent closed it on its own" if closed_by_agent else "it never needed an incident"
+        return f"{info.get('spikeAt') or 'earlier'} spike settled, {tail}"
     if info.get("openNow"):
         return "quiet until the last few minutes"
     closed = [i for i in b.incidents if i.resolved_by == "agent"]
@@ -274,7 +284,7 @@ def ring_value(key: str, state: str, info: dict) -> float:
     if key == "users":
         return clamp(1 - info.get("failingShare", 0) / T.USERS_BROKEN_SHARE_PCT, 0.06)
     if key == "forecast":
-        return 0.35 if info.get("pressure") else clamp(1 - info.get("precursorLevel", 0), 0.06)
+        return 0.35 if info.get("pressure") or info.get("stalled") else clamp(1 - info.get("precursorLevel", 0), 0.06)
     if key == "trust":
         if state == "blind":
             return 0.06
@@ -327,8 +337,11 @@ def forecast_drill(b: Bundle, info: dict) -> dict:
                         + [{"text": s, "done": False} for s in match["remainingSteps"]])
     if info.get("downgraded"):
         out["note"] = f"Shown dimmed: below {T.FORECAST_MIN_PRECISION_PCT}% precision a forecast cannot move the verdict."
+    elif match and info.get("unproven") and info.get("service") == match["service"]:
+        out["note"] = (f"Fewer than {T.FORECAST_MIN_SAMPLES} past predictions: this forecast can ask for a ticket, "
+                       "not for a person right now.")
     pressure = []
-    for name in info.get("pressure", []) + info.get("watch", []):
+    for name in info.get("pressure", []) + info.get("stalled", []) + info.get("watch", []):
         sat = b.service(name).saturation
         pressure.append({"service": name, "memStallPct": sat.mem_stall_pct, "cpuStallPct": sat.cpu_stall_pct,
                          "ioStallPct": sat.io_stall_pct, "memOfRequestPct": sat.mem_of_request_pct, "oomKills": int(sat.oom_kills or 0)})

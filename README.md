@@ -51,7 +51,7 @@ After a merge into `main` the same prototype is built for GitHub Pages by [pages
 
 ## How to reproduce the scenarios
 
-The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 148 tests check them:
+The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 161 tests check them:
 
 - the decision, the states and the reason line on screen for each of the eleven scenarios;
 - both sides of every threshold (0.49% and 0.5%, 29 and 30 minutes of warning, 94% and 95% coverage);
@@ -130,7 +130,7 @@ Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.
 | USE, RED, SIG became a state, not menu sections | yes | design_rationale.md |
 | Main screen plus one level deep | a tile, a ring or the word opens the drill-in | design/drill_*.png |
 | Phone and watch | five indicators and the queue without scrolling at 390×844; three watch faces | design/phone_*.png |
-| At least 8 scenarios with input values and a decision | 11 scenarios, 148 tests | scenarios.md, tests/ |
+| At least 8 scenarios with input values and a decision | 11 scenarios, 161 tests | scenarios.md, tests/ |
 | Mock data for each scenario, with instructions | deterministic, with a check | mock_data/ |
 | A log error spike with no RED impact leads to "nothing" | scenario S06 | scenarios.md |
 | Silent services are not mistaken for healthy ones | scenarios S05 and S08 | scenarios.md |
