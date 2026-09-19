@@ -16,6 +16,9 @@ services:
     restart: unless-stopped
     environment:
       ADAPTER_TENANT: eve-tools
+      # Must match APP_PORT in EVE's .env. `docker ps` shows it: the app container lists that port next to 5000.
+      EVE_APP_URL: ${EVE_APP_URL:-http://app:5000}
+      EVE_NGINX_URL: ${EVE_NGINX_URL:-http://nginx/}
       VITALS_TOKEN: ${VITALS_TOKEN:-}
       # ADAPTER_TARGETS: '[...]'   # JSON list to override the EVE preset in adapter/config.py
     volumes:

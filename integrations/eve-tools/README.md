@@ -23,6 +23,14 @@ docker compose -f docker-compose.yaml -f docker-compose.eve.yaml up -d --build
 
 Run this in the tracker repository with the EVE stack already up: the override joins EVE's network as an external one. Then open `/?live=1`.
 
+Both `-f` files are required. A plain `docker compose up` starts the tracker in demo mode only: no collector, and `/?live=1` answers "live mode is not configured".
+
+Check the app's port first. It listens on `APP_PORT` from EVE's `.env`, which is not in its repository. `docker ps` shows it: the app container lists that port next to the Dockerfile's 5000, for example `3000/tcp, 5000/tcp`. If it is not 5000, say so, otherwise the collector gets a refused connection and reports the app as down:
+
+```bash
+EVE_APP_URL=http://app:3000 docker compose -f docker-compose.yaml -f docker-compose.eve.yaml up -d --build
+```
+
 EVE's compose file declares one named network, `proxy`, and only `nginx` is attached to it. `app` and `db` sit on the project's private default network. So at this step the shim sees one service of two and the screen says **BLIND**: not enough of the fleet is reporting. That is the honest answer, not a bug.
 
 ## Step 1. Let the collector reach the app

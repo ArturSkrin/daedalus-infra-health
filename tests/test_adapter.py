@@ -272,3 +272,15 @@ def test_shim_speaks_the_triage_api_over_http(rig, monkeypatch):
     assert view["source"] == {**view["source"], "mode": "live", "tenant": "eve-tools", "cluster": "docker-compose"}
     assert [i["id"] for i in view["indicators"]] == ["users", "forecast", "trust", "day"]
     assert shim_client.get("/v2/agent/applications", params={"tenant": "someone-else"}).json() == []
+
+
+def test_app_address_is_a_setting_because_eve_keeps_its_port_in_an_untracked_env_file(monkeypatch):
+    from adapter import config
+
+    monkeypatch.delenv("ADAPTER_TARGETS", raising=False)
+    monkeypatch.setenv("EVE_APP_URL", "http://app:3000/")
+    app = next(t for t in config.load().targets if t.name == "app")
+    assert (app.probe, app.vitals) == ("http://app:3000/api/scan/progress", "http://app:3000/internal/vitals")
+
+    monkeypatch.delenv("EVE_APP_URL")
+    assert next(t for t in config.load().targets if t.name == "app").probe == "http://app:5000/api/scan/progress"
