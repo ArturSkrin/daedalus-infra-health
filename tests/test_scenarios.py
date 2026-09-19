@@ -7,7 +7,6 @@ import pytest
 
 from backend.engine import verdict
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MOCK_DIR = ROOT / "mock_data"
 

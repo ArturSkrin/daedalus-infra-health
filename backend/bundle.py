@@ -9,8 +9,7 @@ surprising is recorded in `Bundle.problems` so it can be shown, not swallowed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime
 
 # ----------------------------------------------------------------- coercion ---
 
@@ -322,7 +321,7 @@ def _analytics(raw: dict, bundle: Bundle) -> None:
 
 def normalize(raw: dict) -> Bundle:
     raw = as_dict(raw)
-    now = as_dt(raw.get("now"), timezone.utc) or datetime.now(timezone.utc)
+    now = as_dt(raw.get("now"), UTC) or datetime.now(UTC)
     tenant = text(raw.get("tenant")) or ""
     bundle = Bundle(tenant=tenant, now=now)
 

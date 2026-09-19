@@ -4,7 +4,6 @@ import json
 import sys
 from pathlib import Path
 
-
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 
@@ -14,7 +13,7 @@ if str(ROOT) not in sys.path:
         str(ROOT),
     )
 
-from backend.engine import verdict
+from backend.engine import verdict  # noqa: E402 - runs as a plain script, so the repo root is put on sys.path first
 
 
 def main(

@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import math
 import random
-from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -122,7 +121,7 @@ def make_history(now: datetime, rng: random.Random, err_rate, missing_last=0,
 def make_apps(now: datetime, rng: random.Random, overrides: dict, stale_s=0):
     apps = []
     asof = unix(now) - (stale_s if stale_s else rng.randint(20, 55))
-    for name, tier, blast, rps in SERVICES:
+    for name, _tier, _blast, rps in SERVICES:
         o = overrides.get(name, {})
         err = o.get("errPct", round(rng.uniform(0.1, 0.3), 2))
         app = {
@@ -186,7 +185,7 @@ def make_analytics(precursor_matches):
             "blastRadiusMean": blast,
             "reopenRate": 0.0,
             "incidentRateWeek": round(sum(counts) / len(counts), 2),
-            "weeklyIncidentCounts": dict(zip(WEEKS, counts)),
+            "weeklyIncidentCounts": dict(zip(WEEKS, counts, strict=True)),
         })
     return {"tenant": TENANT, "baselines": baselines, "patterns": PATTERNS,
             "precursorMatches": precursor_matches}

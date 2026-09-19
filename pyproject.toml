@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+extend-exclude = ["frontend", "design"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RET", "PIE"]
+ignore = [
+    "E731",   # small lambdas in test tables read better than named functions
+    "SIM108", # ternaries are not always clearer
+]
+
+[tool.ruff.lint.per-file-ignores]
+"mock_data/generate.py" = ["E501"]  # scenario stories are sentences, not code
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

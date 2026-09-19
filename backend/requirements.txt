@@ -1,3 +1,4 @@
-fastapi>=0.115,<1
-uvicorn[standard]>=0.30,<1
-pytest>=8,<10
+# Runtime only. Test and lint tools live in requirements-dev.txt and stay out of the image.
+fastapi==0.141.1
+pydantic==2.13.5
+uvicorn[standard]==0.53.0

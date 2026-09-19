@@ -174,7 +174,8 @@ def trust_caption(b: Bundle, state: str, info: dict) -> str:
             return f"fresh data from only {info['freshShare']:g}% of traffic"
         return TRUST_REASONS.get(reasons[0], "part of the picture is missing")
     age = oldest_data_age(b)
-    return f"seeing all {b.services_total} services, data is {age_text(age)} old" if age is not None else f"seeing all {b.services_total} services"
+    seeing = f"seeing all {b.services_total} services"
+    return f"{seeing}, data is {age_text(age)} old" if age is not None else seeing
 
 
 def day_caption(b: Bundle, state: str, info: dict) -> str:
@@ -294,7 +295,10 @@ def users_drill(b: Bundle, info: dict) -> dict:
         if not s.rate:
             continue
         down = s.ready is False
-        flag = "bad" if s.rate.err_pct >= T.SERVICE_BROKEN_ERR_PCT or down else "warn" if s.rate.err_pct >= T.SERVICE_AFFECTED_ERR_PCT else "good"
+        if s.rate.err_pct >= T.SERVICE_BROKEN_ERR_PCT or down:
+            flag = "bad"
+        else:
+            flag = "warn" if s.rate.err_pct >= T.SERVICE_AFFECTED_ERR_PCT else "good"
         rows.append({"service": s.name, "tier": s.tier, "errPct": s.rate.err_pct, "reqPerSec": s.rate.rps, "p99Ms": s.rate.p99_ms,
                      "ready": not down, "fresh": s.rate.age_s is not None and s.rate.age_s <= T.FRESH_S,
                      "hitsNext": list(s.called_by), "flag": flag})
@@ -313,7 +317,8 @@ def forecast_drill(b: Bundle, info: dict) -> dict:
     if match:
         facts.append(fact("Pattern", match.get("pattern") or DASH, f"confidence {match['confidence']:.2f}"))
     if info.get("hits", 0) + info.get("misses", 0):
-        facts.append(fact("Agent track record", f"{info['hits']} right, {info['misses']} wrong", f"{shown(info.get('precision'), '%')} precision"))
+        record = f"{info['hits']} right, {info['misses']} wrong"
+        facts.append(fact("Agent track record", record, f"{shown(info.get('precision'), '%')} precision"))
     if info.get("leadMin"):
         facts.append(fact("Usual warning time", f"~{info['leadMin']} min"))
     out: dict = {"facts": facts}

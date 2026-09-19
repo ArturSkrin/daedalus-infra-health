@@ -6,16 +6,40 @@ on:
 
 jobs:
   rules:
-    name: Rules against scenarios
+    name: Rules, API and lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r backend/requirements.txt
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r backend/requirements-dev.txt
+      - run: ruff check .
       - run: python -m pytest -q
+      # the dependency-free path judges can run by hand
       - run: python mock_data/evaluate.py
+
+  contract:
+    name: API contract is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pip install -r backend/requirements.txt
+      - run: python -m backend.export_openapi
+      - run: npm run gen:types
+        working-directory: frontend
+      - name: Fail when openapi.json or api.gen.ts were not regenerated
+        run: git diff --exit-code -- frontend/openapi.json frontend/src/api.gen.ts
 
   frontend:
     name: Frontend build

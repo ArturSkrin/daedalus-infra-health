@@ -1,6 +1,6 @@
 # mock_data
 
-Ten mock data sets, one per scenario in `scenarios.md`. Each file follows the shape of the Triage API responses from the metrics catalog, so the backend reads a mock file and a live core with the same code.
+Eleven mock data sets, one per scenario in `scenarios.md`. Each file follows the shape of the Triage API responses from the metrics catalog, so the backend reads a mock file and a live core with the same code.
 
 ## Files
 
@@ -16,6 +16,7 @@ Ten mock data sets, one per scenario in `scenarios.md`. Each file follows the sh
 | `s08_dark_services.json` | Two services went silent | SCHEDULE |
 | `s09_precursor_imminent.json` | Agent sees a failure 18 minutes out | ACT NOW |
 | `s10_low_precision.json` | Agent is confident but often wrong | ALL CLEAR |
+| `s11_no_history.json` | Core restarted, no history yet | ALL CLEAR, dimmed |
 
 `index.json` lists the scenarios for the switcher in the prototype.
 
@@ -75,16 +76,17 @@ Tapping the verdict word opens "Why this word": the priority rules with the fire
 
 ## How to check the rules without the prototype
 
-The rules live in `backend/engine.py`. `evaluate.py` is a thin command-line wrapper around it and needs only Python 3.12+, no packages.
+The rules live in `backend/engine.py`, the thresholds in `backend/thresholds.py`, and raw JSON is read only in `backend/bundle.py`. All three run on the standard library, so `evaluate.py`, a thin command-line wrapper, needs only Python 3.12+ and no packages.
 
 ```bash
 python mock_data/evaluate.py
 python mock_data/evaluate.py s03     # one scenario with the intermediate numbers
 ```
 
-The same checks run as tests, together with a check that the reason line on screen matches `expected.reason`:
+The same checks run as tests, together with the reason line on screen, both sides of every threshold, 35 kinds of incomplete input, and the HTTP API:
 
 ```bash
+pip install -r backend/requirements-dev.txt
 python -m pytest -q
 ```
 
