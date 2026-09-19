@@ -1,0 +1,48 @@
+# Live mode against EVE Online Tools running under docker compose on the same host.
+#
+#   docker compose -f docker-compose.yaml -f docker-compose.eve.yaml up -d --build
+#
+# The base docker-compose.yaml stays untouched, so the demo scenarios run without EVE.
+#
+# Connectivity: EVE's compose file declares one named network, `proxy` (networks: proxy: name: proxy).
+# It is joined here as an external network, so the EVE stack has to be up first, otherwise compose
+# reports "network proxy declared as external, but could not be found".
+services:
+  collector:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["uvicorn", "adapter.main:app", "--host", "0.0.0.0", "--port", "9000"]
+    restart: unless-stopped
+    environment:
+      ADAPTER_TENANT: eve-tools
+      VITALS_TOKEN: ${VITALS_TOKEN:-}
+      # ADAPTER_TARGETS: '[...]'   # JSON list to override the EVE preset in adapter/config.py
+    volumes:
+      # 24 h of history and the incident list survive a restart of the collector
+      - collector-data:/data
+    networks:
+      - default     # reachable by our backend as http://collector:9000
+      - proxy       # reaches EVE's nginx, and its app once it is attached to this network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    environment:
+      # The collector speaks the Triage API, so live mode needs nothing but its address.
+      TRIAGE_BASE_URL: http://collector:9000
+      TRIAGE_TENANT: eve-tools
+    depends_on:
+      collector:
+        condition: service_healthy
+
+volumes:
+  collector-data:
+
+networks:
+  proxy:
+    external: true
+    name: proxy

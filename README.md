@@ -51,12 +51,13 @@ After a merge into `main` the same prototype is built for GitHub Pages by [pages
 
 ## How to reproduce the scenarios
 
-The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 161 tests check them:
+The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 181 tests check them:
 
 - the decision, the states and the reason line on screen for each of the eleven scenarios;
 - both sides of every threshold (0.49% and 0.5%, 29 and 30 minutes of warning, 94% and 95% coverage);
 - 35 kinds of incomplete data on two scenarios: the backend never crashes and always gives a decision;
-- the HTTP API, the response contract, and live mode against a fake core.
+- the HTTP API, the response contract, and live mode against a fake core;
+- the compose shim: what the tracker finally says when EVE is healthy, unpatched, down, recovering, or restarted.
 
 ```bash
 docker run --rm -v "$PWD:/src" -w /src python:3.12-slim sh -c "pip install -q -r backend/requirements-dev.txt && python -m pytest -q"
@@ -99,6 +100,16 @@ Triage API ───────┘   reads raw     rules and     words, caption
 - **frontend** computes nothing and knows no threshold. Raw values appear only in the drill-in.
 - **live.py** assembles the same five blocks from a real Triage core. Live mode is switched on with `TRIAGE_BASE_URL`, `TRIAGE_TOKEN` and `TRIAGE_TENANT`, after which "Live data" appears in the scenario list. Requests to the core run in parallel, the answer is cached for 20 seconds, and the core's error text is never passed to the client. Without access to the organizers' core this path has not been run on live data.
 
+## Live mode on a real application
+
+The tracker reads a Triage core. For an application that has no Triage agent there is a compose shim in [adapter/](adapter/): a small service that serves the same five `/v2/agent/*` endpoints, built from HTTP probes and from what the app can report about itself, including PSI read from its own cgroup. The backend is not aware of it; live mode is simply pointed at the shim.
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.eve.yaml up -d --build
+```
+
+This wires the tracker to [EVE Online Tools](https://github.com/ArturSkrin/Eve-Online-Tools) running under compose on the same host, over EVE's `proxy` network. The three steps on the EVE side, and what the screen says after each of them (BLIND, then SCHEDULE, then ALL CLEAR), are in [integrations/eve-tools/](integrations/eve-tools/). The shim reports readiness, traffic, errors and resource pressure. It does not do the agent's work: no event classification, no precursors, no RCA. The end-to-end run was checked against a stand-in for EVE on the same network names ([design/live_eve_healthy.png](design/live_eve_healthy.png), [design/live_eve_down.png](design/live_eve_down.png)), not yet against the real EVE stack.
+
 Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.yml](.github/workflows/images.yml).
 
 ## Repository layout
@@ -111,6 +122,8 @@ Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.
 | [design_rationale.md](design_rationale.md) | Why these five, why not others, gaps in the catalog |
 | [metrics_catalog_triage.md](metrics_catalog_triage.md) | The catalog sorted into three groups: changes the decision, explains it, changes nothing |
 | [design/](design/) | PNGs of the main screen for every scenario, the drill-ins, the watch faces |
+| [adapter/](adapter/) | Triage-compatible shim for compose applications without an agent |
+| [integrations/eve-tools/](integrations/eve-tools/) | What to add to EVE Online Tools: a vitals endpoint and a compose override |
 | [backend/](backend/) | FastAPI: bundle, thresholds, engine, presentation, schemas, live, static and OpenAPI export |
 | [frontend/](frontend/) | React, Tailwind, Vite |
 | [tests/](tests/) | pytest: scenarios, threshold boundaries, incomplete data, API |
@@ -130,13 +143,13 @@ Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.
 | USE, RED, SIG became a state, not menu sections | yes | design_rationale.md |
 | Main screen plus one level deep | a tile, a ring or the word opens the drill-in | design/drill_*.png |
 | Phone and watch | five indicators and the queue without scrolling at 390×844; three watch faces | design/phone_*.png |
-| At least 8 scenarios with input values and a decision | 11 scenarios, 161 tests | scenarios.md, tests/ |
+| At least 8 scenarios with input values and a decision | 11 scenarios, 181 tests | scenarios.md, tests/ |
 | Mock data for each scenario, with instructions | deterministic, with a check | mock_data/ |
 | A log error spike with no RED impact leads to "nothing" | scenario S06 | scenarios.md |
 | Silent services are not mistaken for healthy ones | scenarios S05 and S08 | scenarios.md |
 | The metrics catalog sorted into three groups | yes | metrics_catalog_triage.md |
 | Gaps found in the catalog | 9, three submitted for the nomination | design_rationale.md |
-| Implementation on live data | the adapter is ready and tested against a fake core and incomplete data; not run against the organizers' live core | backend/live.py, tests/test_api.py |
+| Implementation on live data | live mode runs end to end on a compose application through the shim (probes, real request counters, PSI from cgroup); not run against the organizers' Triage core | adapter/, integrations/eve-tools/, tests/test_adapter.py |
 
 ## Credits
 

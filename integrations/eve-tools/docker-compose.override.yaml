@@ -1,0 +1,16 @@
+# Put this next to docker-compose.yaml of Eve-Online-Tools. Compose merges it automatically.
+#
+# The EVE stack declares a named network, `proxy`, but only nginx is attached to it; app and db live on the
+# project's private default network, where nothing outside the stack can reach them. The Daedalus collector
+# joins `proxy`, so the app has to be there too.
+#
+# The database stays private on purpose. The collector learns its state from the app's /internal/vitals,
+# so Postgres never has to be reachable from another stack.
+services:
+  app:
+    networks:
+      - default
+      - proxy
+    environment:
+      # optional: require this token on /internal/vitals; set the same value for the collector
+      VITALS_TOKEN: ${VITALS_TOKEN:-}

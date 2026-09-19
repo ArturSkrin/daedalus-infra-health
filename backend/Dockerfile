@@ -9,9 +9,11 @@ WORKDIR /app
 COPY backend/requirements.txt /app/backend/requirements.txt
 
 RUN pip install --no-cache-dir --root-user-action=ignore -r /app/backend/requirements.txt \
-    && useradd --system --uid 10001 --no-create-home tracker
+    && useradd --system --uid 10001 --no-create-home tracker \
+    && mkdir /data && chown tracker /data
 
 COPY backend /app/backend
+COPY adapter /app/adapter
 COPY mock_data /app/mock_data
 
 # The service only reads its own files and answers GETs: no reason to be root.

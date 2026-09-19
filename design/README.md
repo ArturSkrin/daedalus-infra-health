@@ -36,6 +36,12 @@ The drill-in is where raw values are allowed: error rates, stall percentages, p9
 | Can we trust it: agent link, coverage, silent services | [drill_trust_s08.png](drill_trust_s08.png) |
 | How the day went: 24 h of failing requests, what the agent handled | [drill_day_s03.png](drill_day_s03.png) |
 
+## Live mode on a compose application
+
+The same screen fed by the compose shim instead of a mock file, with a stand-in for EVE Online Tools on the shared network.
+
+[live_eve_healthy.png](live_eve_healthy.png) · [live_eve_down.png](live_eve_down.png)
+
 ## Reading the screen
 
 - The four rings are the four vitals, outermost first: Users now, What's brewing, Can we trust it, How the day went. A full green ring is a closed ring. Colour is the decision, never decoration: green nothing, amber schedule, red act now, grey unknown.
