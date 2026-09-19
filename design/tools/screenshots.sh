@@ -15,7 +15,7 @@ shot() { # name url width height
 }
 
 for s in s01_calm s02_release_settled s03_release_regressed s04_memory_pressure s05_agent_disconnected \
-         s06_log_spike s07_outage s08_dark_services s09_precursor_imminent s10_low_precision; do
+         s06_log_spike s07_outage s08_dark_services s09_precursor_imminent s10_low_precision s11_no_history; do
   shot "phone_$s" "$BASE/?scenario=$s" 390 844
 done
 

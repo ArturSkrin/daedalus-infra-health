@@ -2,7 +2,7 @@
 
 Each indicator is described with the same scheme: what the engineer sees, which decision it changes, the threshold, which API fields it is computed from, the horizon, the trust indicator. Fields come from the Triage catalog ([reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md), 2026-09-14). All per-tenant fields are read from `tenantStats.tenants[<tenant>]` on `GET /v2/agent/status`, unless stated otherwise.
 
-The rules below are implemented once, in `backend/engine.py`, and checked against every scenario by `tests/test_scenarios.py`. State codes in the code map to the words here as listed in `mock_data/README.md`.
+The rules below are implemented once, in `backend/engine.py`. Every number in this document is a named constant in `backend/thresholds.py`, and the "How this indicator decides" text on screen is generated from those constants. Raw API responses are read in one place, `backend/bundle.py`, which turns a missing or malformed field into an explicit "not measured" instead of a zero or a crash. The rules are checked by `tests/`: every scenario, both sides of every threshold, and 35 kinds of incomplete input. State codes in the code map to the words here as listed in `mock_data/README.md`.
 
 Three decisions the screen has to suggest:
 
@@ -16,7 +16,7 @@ Plus a fourth, service state **BLIND**: the data cannot be trusted, and the only
 
 ## Shared rules
 
-- **A missing field renders as a dash, not as 0.** Catalog: "Zero is not always zero". Each indicator below names the field that is checked first.
+- **A missing field renders as a dash, not as 0.** Catalog: "Zero is not always zero". Each indicator below names the field that is checked first. This applies to decisions as well as to rendering: an indicator that cannot be measured is in the state "—" (unknown), never in its green state.
 - **Freshness.** Each `golden.*` block on `/v2/agent/applications` has its own `*AsOfUnix`. A block is fresh if `now - asOfUnix <= 300 s` (5 agent windows of 60 s). A stale block is excluded from the formulas, not read as zero.
 - **Tenant.** We show only `tenantStats.tenants[<tenant>]`. If the block is missing, indicator 4 goes to BLIND, and the others are not rendered.
 - **Service weights.** `blastRadius` and `tier` come from `/v2/agent/graph` `nodes[]`. Tier 1 means a service on the user path. These numbers are not shown on screen, they are only a weight.
@@ -38,9 +38,12 @@ Plus a fourth, service state **BLIND**: the data cannot be trusted, and the only
 | 2 | indicator 2 = Broken, or `incidentMetrics.criticalOpen > 0` | ACT NOW |
 | 3 | indicator 3 = Brewing and lead < 30 min and the service is tier 1 | ACT NOW |
 | 4 | indicator 2 = Degraded, or indicator 3 = Brewing, or indicator 5 = Regressed, or `incidentMetrics.warningOpen > 0`, or indicator 4 = Partial | SCHEDULE |
-| 5 | otherwise | ALL CLEAR |
+| 5 | none of the above, but one of indicators 2, 3, 5 could not be judged | ALL CLEAR, dimmed, and the reason line says what is missing |
+| 6 | otherwise | ALL CLEAR |
 
-**Why this way.** ALL CLEAR is reachable only when all four indicators are green. This is the requirement "there must be a state that means nothing needs to be done": it is defined through the absence of grounds, not through a separate metric.
+**Why rule 5 is not SCHEDULE.** An indicator is unknown for one of two reasons. Either collection is broken, and then indicator 4 is already Partial and rule 4 gives SCHEDULE, because a human can fix collection. Or the data simply does not exist yet, as with the 24 h history after a core restart, and then there is nothing to put in a ticket: it heals by itself. A SCHEDULE with no work behind it would teach the engineer to ignore the word. So the decision stays "do nothing", and the screen is honest about the missing part (scenario S11).
+
+**Why this way.** A plain ALL CLEAR is reachable only when all four indicators are green. This is the requirement "there must be a state that means nothing needs to be done": it is defined through the absence of grounds, not through a separate metric.
 
 **API fields.** `incidentMetrics.criticalOpen`, `incidentMetrics.warningOpen` from `GET /v2/agent/incidents?tenant=`. The rest through indicators 2–5.
 
@@ -62,7 +65,7 @@ Plus a fourth, service state **BLIND**: the data cannot be trusted, and the only
 | --- | --- | --- |
 | Fine | `failingShare < 0.5%` and no tier-1 service has `errPct >= 1%` | nothing |
 | Degraded | `0.5% <= failingShare < 5%`, or any tier-1 service has `1% <= errPct < 5%` | schedule; **now**, if the largest `blastRadius` among the affected services is >= 0.5 (in practice: the affected service is on the user path) |
-| Broken | `failingShare >= 5%`, or any tier-1 service has `errPct >= 5%`, or a tier-1 service has `ready = false` | now |
+| Broken | `failingShare >= 5%`, or any tier-1 service has `errPct >= 5%`, or a tier-1 service has `ready = false` (readiness counts even when the traffic data of that service is stale) | now |
 
 **Formula.** Over all records of `GET /v2/agent/applications?tenant=` with a fresh `golden.rateAsOfUnix`:
 
@@ -96,7 +99,8 @@ We take the maximum, not the sum of blastRadius: the values of neighboring servi
 
 | State | Condition | Decision |
 | --- | --- | --- |
-| Clear | no matches and no pressure | nothing |
+| — | no service has fresh resource-pressure data and there is no pattern match: "nothing is brewing" would be a guess | none from this indicator; indicator 4 goes Partial |
+| Clear | no matches and no pressure, with fresh resource data to back it | nothing |
 | Pressure | a precursor with `0.5 <= confidence < 0.7`, or `PSI >= 1%` with no other signs | nothing, a mention in the drill-in |
 | Brewing | a precursor with `confidence >= 0.7` and `matchedSteps/totalSteps >= 0.5`; or `memPsiPct >= 1%` and `memReqPct >= 90%` in the same service; or `oomKills > 0` in a fresh window | schedule; **now**, if the service is tier 1 and `lead < 30 min` |
 
@@ -130,8 +134,8 @@ pressureLevel  = any app with fresh saturationAsOfUnix where
 | State | Condition | Consequence for the rest of the screen |
 | --- | --- | --- |
 | Full | the agent is connected, `serviceCoveragePct >= 95`, `servicesDark = 0`, `unmappedServices = 0`, `freshShare >= 90%` | the other indicators as is |
-| Partial | the agent is connected and (`80 <= coverage < 95`, or `1 <= servicesDark <= 2`, or `unmappedServices > 0`, or `freshShare < 90%`) | indicator 1 cannot give ALL CLEAR, SCHEDULE at minimum; the reason line must name the services explicitly: "scheduler and backup silent for 6 h" |
-| Blind | the tenant is missing from `tenantStats.tenants`, or the cluster agent is not connected, or `coverage < 80`, or `servicesDark >= 3` | indicators 2, 3, 5 are gray; indicator 1 = BLIND |
+| Partial | the agent is connected and (`80 <= coverage < 95`, or `1 <= servicesDark <= 2`, or `unmappedServices > 0`, or `freshShare < 90%`, or fewer than 90% of services have fresh resource-pressure data) | indicator 1 cannot give ALL CLEAR, SCHEDULE at minimum; the reason line must name the services explicitly: "scheduler and backup silent for 6 h" |
+| Blind | the tenant is missing from `tenantStats.tenants`, or the cluster agent is not connected, or the core does not report the agent link and no service has fresh data, or `coverage < 80`, or `servicesDark >= 3` | indicators 2, 3, 5 are gray; indicator 1 = BLIND |
 
 **Why dark services lead to "schedule" and not "nothing".** A service that sends no events may be healthy or dead for collection. The API cannot tell the two apart, so this is work for today or tomorrow, but not a reason to close the app with an easy mind.
 

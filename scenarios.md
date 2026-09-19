@@ -1,6 +1,6 @@
 # scenarios.md: running the five indicators through scenarios
 
-Ten scenarios instead of the minimum eight: the two extra ones catch edge cases (an agent that is often wrong, and a log spike with no impact) where an indicator set breaks most often. Each scenario has the input values of the API fields, the state of each of the five indicators under the rules of `metrics_spec.md`, the expected decision, and what the run revealed.
+Eleven scenarios instead of the minimum eight: the extra ones catch edge cases (an agent that is often wrong, a log spike with no impact, and a core with no history yet) where an indicator set breaks most often. Each scenario has the input values of the API fields, the state of each of the five indicators under the rules of `metrics_spec.md`, the expected decision, and what the run revealed.
 
 Each scenario has a file in `mock_data/` with the same name.
 
@@ -310,6 +310,32 @@ Indicator 5 says Quiet, and that is honest: until 17:41 the day really was quiet
 
 ---
 
+## S11. Core restarted, no history yet
+
+`mock_data/s11_no_history.json`
+
+**Story.** Tuesday, 07:10. The Triage core restarted at 04:00. Everything it sees is healthy, but it has only three hours of history.
+
+**Input values.**
+
+| Field | Value |
+| --- | --- |
+| `signalsHistory` | 38 buckets (3.2 h) instead of 288 |
+| `incidentMetrics.criticalOpen / warningOpen` | 0 / 0 |
+| `golden.errPct` across all services | 0.1–0.3 |
+| `precursorMatches[]` | empty |
+| everything else | normal |
+
+**States.** 2 Fine. 3 Clear. 4 Full. 5 — (fewer than 230 buckets).
+
+**Expected decision: ALL CLEAR, dimmed.** Reason line: "all normal so far; only 3.2 h of history, the day cannot be judged yet".
+
+**Check.** Passed after a fix. The first version of the roll-up ignored an unknown indicator and gave a plain ALL CLEAR here, although the rule says ALL CLEAR needs all four green. The obvious fix, SCHEDULE, is wrong too: there is no work to schedule, the history fills up by itself. The roll-up got rule 5: the decision stays "do nothing", the word is dimmed, and the reason line names what could not be judged.
+
+**What it revealed.** The catalog notes that MTTR, MTTD and open counts live in core memory and reset on restart. The same is true for the 24 h history, so after every core restart the tracker is partly blind for most of a day, and the API gives no restart marker to explain why. A gap candidate. The same review found a second hole of this kind: absent resource-pressure fields were read as "no pressure". That one is a collection problem a human can fix, so it goes to indicator 4 as Partial and gives SCHEDULE.
+
+---
+
 ## Summary
 
 | Scenario | 2 Users | 3 Brewing | 4 Trust | 5 Day | Open | Decision | Decided by |
@@ -324,10 +350,11 @@ Indicator 5 says Quiet, and that is honest: until 17:41 the day really was quiet
 | S08 dark services | Fine | Clear | Partial | Quiet | 0 | SCHEDULE | 4 |
 | S09 failure 18 min out | Fine | Brewing | Full | Quiet | 0 | ACT NOW | 3 |
 | S10 agent is wrong | Fine | Pressure | Full | Quiet | 0 | ALL CLEAR | none |
+| S11 no history yet | Fine | Clear | Full | — | 0 | ALL CLEAR, dimmed | none |
 
 **Coverage.** Each of the three decisions occurs at least twice. Each of indicators 2–5 is the deciding one at least once. Indicator 1 never decides on its own, it only rolls up, and that is correct.
 
-**How to reproduce.** Each scenario is a file in `mock_data/`, and `mock_data/evaluate.py` implements the rules of `metrics_spec.md` and compares the result with the expected one. The data run caught two errors that the paper run missed (S03 and S07), so the table above reflects the state after both runs.
+**How to reproduce.** Each scenario is a file in `mock_data/`. The rules of `metrics_spec.md` live in `backend/engine.py`; `mock_data/evaluate.py` runs them over every scenario and compares the result with the expected one, and `tests/` does the same plus both sides of every threshold. The data run caught two errors that the paper run missed (S03 and S07), so the table above reflects the state after both runs.
 
 **What changed in `metrics_spec.md` after the run.**
 
@@ -337,8 +364,12 @@ Indicator 5 says Quiet, and that is honest: until 17:41 the day really was quiet
 4. The Settled state in indicator 5 requires zero open incidents (S07, data).
 5. The Partial state in indicator 4 got a mandatory reason line with the names of the dark services (S08): without names, "schedule" has no addressee.
 6. The rule that downgrades a prediction at low precision is fixed as part of indicator 3, not as a separate indicator (S10).
+7. An indicator that cannot be judged no longer passes as green: the roll-up got rule 5, ALL CLEAR dimmed (S11, code review).
+8. Absent resource-pressure data makes indicator 3 unknown and indicator 4 Partial instead of reading as "no pressure" (code review).
+9. A tier-1 service that is not ready is Broken even when its traffic data is stale (boundary tests).
 
 **Gap candidates revealed by the run** (they extend section 5 in `metrics_catalog_triage.md`).
 
 - There is no expected event interval per service, so a batch service cannot be told apart from a dead one (S08).
 - `predictionAvgLeadMs` is an average per tenant, not per pattern (S09).
+- There is no core restart marker, so a short history and reset counters cannot be explained on screen (S11).

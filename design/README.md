@@ -18,6 +18,7 @@ All five indicators and the queue fit without scrolling.
 | S08 Two services went silent | SCHEDULE | [phone_s08_dark_services.png](phone_s08_dark_services.png) |
 | S09 Agent sees a failure 18 minutes out | ACT NOW | [phone_s09_precursor_imminent.png](phone_s09_precursor_imminent.png) |
 | S10 Agent is confident but often wrong | ALL CLEAR | [phone_s10_low_precision.png](phone_s10_low_precision.png) |
+| S11 Core restarted, no history yet | ALL CLEAR, dimmed | [phone_s11_no_history.png](phone_s11_no_history.png) |
 
 ## Main screen, desktop, with the three watch faces
 
