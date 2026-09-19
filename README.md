@@ -1,72 +1,72 @@
 # daedalus-infra-health
 
-Infra Health Tracker для хакатону «Self-Aware Infrastructure». Фітнес-трекер для інфраструктури: не дашборд, з якого інженер сам вичитує причину, а екран, який показує рішення, вже ухвалене агентом Triage, і підстави йому вірити.
+Infra Health Tracker for the "Self-Aware Infrastructure" hackathon. A fitness tracker for infrastructure: not a dashboard the engineer reads a cause from, but a screen that shows the decision the Triage agent has already made, and the grounds to believe it.
 
-Застосунок, код і документи англійською, бо каталог метрик і еталонний екран організаторів теж англійські. Цей файл українською.
+Українська версія: [README.uk.md](README.uk.md).
 
-![Головний екран, зріз S07](design/desktop_s07_outage.png)
+![Main screen, scenario S07](design/desktop_s07_outage.png)
 
-## Мета
+## Goal
 
-Інженер відкриває трекер вранці і після релізу. За кілька секунд він має побачити одне з трьох:
+The engineer opens the tracker in the morning and after a release. Within seconds they should see one of three:
 
-| Слово на екрані | Рішення |
+| Word on screen | Decision |
 | --- | --- |
-| **ALL CLEAR** | нічого не робити |
-| **SCHEDULE** | запланувати роботу, не сьогодні |
-| **ACT NOW** | втрутитись зараз |
+| **ALL CLEAR** | do nothing |
+| **SCHEDULE** | plan the work, not today |
+| **ACT NOW** | intervene now |
 
-Плюс службовий стан **BLIND**: даним не можна вірити, спочатку полагодити збір.
+Plus a service state, **BLIND**: the data cannot be trusted, fix collection first.
 
-На головному екрані пʼять показників, і жоден із них не є сирою метрикою:
+The main screen has five indicators, and none of them is a raw metric:
 
-1. **Fleet state**: одне слово, згортка чотирьох інших за правилами пріоритету.
-2. **Users now**: чи страждають люди прямо зараз (RED як стан).
-3. **What's brewing**: єдиний показник із майбутнього (передвісники агента плюс тиск ресурсів).
-4. **Can we trust it**: чи є потік даних і чи повний він.
-5. **How the day went**: цінність у спокійний день, а також тиха регресія після релізу.
+1. **Fleet state**: one word, a roll-up of the other four by priority rules.
+2. **Users now**: are people hurting right now (RED as a state).
+3. **What's brewing**: the only indicator from the future (the agent's precursors plus resource pressure).
+4. **Can we trust it**: is there a data stream, and is it complete.
+5. **How the day went**: the value on a quiet day, and also the quiet regression after a release.
 
-## Як переглянути прототип
+## How to view the prototype
 
-Потрібен лише Docker.
+Only Docker is needed.
 
 ```bash
 docker compose up -d --build
 ```
 
-Після цього трекер відкривається на http://localhost:8080. Якщо порт зайнятий, задайте інший:
+The tracker opens at http://localhost:8080. If the port is taken, set another one:
 
 ```bash
 TRACKER_PORT=8088 docker compose up -d --build
 ```
 
-Зріз перемикається списком у шапці або параметром URL. Drill-in відкривається дотиком до плитки, кільця або слова, а також параметром `drill`:
+Switch scenarios with the list in the header or with a URL parameter. The drill-in opens by tapping a tile, a ring or the word, and also with the `drill` parameter:
 
 ```
 /?scenario=s07_outage
 /?scenario=s09_precursor_imminent&drill=forecast
 ```
 
-Значення `drill`: `users`, `forecast`, `trust`, `day`, `verdict`. Готові PNG усіх одинадцяти зрізів і пʼяти drill-in лежать у [design/](design/).
+Values of `drill`: `users`, `forecast`, `trust`, `day`, `verdict`. PNG exports of all eleven scenarios and five drill-ins are in [design/](design/).
 
-Після злиття в `main` той самий прототип збирається на GitHub Pages воркфлоу [pages.yml](.github/workflows/pages.yml). Там немає бекенду, тому моделі екрана експортуються в статичний JSON тим самим engine, і фронт читає їх замість API.
+After a merge into `main` the same prototype is built for GitHub Pages by [pages.yml](.github/workflows/pages.yml). There is no backend there, so the screen models are exported to static JSON by the same engine, and the frontend reads them instead of the API.
 
-## Як відтворити сценарії
+## How to reproduce the scenarios
 
-Правила пʼяти показників живуть в одному місці, [backend/engine.py](backend/engine.py), а всі пороги в [backend/thresholds.py](backend/thresholds.py). Їх перевіряють 148 тестів:
+The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 148 tests check them:
 
-- рішення, стани і рядок причини на екрані для кожного з одинадцяти зрізів;
-- обидва боки кожного порога (0.49% і 0.5%, 29 і 30 хвилин попередження, 94% і 95% покриття);
-- 35 видів неповних даних на двох зрізах: бекенд жодного разу не падає і завжди дає рішення;
-- HTTP API, контракт відповіді, живий режим проти підробленого core.
+- the decision, the states and the reason line on screen for each of the eleven scenarios;
+- both sides of every threshold (0.49% and 0.5%, 29 and 30 minutes of warning, 94% and 95% coverage);
+- 35 kinds of incomplete data on two scenarios: the backend never crashes and always gives a decision;
+- the HTTP API, the response contract, and live mode against a fake core.
 
 ```bash
 docker run --rm -v "$PWD:/src" -w /src python:3.12-slim sh -c "pip install -q -r backend/requirements-dev.txt && python -m pytest -q"
 ```
 
-У Git Bash на Windows додайте перед командою `MSYS_NO_PATHCONV=1`, інакше шлях `/src` буде перетворено.
+In Git Bash on Windows put `MSYS_NO_PATHCONV=1` in front of the command, otherwise the `/src` path gets converted.
 
-Те саме таблицею, без Docker, на Python 3.12+ без залежностей:
+The same as a table, without Docker, on Python 3.12+ with no packages:
 
 ```bash
 python mock_data/evaluate.py
@@ -82,63 +82,64 @@ s07_outage                broken      clear       full        quiet         act_
 11/11 scenarios match metrics_spec.md
 ```
 
-Один зріз із проміжними числами: `python mock_data/evaluate.py s03`. Перегенерувати мок-дані: `python mock_data/generate.py`.
+One scenario with the intermediate numbers: `python mock_data/evaluate.py s03`. Regenerate the mock data: `python mock_data/generate.py`.
 
-## Архітектура
+## Architecture
 
 ```
 mock_data/*.json ─┐
-                  ├─► backend/engine.py ─► backend/presentation.py ─► /api ─► frontend (React)
-Triage API ───────┘     правила і пороги      слова, підписи, drill-in          лише рендер
+                  ├─► bundle.py ─► engine.py ─► presentation.py ─► /api ─► frontend (React)
+Triage API ───────┘   reads raw     rules and     words, captions,          renders only
+                      JSON          thresholds    drill-in
 ```
 
-- **bundle.py** єдиний читає сирий JSON від Triage. Каталог попереджає, що core опускає поля, коли нема чого звітувати, тому пропущене або зіпсоване поле тут стає явним «не виміряно», а не нулем і не винятком.
-- **thresholds.py** тримає всі пороги під іменами зі специфікації. З них же генерується текст «How this indicator decides» на екрані.
-- **engine.py** вирішує. Приймає нормалізований Bundle і повертає стани чотирьох показників, рішення, правило, яке спрацювало, і всі факти для формулювань. Показник, який неможливо виміряти, має стан «unknown», а не зелений.
-- **presentation.py** перекладає рішення на людську мову: слово, рядок причини, підписи плиток, заповнення кілець, вміст drill-in, чергу. Порогів тут немає, і рішень він повторно не виводить.
-- **schemas.py** описує контракт відповіді. FastAPI перевіряє ним кожну відповідь, а типи фронту в `frontend/src/api.gen.ts` генеруються з OpenAPI командою `npm run gen:types`. CI падає, якщо згенеровані файли відстали від коду.
-- **frontend** нічого не рахує і не знає жодного порога. Сирі величини зʼявляються лише в drill-in.
-- **live.py** збирає ті самі пʼять блоків зі справжнього Triage. Живий режим вмикається змінними `TRIAGE_BASE_URL`, `TRIAGE_TOKEN`, `TRIAGE_TENANT`, після чого у списку зрізів зʼявляється пункт Live data. Запити до core йдуть паралельно, відповідь кешується на 20 секунд, а текст помилки core клієнту не віддається. Без доступу до core організаторів цей шлях не перевірено на живих даних.
+- **bundle.py** is the only module that reads raw Triage JSON. The catalog warns that the core omits fields it has nothing to report for, so a missing or malformed field becomes an explicit "not measured" here, not a zero and not an exception.
+- **thresholds.py** holds every threshold under the names used in the spec. The "How this indicator decides" text on screen is generated from the same numbers.
+- **engine.py** decides. It takes the normalised Bundle and returns the states of the four indicators, the decision, the rule that fired, and every fact the wording needs. An indicator that cannot be measured is "unknown", never green.
+- **presentation.py** turns the decision into human language: the word, the reason line, tile captions, ring fill, drill-in content, the queue. It holds no thresholds and never re-derives a decision.
+- **schemas.py** is the response contract. FastAPI validates every response against it, and the frontend types in `frontend/src/api.gen.ts` are generated from the OpenAPI document with `npm run gen:types`. CI fails when the generated files lag behind the code.
+- **frontend** computes nothing and knows no threshold. Raw values appear only in the drill-in.
+- **live.py** assembles the same five blocks from a real Triage core. Live mode is switched on with `TRIAGE_BASE_URL`, `TRIAGE_TOKEN` and `TRIAGE_TENANT`, after which "Live data" appears in the scenario list. Requests to the core run in parallel, the answer is cached for 20 seconds, and the core's error text is never passed to the client. Without access to the organizers' core this path has not been run on live data.
 
-Деплой у Kubernetes описано в [k8s/](k8s/), образи збирає [images.yml](.github/workflows/images.yml).
+Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.yml](.github/workflows/images.yml).
 
-## Структура репозиторію
+## Repository layout
 
-| Шлях | Що містить |
+| Path | What it holds |
 | --- | --- |
-| [metrics_spec.md](metrics_spec.md) | Пʼять показників: вплив на рішення, пороги, поля API і формули, горизонт, індикатор довіри, drill-in |
-| [scenarios.md](scenarios.md) | Десять зрізів із вхідними значеннями, станами, очікуваним рішенням і тим, що виявив прогін |
-| [mock_data/](mock_data/) | JSON на кожен зріз у формі Triage API, генератор, перевірка правил, інструкція |
-| [design_rationale.md](design_rationale.md) | Чому саме ці пʼять, чому не інші, прогалини в каталозі |
-| [metrics_catalog_triage.md](metrics_catalog_triage.md) | Розбір каталогу на три категорії: змінює рішення, пояснює, не змінює нічого |
-| [design/](design/) | PNG головного екрана для всіх зрізів, drill-in, грані годинника |
-| [backend/](backend/) | FastAPI: bundle, thresholds, engine, presentation, schemas, live, експорт статичних моделей і OpenAPI |
+| [metrics_spec.md](metrics_spec.md) | The five indicators: effect on the decision, thresholds, API fields and formulas, horizon, trust indicator, drill-in |
+| [scenarios.md](scenarios.md) | Eleven scenarios with input values, states, the expected decision, and what each run revealed |
+| [mock_data/](mock_data/) | One JSON per scenario in the shape of the Triage API, the generator, the rule check, instructions |
+| [design_rationale.md](design_rationale.md) | Why these five, why not others, gaps in the catalog |
+| [metrics_catalog_triage.md](metrics_catalog_triage.md) | The catalog sorted into three groups: changes the decision, explains it, changes nothing |
+| [design/](design/) | PNGs of the main screen for every scenario, the drill-ins, the watch faces |
+| [backend/](backend/) | FastAPI: bundle, thresholds, engine, presentation, schemas, live, static and OpenAPI export |
 | [frontend/](frontend/) | React, Tailwind, Vite |
-| [tests/](tests/) | pytest: зрізи, межі порогів, неповні дані, API |
-| [k8s/](k8s/) | Маніфести для кластера |
-| [reference/](reference/) | Оригінальний каталог метрик Triage від організаторів |
+| [tests/](tests/) | pytest: scenarios, threshold boundaries, incomplete data, API |
+| [k8s/](k8s/) | Cluster manifests |
+| [reference/](reference/) | The original Triage metrics catalog from the organizers |
 
-## Чекліст відповідності вимогам
+## Requirements checklist
 
-| Вимога | Стан | Де |
+| Requirement | Status | Where |
 | --- | --- | --- |
-| Не більше 5 показників на головному екрані | рівно 5; черга є списком, не показником; тест перевіряє кількість | metrics_spec.md, tests/ |
-| Для кожного показника: яке рішення змінює, поріг, поля API | так | metrics_spec.md |
-| Хоча б один показник із горизонтом у майбутнє | What's brewing через `precursorMatches` і PSI | metrics_spec.md, розділ 3 |
-| Видно, коли даним не можна довіряти | Can we trust it, стан BLIND, пілюля джерела і віку даних у шапці | design/phone_s05_agent_disconnected.png |
-| Існує стан «все гаразд» | ALL CLEAR у зрізах S01, S02, S06, S10; приглушений у S11 | design/phone_s01_calm.png |
-| Без назв фреймворку і сирих величин на головному екрані | errPct, PSI, p99, blastRadius лише в drill-in | design/drill_users_s07.png |
-| USE, RED, SIG перетворені на стан, а не на розділи | так | design_rationale.md |
-| Головний екран плюс один рівень углиб | плитка, кільце або слово відкривають drill-in | design/drill_*.png |
-| Телефон і годинник | пʼять показників і черга без прокрутки на 390×844; три грані годинника | design/phone_*.png |
-| Мінімум 8 зрізів із вхідними значеннями і рішенням | 11 зрізів, 148 тестів | scenarios.md, tests/ |
-| Мок-дані на кожен зріз з інструкцією | детерміновані, з перевіркою | mock_data/ |
-| Сплеск log errors без RED-впливу веде до «нічого» | зріз S06 | scenarios.md |
-| Тихі сервіси не плутаються зі здоровими | зрізи S05 і S08 | scenarios.md |
-| Розбір каталогу метрик на три категорії | так | metrics_catalog_triage.md |
-| Виявлені прогалини в каталозі | 9, три винесено на номінацію | design_rationale.md |
-| Реалізація на живих даних | адаптер готовий і перевірений на підробленому core та на неповних даних; на живому core організаторів не перевірено | backend/live.py, tests/test_api.py |
+| No more than 5 indicators on the main screen | exactly 5; the queue is a list, not an indicator; a test checks the count | metrics_spec.md, tests/ |
+| For each indicator: which decision it changes, the threshold, the API fields | yes | metrics_spec.md |
+| At least one indicator with a horizon in the future | What's brewing, through `precursorMatches` and PSI | metrics_spec.md, section 3 |
+| It is visible when the data cannot be trusted | Can we trust it, the BLIND state, the source and data-age pill in the header | design/phone_s05_agent_disconnected.png |
+| A state that means "all good" exists | ALL CLEAR in S01, S02, S06, S10; dimmed in S11 | design/phone_s01_calm.png |
+| No framework names or raw values on the main screen | errPct, PSI, p99, blastRadius only in the drill-in; a test checks it | design/drill_users_s07.png |
+| USE, RED, SIG became a state, not menu sections | yes | design_rationale.md |
+| Main screen plus one level deep | a tile, a ring or the word opens the drill-in | design/drill_*.png |
+| Phone and watch | five indicators and the queue without scrolling at 390×844; three watch faces | design/phone_*.png |
+| At least 8 scenarios with input values and a decision | 11 scenarios, 148 tests | scenarios.md, tests/ |
+| Mock data for each scenario, with instructions | deterministic, with a check | mock_data/ |
+| A log error spike with no RED impact leads to "nothing" | scenario S06 | scenarios.md |
+| Silent services are not mistaken for healthy ones | scenarios S05 and S08 | scenarios.md |
+| The metrics catalog sorted into three groups | yes | metrics_catalog_triage.md |
+| Gaps found in the catalog | 9, three submitted for the nomination | design_rationale.md |
+| Implementation on live data | the adapter is ready and tested against a fake core and incomplete data; not run against the organizers' live core | backend/live.py, tests/test_api.py |
 
-## Подяки
+## Credits
 
-Дизайн-система фронту (тема, кільця, спарклайн) походить із репозиторію [AndriiShvaika/Daedalus-Hackathon-Front](https://github.com/AndriiShvaika/Daedalus-Hackathon-Front). Бекенд на FastAPI, тести і Docker-збірку започатковано в гілці `feat/web-demo`.
+The frontend design system (theme, rings, sparkline) comes from [AndriiShvaika/Daedalus-Hackathon-Front](https://github.com/AndriiShvaika/Daedalus-Hackathon-Front). The FastAPI backend, the tests and the Docker build were started in the `feat/web-demo` branch.
