@@ -34,12 +34,14 @@ Plus a fourth, service state **BLIND**: the data cannot be trusted, and the only
 
 | # | Condition | Word |
 | --- | --- | --- |
-| 1 | indicator 4 = Blind | BLIND |
+| 1 | indicator 4 = Blind, unless it is blind only for low coverage while the part that does report is fresh and already Broken (or has a critical incident open): then rule 2 applies and the word is dimmed | BLIND |
 | 2 | indicator 2 = Broken, or `incidentMetrics.criticalOpen > 0` | ACT NOW |
 | 3 | indicator 3 = Brewing and lead < 30 min and the service is tier 1 | ACT NOW |
 | 4 | indicator 2 = Degraded, or indicator 3 = Brewing, or indicator 5 = Regressed, or `incidentMetrics.warningOpen > 0`, or indicator 4 = Partial | SCHEDULE |
 | 5 | none of the above, but one of indicators 2, 3, 5 could not be judged | ALL CLEAR, dimmed, and the reason line says what is missing |
 | 6 | otherwise | ALL CLEAR |
+
+**Why rule 1 has an exception.** Partial evidence cannot acquit, so low coverage never gives ALL CLEAR. It can convict: a user-path service we do see failing is failing, whatever the unseen rest is doing. A disconnected agent is different, because there the data itself is stale and proves nothing about now. We found this when the first real application was wired in: its app went down, its database became invisible with it, coverage fell under 80%, and the screen said BLIND over an obvious outage.
 
 **Why rule 5 is not SCHEDULE.** An indicator is unknown for one of two reasons. Either collection is broken, and then indicator 4 is already Partial and rule 4 gives SCHEDULE, because a human can fix collection. Or the data simply does not exist yet, as with the 24 h history after a core restart, and then there is nothing to put in a ticket: it heals by itself. A SCHEDULE with no work behind it would teach the engineer to ignore the word. So the decision stays "do nothing", and the screen is honest about the missing part (scenario S11).
 

@@ -452,7 +452,9 @@ def source_block(b: Bundle, mode: str) -> dict:
 
 def build_view(data: dict, result: dict, mode: str = "demo") -> dict:
     b = normalize(data)
-    dim = "partial" if result["states"]["trust"] == "partial" else "unverified" if result["trigger"] == "calm_unverified" else None
+    # trust can be blind here only when the visible part of the fleet is already broken (engine: evidence can convict)
+    unseen = result["states"]["trust"] in ("partial", "blind")
+    dim = "partial" if unseen else "unverified" if result["trigger"] == "calm_unverified" else None
     view = {
         "source": source_block(b, mode),
         "decision": {

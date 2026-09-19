@@ -375,6 +375,10 @@ Four more came from a mock defense, where one of us played the mentor and attack
 12. A 40% CPU stall on checkout gave Pressure and ALL CLEAR, because only memory could reach Brewing, and the agent opens no incident for resource pressure. Any resource stalled 10% of the time is now Brewing.
 13. With 40% of events unclassified by the agent the screen stayed ALL CLEAR. From 20% indicator 4 is now Partial. `snrPct` was tried for the same role and rejected: it has no baseline.
 
+One more came from wiring the first real application, EVE Online Tools, to the tracker.
+
+14. With the app down its database became invisible too, coverage fell under 80%, and BLIND outranked an obvious outage. Rule 1 got an exception: blind for low coverage only, with the visible part fresh and already Broken, gives ACT NOW, dimmed. A disconnected agent still convicts nobody.
+
 The same session found three limits we did not fix, and we name them instead: traffic dropping to zero with no errors is invisible (no per-service rate baseline), a regression older than 24 h becomes the norm (the API keeps 24 h of history), and latency with no errors is invisible (no p99 baseline).
 
 **Gap candidates revealed by the run** (they extend section 5 in `metrics_catalog_triage.md`).

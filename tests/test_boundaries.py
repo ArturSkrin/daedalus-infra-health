@@ -206,3 +206,23 @@ def test_settled_spike_does_not_credit_the_agent_for_an_incident_that_never_exis
     view = build_view(calm, verdict(calm))
     assert "never needed an incident" in view["decision"]["reason"]
     assert "agent closed" not in view["decision"]["reason"]
+
+
+# --- found while wiring the first real application to the tracker -------------------
+
+def test_partial_evidence_can_convict_but_cannot_acquit(calm):
+    """Too little of the fleet reports. If what we do see is fine: BLIND. If it is already broken: ACT NOW."""
+    tenant_of(calm).update(serviceCoveragePct=60, servicesDark=1)
+    assert verdict(calm)["verdict"] == "blind"
+
+    set_errors(calm, 38.0, only="checkout")
+    result = verdict(calm)
+    assert (result["verdict"], result["trigger"]) == ("act_now", "users_broken")
+    assert result["states"]["trust"] == "blind"
+
+
+def test_a_disconnected_agent_convicts_nobody(calm):
+    """There the data itself is stale, so a broken service in it proves nothing about now."""
+    set_errors(calm, 38.0, only="checkout")
+    calm["status"]["clusterAgentStats"][calm["tenant"]]["connected"] = False
+    assert verdict(calm)["verdict"] == "blind"

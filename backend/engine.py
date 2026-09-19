@@ -259,9 +259,21 @@ def day(b: Bundle) -> tuple[str, dict]:
 
 # ----------------------------------------------------------- 1. Fleet state ---
 
+def _visible_part_is_broken(b: Bundle, trust_info: dict) -> bool:
+    """Blind only because too little of the fleet reports, while what does report is fresh and already broken.
+
+    Partial evidence cannot acquit, so it never gives ALL CLEAR. It can convict: a user-path service we do see
+    failing is failing, whatever the unseen rest is doing. A disconnected agent is different: there the data
+    itself is stale, so nothing it says counts.
+    """
+    if trust_info["reasons"] != ["low_coverage"]:
+        return False
+    return users(b)[0] == "broken" or b.critical_open > 0
+
+
 def evaluate(b: Bundle) -> dict:
     trust_state, trust_info = trust(b)
-    if trust_state == "blind":
+    if trust_state == "blind" and not _visible_part_is_broken(b, trust_info):
         return {"verdict": "blind", "trigger": "trust_blind", "decidedBy": "trust",
                 "states": {"users": UNKNOWN, "forecast": UNKNOWN, "trust": trust_state, "day": UNKNOWN},
                 "detail": {"trust": trust_info}, "problems": b.problems}
