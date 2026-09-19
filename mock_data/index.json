@@ -58,5 +58,11 @@
     "title": "Agent is confident but often wrong",
     "file": "s10_low_precision.json",
     "expected": "all_clear"
+  },
+  {
+    "id": "s11_no_history",
+    "title": "Core restarted, no history yet",
+    "file": "s11_no_history.json",
+    "expected": "all_clear"
   }
 ]

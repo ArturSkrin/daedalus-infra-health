@@ -1,0 +1,1088 @@
+{
+  "scenario": "s11_no_history",
+  "title": "Core restarted, no history yet",
+  "tenant": "digital-purchases",
+  "now": "2026-09-22T07:10:00+03:00",
+  "story": "Tuesday, 07:10. The Triage core restarted at 04:00. Everything it sees is healthy, but it has only three hours of history.",
+  "expected": {
+    "verdict": "all_clear",
+    "reason": "all normal so far; only 3.2 h of history, the day cannot be judged yet",
+    "states": {
+      "users": "ok",
+      "forecast": "clear",
+      "trust": "full",
+      "day": "unknown"
+    }
+  },
+  "status": {
+    "generatedAt": "2026-09-22T07:10:00+03:00",
+    "tenantStats": {
+      "tenants": {
+        "digital-purchases": {
+          "services": 12,
+          "serviceCoveragePct": 100,
+          "servicesDark": 0,
+          "snrPct": 0.6,
+          "resolutionRatePct": 96,
+          "predictionPrecisionPct": 78,
+          "predictionHits": 31,
+          "predictionMisses": 9,
+          "predictionAvgLeadMs": 2460000,
+          "precursorCoveragePct": 71,
+          "eventsPerIncident": 143,
+          "sampledIncidents": 0,
+          "events": {
+            "noise": 1840,
+            "signal": 11,
+            "incident": 0,
+            "unknown": 0,
+            "drift": 0
+          },
+          "signalsByType": {
+            "log": 6,
+            "red": 0,
+            "use": 2,
+            "k8s": 3
+          },
+          "signalsHistory": [
+            {
+              "t": "2026-09-22T04:00:00+03:00",
+              "requests": 286198,
+              "requestErrors": 606,
+              "signal": 2,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-22T04:05:00+03:00",
+              "requests": 293999,
+              "requestErrors": 547,
+              "signal": 0,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-22T04:10:00+03:00",
+              "requests": 289720,
+              "requestErrors": 551,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-22T04:15:00+03:00",
+              "requests": 299569,
+              "requestErrors": 658,
+              "signal": 1,
+              "noise": 51
+            },
+            {
+              "t": "2026-09-22T04:20:00+03:00",
+              "requests": 299586,
+              "requestErrors": 557,
+              "signal": 0,
+              "noise": 35
+            },
+            {
+              "t": "2026-09-22T04:25:00+03:00",
+              "requests": 294096,
+              "requestErrors": 637,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-22T04:30:00+03:00",
+              "requests": 294680,
+              "requestErrors": 571,
+              "signal": 2,
+              "noise": 57
+            },
+            {
+              "t": "2026-09-22T04:35:00+03:00",
+              "requests": 306902,
+              "requestErrors": 661,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-22T04:40:00+03:00",
+              "requests": 298445,
+              "requestErrors": 626,
+              "signal": 2,
+              "noise": 62
+            },
+            {
+              "t": "2026-09-22T04:45:00+03:00",
+              "requests": 311447,
+              "requestErrors": 562,
+              "signal": 0,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-22T04:50:00+03:00",
+              "requests": 306161,
+              "requestErrors": 634,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-22T04:55:00+03:00",
+              "requests": 304739,
+              "requestErrors": 598,
+              "signal": 1,
+              "noise": 40
+            },
+            {
+              "t": "2026-09-22T05:00:00+03:00",
+              "requests": 330458,
+              "requestErrors": 722,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-22T05:05:00+03:00",
+              "requests": 319245,
+              "requestErrors": 645,
+              "signal": 1,
+              "noise": 56
+            },
+            {
+              "t": "2026-09-22T05:10:00+03:00",
+              "requests": 329893,
+              "requestErrors": 641,
+              "signal": 2,
+              "noise": 39
+            },
+            {
+              "t": "2026-09-22T05:15:00+03:00",
+              "requests": 316645,
+              "requestErrors": 619,
+              "signal": 1,
+              "noise": 58
+            },
+            {
+              "t": "2026-09-22T05:20:00+03:00",
+              "requests": 341926,
+              "requestErrors": 728,
+              "signal": 2,
+              "noise": 49
+            },
+            {
+              "t": "2026-09-22T05:25:00+03:00",
+              "requests": 319319,
+              "requestErrors": 622,
+              "signal": 2,
+              "noise": 50
+            },
+            {
+              "t": "2026-09-22T05:30:00+03:00",
+              "requests": 327924,
+              "requestErrors": 664,
+              "signal": 1,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-22T05:35:00+03:00",
+              "requests": 324420,
+              "requestErrors": 712,
+              "signal": 2,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-22T05:40:00+03:00",
+              "requests": 351266,
+              "requestErrors": 653,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-22T05:45:00+03:00",
+              "requests": 355034,
+              "requestErrors": 745,
+              "signal": 1,
+              "noise": 59
+            },
+            {
+              "t": "2026-09-22T05:50:00+03:00",
+              "requests": 342747,
+              "requestErrors": 708,
+              "signal": 1,
+              "noise": 41
+            },
+            {
+              "t": "2026-09-22T05:55:00+03:00",
+              "requests": 340067,
+              "requestErrors": 711,
+              "signal": 1,
+              "noise": 44
+            },
+            {
+              "t": "2026-09-22T06:00:00+03:00",
+              "requests": 363636,
+              "requestErrors": 736,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-22T06:05:00+03:00",
+              "requests": 349073,
+              "requestErrors": 743,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-22T06:10:00+03:00",
+              "requests": 346295,
+              "requestErrors": 636,
+              "signal": 2,
+              "noise": 55
+            },
+            {
+              "t": "2026-09-22T06:15:00+03:00",
+              "requests": 365226,
+              "requestErrors": 683,
+              "signal": 1,
+              "noise": 36
+            },
+            {
+              "t": "2026-09-22T06:20:00+03:00",
+              "requests": 371691,
+              "requestErrors": 757,
+              "signal": 0,
+              "noise": 38
+            },
+            {
+              "t": "2026-09-22T06:25:00+03:00",
+              "requests": 356651,
+              "requestErrors": 664,
+              "signal": 0,
+              "noise": 48
+            },
+            {
+              "t": "2026-09-22T06:30:00+03:00",
+              "requests": 364573,
+              "requestErrors": 666,
+              "signal": 1,
+              "noise": 64
+            },
+            {
+              "t": "2026-09-22T06:35:00+03:00",
+              "requests": 370329,
+              "requestErrors": 762,
+              "signal": 0,
+              "noise": 61
+            },
+            {
+              "t": "2026-09-22T06:40:00+03:00",
+              "requests": 378358,
+              "requestErrors": 754,
+              "signal": 1,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-22T06:45:00+03:00",
+              "requests": 360763,
+              "requestErrors": 707,
+              "signal": 2,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-22T06:50:00+03:00",
+              "requests": 392530,
+              "requestErrors": 830,
+              "signal": 2,
+              "noise": 54
+            },
+            {
+              "t": "2026-09-22T06:55:00+03:00",
+              "requests": 381501,
+              "requestErrors": 726,
+              "signal": 0,
+              "noise": 45
+            },
+            {
+              "t": "2026-09-22T07:00:00+03:00",
+              "requests": 377286,
+              "requestErrors": 745,
+              "signal": 2,
+              "noise": 47
+            },
+            {
+              "t": "2026-09-22T07:05:00+03:00",
+              "requests": 376705,
+              "requestErrors": 728,
+              "signal": 1,
+              "noise": 61
+            }
+          ],
+          "incidents": {
+            "openNow": 0
+          }
+        }
+      }
+    },
+    "clusterAgentStats": {
+      "digital-purchases": {
+        "cluster": "gke-eu-prod-1",
+        "connected": true,
+        "lastMessageUnix": 1790050192
+      }
+    },
+    "knownServices": 12,
+    "unmappedServices": 0,
+    "unmappedNames": [],
+    "unmappedTruncated": false
+  },
+  "incidents": {
+    "tenant": "digital-purchases",
+    "incidentMetrics": {
+      "criticalOpen": 0,
+      "warningOpen": 0,
+      "infoOpen": 0,
+      "medianTTR": 0
+    },
+    "incidents": []
+  },
+  "applications": [
+    {
+      "name": "api-gateway",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 420,
+        "errPct": 0.22,
+        "p99Ms": 161,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.31,
+        "memPsiPct": 0.27,
+        "ioPsiPct": 0.11,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 43,
+        "cpuPct": 30,
+        "memReqPct": 53,
+        "cpuReqPct": 51,
+        "memNodePct": 19,
+        "cpuNodePct": 10,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "auth",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 210,
+        "errPct": 0.24,
+        "p99Ms": 337,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.08,
+        "memPsiPct": 0.28,
+        "ioPsiPct": 0.13,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 39,
+        "cpuPct": 17,
+        "memReqPct": 56,
+        "cpuReqPct": 47,
+        "memNodePct": 16,
+        "cpuNodePct": 8,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "checkout",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 85,
+        "errPct": 0.29,
+        "p99Ms": 213,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.19,
+        "memPsiPct": 0.04,
+        "ioPsiPct": 0.19,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 38,
+        "cpuPct": 42,
+        "memReqPct": 63,
+        "cpuReqPct": 46,
+        "memNodePct": 14,
+        "cpuNodePct": 7,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "payments",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 60,
+        "errPct": 0.28,
+        "p99Ms": 377,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.33,
+        "memPsiPct": 0.18,
+        "ioPsiPct": 0.02,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 55,
+        "cpuPct": 23,
+        "memReqPct": 72,
+        "cpuReqPct": 37,
+        "memNodePct": 14,
+        "cpuNodePct": 13,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "catalog",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 300,
+        "errPct": 0.14,
+        "p99Ms": 262,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.03,
+        "memPsiPct": 0.01,
+        "ioPsiPct": 0.04,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 59,
+        "cpuPct": 43,
+        "memReqPct": 66,
+        "cpuReqPct": 39,
+        "memNodePct": 16,
+        "cpuNodePct": 12,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "search",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 150,
+        "errPct": 0.18,
+        "p99Ms": 273,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.32,
+        "memPsiPct": 0.0,
+        "ioPsiPct": 0.04,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 46,
+        "cpuPct": 19,
+        "memReqPct": 59,
+        "cpuReqPct": 47,
+        "memNodePct": 10,
+        "cpuNodePct": 10,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "cart",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 90,
+        "errPct": 0.15,
+        "p99Ms": 267,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.13,
+        "memPsiPct": 0.19,
+        "ioPsiPct": 0.01,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 51,
+        "cpuPct": 19,
+        "memReqPct": 73,
+        "cpuReqPct": 48,
+        "memNodePct": 13,
+        "cpuNodePct": 9,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "notifications",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 20,
+        "errPct": 0.22,
+        "p99Ms": 299,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.3,
+        "memPsiPct": 0.23,
+        "ioPsiPct": 0.1,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 59,
+        "cpuPct": 40,
+        "memReqPct": 71,
+        "cpuReqPct": 42,
+        "memNodePct": 13,
+        "cpuNodePct": 10,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "image-resizer",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 40,
+        "errPct": 0.28,
+        "p99Ms": 256,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.21,
+        "memPsiPct": 0.13,
+        "ioPsiPct": 0.18,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 43,
+        "cpuPct": 16,
+        "memReqPct": 68,
+        "cpuReqPct": 57,
+        "memNodePct": 16,
+        "cpuNodePct": 10,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "reporting",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "reqPerSec": 2,
+        "errPct": 0.25,
+        "p99Ms": 199,
+        "rateAsOfUnix": 1790050174,
+        "cpuPsiPct": 0.24,
+        "memPsiPct": 0.02,
+        "ioPsiPct": 0.02,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 46,
+        "cpuPct": 30,
+        "memReqPct": 59,
+        "cpuReqPct": 31,
+        "memNodePct": 16,
+        "cpuNodePct": 10,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "scheduler",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "cpuPsiPct": 0.16,
+        "memPsiPct": 0.07,
+        "ioPsiPct": 0.01,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 57,
+        "cpuPct": 43,
+        "memReqPct": 66,
+        "cpuReqPct": 55,
+        "memNodePct": 13,
+        "cpuNodePct": 13,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    },
+    {
+      "name": "backup",
+      "tenant": "digital-purchases",
+      "ready": true,
+      "componentsReady": 3,
+      "componentsTotal": 3,
+      "observedAt": "2026-09-22T07:09:34+03:00",
+      "golden": {
+        "cpuPsiPct": 0.23,
+        "memPsiPct": 0.27,
+        "ioPsiPct": 0.02,
+        "oomKills": 0,
+        "saturationAsOfUnix": 1790050174,
+        "memPct": 54,
+        "cpuPct": 18,
+        "memReqPct": 63,
+        "cpuReqPct": 58,
+        "memNodePct": 8,
+        "cpuNodePct": 7,
+        "memBytes": 536870912,
+        "memRequestBytes": 805306368,
+        "cpuCores": 0.4,
+        "cpuRequestCores": 1.0,
+        "utilizationAsOfUnix": 1790050174
+      }
+    }
+  ],
+  "graph": {
+    "tenant": "digital-purchases",
+    "nodes": [
+      {
+        "name": "api-gateway",
+        "tier": 1,
+        "blastRadius": 0.71,
+        "weight": 0.99,
+        "calls": [
+          "auth",
+          "checkout",
+          "catalog",
+          "search",
+          "cart"
+        ],
+        "calledBy": []
+      },
+      {
+        "name": "auth",
+        "tier": 1,
+        "blastRadius": 0.55,
+        "weight": 0.77,
+        "calls": [],
+        "calledBy": [
+          "api-gateway"
+        ]
+      },
+      {
+        "name": "checkout",
+        "tier": 1,
+        "blastRadius": 0.62,
+        "weight": 0.87,
+        "calls": [
+          "payments",
+          "cart"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "cart"
+        ]
+      },
+      {
+        "name": "payments",
+        "tier": 1,
+        "blastRadius": 0.58,
+        "weight": 0.81,
+        "calls": [
+          "notifications"
+        ],
+        "calledBy": [
+          "checkout"
+        ]
+      },
+      {
+        "name": "catalog",
+        "tier": 2,
+        "blastRadius": 0.31,
+        "weight": 0.43,
+        "calls": [
+          "image-resizer"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "cart"
+        ]
+      },
+      {
+        "name": "search",
+        "tier": 2,
+        "blastRadius": 0.28,
+        "weight": 0.39,
+        "calls": [],
+        "calledBy": [
+          "api-gateway"
+        ]
+      },
+      {
+        "name": "cart",
+        "tier": 2,
+        "blastRadius": 0.34,
+        "weight": 0.48,
+        "calls": [
+          "checkout",
+          "catalog"
+        ],
+        "calledBy": [
+          "api-gateway",
+          "checkout"
+        ]
+      },
+      {
+        "name": "notifications",
+        "tier": 3,
+        "blastRadius": 0.12,
+        "weight": 0.17,
+        "calls": [],
+        "calledBy": [
+          "payments"
+        ]
+      },
+      {
+        "name": "image-resizer",
+        "tier": 3,
+        "blastRadius": 0.06,
+        "weight": 0.08,
+        "calls": [],
+        "calledBy": [
+          "catalog"
+        ]
+      },
+      {
+        "name": "reporting",
+        "tier": 3,
+        "blastRadius": 0.09,
+        "weight": 0.13,
+        "calls": [],
+        "calledBy": [
+          "scheduler"
+        ]
+      },
+      {
+        "name": "scheduler",
+        "tier": 3,
+        "blastRadius": 0.05,
+        "weight": 0.07,
+        "calls": [
+          "reporting"
+        ],
+        "calledBy": []
+      },
+      {
+        "name": "backup",
+        "tier": 3,
+        "blastRadius": 0.04,
+        "weight": 0.06,
+        "calls": [],
+        "calledBy": []
+      }
+    ],
+    "edges": [
+      {
+        "from": "api-gateway",
+        "to": "auth"
+      },
+      {
+        "from": "api-gateway",
+        "to": "checkout"
+      },
+      {
+        "from": "api-gateway",
+        "to": "catalog"
+      },
+      {
+        "from": "api-gateway",
+        "to": "search"
+      },
+      {
+        "from": "api-gateway",
+        "to": "cart"
+      },
+      {
+        "from": "cart",
+        "to": "checkout"
+      },
+      {
+        "from": "checkout",
+        "to": "payments"
+      },
+      {
+        "from": "checkout",
+        "to": "cart"
+      },
+      {
+        "from": "cart",
+        "to": "catalog"
+      },
+      {
+        "from": "payments",
+        "to": "notifications"
+      },
+      {
+        "from": "catalog",
+        "to": "image-resizer"
+      },
+      {
+        "from": "scheduler",
+        "to": "reporting"
+      }
+    ]
+  },
+  "analytics": {
+    "tenant": "digital-purchases",
+    "baselines": [
+      {
+        "service": "api-gateway",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.71,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "auth",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.55,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.5,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 1,
+          "2026-W35": 1,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "checkout",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.62,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 1.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 1,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "payments",
+        "mttrMean": 720000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.58,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "catalog",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.31,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.25,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 1,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "search",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.28,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "cart",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.34,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.75,
+        "weeklyIncidentCounts": {
+          "2026-W33": 1,
+          "2026-W34": 0,
+          "2026-W35": 1,
+          "2026-W36": 1
+        }
+      },
+      {
+        "service": "notifications",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.12,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "image-resizer",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.06,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "reporting",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.09,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "scheduler",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.05,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      },
+      {
+        "service": "backup",
+        "mttrMean": 1500000,
+        "mttdMean": 45000,
+        "blastRadiusMean": 0.04,
+        "reopenRate": 0.0,
+        "incidentRateWeek": 0.0,
+        "weeklyIncidentCounts": {
+          "2026-W33": 0,
+          "2026-W34": 0,
+          "2026-W35": 0,
+          "2026-W36": 0
+        }
+      }
+    ],
+    "patterns": [
+      {
+        "id": "token-refresh-storm",
+        "service": "payments",
+        "steps": [
+          "auth p99 rises above 400ms",
+          "payments retries to auth double",
+          "token cache hit rate drops below 60%",
+          "payments 5xx on /oauth/token starts",
+          "checkout error rate above 5%"
+        ],
+        "seenCount": 3,
+        "avgLeadMs": 1080000
+      },
+      {
+        "id": "catalog-memory-creep",
+        "service": "catalog",
+        "steps": [
+          "memReqPct above 85%",
+          "memPsi above 1%",
+          "GC pause warnings in logs",
+          "OOM kill"
+        ],
+        "seenCount": 2,
+        "avgLeadMs": 5400000
+      }
+    ],
+    "precursorMatches": []
+  }
+}

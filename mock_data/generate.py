@@ -100,8 +100,11 @@ def diurnal(dt: datetime) -> float:
 
 
 def make_history(now: datetime, rng: random.Random, err_rate, missing_last=0,
-                 signal_fn=None):
-    """288 five-minute buckets ending at `now`. err_rate(dt) -> percent."""
+                 signal_fn=None, keep_last=None):
+    """288 five-minute buckets ending at `now`. err_rate(dt) -> percent.
+
+    keep_last=N keeps only the newest N buckets: a core that restarted N*5 minutes ago.
+    """
     start = now - timedelta(seconds=BUCKET_S * BUCKETS_24H)
     total_rps = sum(s[3] for s in SERVICES)
     out = []
@@ -113,7 +116,7 @@ def make_history(now: datetime, rng: random.Random, err_rate, missing_last=0,
         sig, noise = (signal_fn(t) if signal_fn else (rng.randint(0, 2), rng.randint(35, 65)))
         out.append({"t": ts(t), "requests": req, "requestErrors": errs,
                     "signal": sig, "noise": noise})
-    return out
+    return out[-keep_last:] if keep_last else out
 
 
 def make_apps(now: datetime, rng: random.Random, overrides: dict, stale_s=0):
@@ -479,7 +482,21 @@ def s10():
                   tenant, no_incidents(), apps, pre)
 
 
-SCENARIOS = [s01, s02, s03, s04, s05, s06, s07, s08, s09, s10]
+def s11():
+    now = datetime(2026, 9, 22, 7, 10, tzinfo=TZ)
+    rng = random.Random(11)
+    # the core restarted at 04:00; counters sampled from memory are gone and history is 3 h deep
+    hist = make_history(now, rng, flat, keep_last=38)
+    tenant = base_tenant(hist, {"noise": 1840, "signal": 11, "incident": 0, "unknown": 0, "drift": 0},
+                         {"log": 6, "red": 0, "use": 2, "k8s": 3}, open_now=0)
+    return bundle("s11_no_history", "Core restarted, no history yet", now,
+                  "Tuesday, 07:10. The Triage core restarted at 04:00. Everything it sees is healthy, but it has only three hours of history.",
+                  {"verdict": "all_clear", "reason": "all normal so far; only 3.2 h of history, the day cannot be judged yet",
+                   "states": {"users": "ok", "forecast": "clear", "trust": "full", "day": "unknown"}},
+                  tenant, no_incidents(), make_apps(now, rng, {}), [])
+
+
+SCENARIOS = [s01, s02, s03, s04, s05, s06, s07, s08, s09, s10, s11]
 
 
 def main():

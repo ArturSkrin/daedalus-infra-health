@@ -1,17 +1,17 @@
 """Turn an engine result into the view model the tracker screen renders.
 
-The engine (engine.py) decides. This module only words the decision for a
-human: state labels, one-line captions, ring fill, the reason line under the
-verdict, the drill-in content, and the incident queue. No thresholds live
-here. Raw values (error %, stall %, p99) appear only inside `drill`.
+engine.py decides; this module only words the decision for a human: state
+labels, one-line captions, ring fill, the reason line under the verdict, the
+drill-in content, and the incident queue. It reads facts from the engine result
+and display data from the Bundle. It holds no thresholds and never re-derives a
+decision. Raw values (error %, stall %, p99) appear only inside `drill`.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from backend import thresholds as T
+from backend.bundle import Bundle, normalize
 
-FRESH_S = 300
 DASH = "—"
-RECENT_BUCKETS = 24
 
 VERDICTS = {
     "all_clear": {"word": "ALL CLEAR", "action": "Nothing to do", "level": "good"},
@@ -39,22 +39,24 @@ RULES = [
     ("trust_blind", "The data cannot be trusted", "BLIND"),
     ("users_broken", "Users are broken right now", "ACT NOW"),
     ("critical_incident", "A critical incident is open", "ACT NOW"),
-    ("forecast_imminent", "A failure is brewing on the user path with under 30 min of warning", "ACT NOW"),
+    ("forecast_imminent", f"A failure is brewing on the user path with under {T.ACT_NOW_LEAD_MS // 60000} min of warning", "ACT NOW"),
     ("users_escalated", "Users are degraded in a service on the user path", "ACT NOW"),
     ("users_degraded", "Users are degraded", "SCHEDULE"),
     ("forecast_risk", "Something is brewing", "SCHEDULE"),
     ("day_regressed", "The day got worse than the norm", "SCHEDULE"),
     ("warning_incident", "A warning incident is open", "SCHEDULE"),
     ("trust_partial", "Part of the fleet is not visible", "SCHEDULE"),
+    ("calm_unverified", "Nothing calls for work, but one vital could not be judged", "ALL CLEAR, dimmed"),
     ("calm", "None of the above", "ALL CLEAR"),
 ]
 
+DIM_NOTES = {
+    "partial": "Part of the fleet is not visible, so this is a floor, not a guarantee.",
+    "unverified": "One vital could not be judged yet, so this is a floor, not a guarantee.",
+}
+
 
 # ------------------------------------------------------------------ helpers ---
-
-def parse(value: str) -> datetime:
-    return datetime.fromisoformat(value)
-
 
 def join_names(names: list[str]) -> str:
     if len(names) <= 1:
@@ -70,24 +72,9 @@ def clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, v))
 
 
-def tenant_block(data: dict) -> dict:
-    return data["status"].get("tenantStats", {}).get("tenants", {}).get(data["tenant"], {})
-
-
-def node_of(data: dict, name: str) -> dict:
-    return next((n for n in data["graph"]["nodes"] if n["name"] == name), {})
-
-
-def app_of(data: dict, name: str) -> dict:
-    return next((a for a in data["applications"] if a["name"] == name), {})
-
-
-def best_precursor(data: dict) -> dict | None:
-    matches = data["analytics"].get("precursorMatches", [])
-    return max(matches, key=lambda m: m["confidence"], default=None)
-
-
-def age_text(seconds: float) -> str:
+def age_text(seconds: float | None) -> str:
+    if seconds is None:
+        return DASH
     seconds = int(max(0, seconds))
     if seconds < 90:
         return f"{seconds} s"
@@ -104,137 +91,112 @@ def times_word(ratio: float) -> str:
     return f"{round(ratio)}x"
 
 
-def bucket_err(bucket: dict) -> float:
-    return 100 * bucket["requestErrors"] / bucket["requests"] if bucket["requests"] else 0.0
+def shown(value, suffix: str = "") -> str:
+    """A measured value, or a dash. Zero is a value; None is not."""
+    return DASH if value is None else f"{value:g}{suffix}" if isinstance(value, float) else f"{value}{suffix}"
 
 
-def day_facts(data: dict, info: dict) -> dict:
-    """Peak time and start of the current elevated run, read from signalsHistory."""
-    history = tenant_block(data).get("signalsHistory", [])
-    base = info.get("errBase") or 0
-    if not history or not base:
-        return {}
-    # a spike is named by when it started, not by its tallest bucket
-    peak_index = max(range(len(history)), key=lambda i: bucket_err(history[i]))
-    while peak_index > 0 and bucket_err(history[peak_index - 1]) > 1.5 * base:
-        peak_index -= 1
-    peak = history[peak_index]
-    since = None
-    for bucket in reversed(history):
-        if bucket_err(bucket) > 1.5 * base:
-            since = bucket
-        else:
-            break
-    return {
-        "peakAt": parse(peak["t"]).strftime("%H:%M"),
-        "since": parse(since["t"]).strftime("%H:%M") if since else None,
-    }
+def oldest_data_age(b: Bundle) -> float | None:
+    ages = [a for s in b.services.values() for a in ((s.rate.age_s if s.rate else None), (s.saturation.age_s if s.saturation else None))
+            if a is not None]
+    return max(ages) if ages else None
 
 
-def oldest_data_age(data: dict) -> float | None:
-    now = parse(data["now"]).timestamp()
-    stamps = [a["golden"][k] for a in data["applications"] for k in a["golden"] if k.endswith("AsOfUnix")]
-    return now - min(stamps) if stamps else None
+def open_incidents(b: Bundle) -> list:
+    order = {"critical": 0, "warning": 1, "info": 2}
+    return sorted((i for i in b.incidents if i.is_open), key=lambda i: (order.get(i.severity, 3), -i.blast_radius))
 
 
-def dark_services(data: dict) -> list[dict]:
-    now = parse(data["now"])
-    out = []
-    for item in tenant_block(data).get("darkServices", []):
-        silent = (now - parse(item["lastEventAt"])).total_seconds()
-        out.append({"name": item["name"], "silentFor": age_text(silent), "silentSeconds": silent})
-    return out
-
-
-def affected_services(data: dict) -> list[str]:
-    now = parse(data["now"]).timestamp()
-    return [a["name"] for a in data["applications"]
-            if a["golden"].get("errPct", 0) >= 1 and now - a["golden"].get("rateAsOfUnix", 0) <= FRESH_S]
-
-
-def noisy_log_source(data: dict) -> str | None:
+def noisy_log_source(b: Bundle) -> str | None:
     """A log storm with no request impact: worth one calm sentence, never an alarm."""
-    by_type = tenant_block(data).get("signalsByType", {})
-    if by_type.get("log", 0) < 1000 or by_type.get("red", 0) > 0:
+    if b.signals_by_type.get("log", 0) < 1000 or b.signals_by_type.get("red", 0) > 0:
         return None
-    sources = tenant_block(data).get("topSignalSources", [])
-    logs = [s for s in sources if s.get("type") == "log"]
+    logs = [s for s in b.top_signal_sources if s.get("type") == "log" and isinstance(s.get("service"), str)]
     return logs[0]["service"] if logs else "one service"
 
 
 # ----------------------------------------------------------------- captions ---
 
-def users_caption(data: dict, state: str, info: dict) -> str:
+def users_caption(b: Bundle, state: str, info: dict) -> str:
     if state == "unknown":
         return "no fresh traffic data"
     if state == "broken":
-        broken = info.get("tier1Broken") or info.get("affected") or ["a service"]
-        return f"{broken[0]} is down"
+        return f"{info.get('service') or 'a service'} is down"
     if state == "degraded":
-        n = len(info.get("affected", []))
-        return f"{info['failingShare']}% of requests failing in {plural(n, 'service')}"
+        return f"{info['failingShare']}% of requests failing in {plural(len(info['affected']), 'service')}"
     return "all requests are going through"
 
 
-def forecast_caption(data: dict, state: str, info: dict) -> str:
+def forecast_caption(b: Bundle, state: str, info: dict) -> str:
     if state == "unknown":
-        return "no forecast without data"
-    service = info.get("service")
-    match = best_precursor(data)
-    if info.get("downgraded") and match:
+        return "no fresh resource data, no forecast"
+    match, service = info.get("match"), info.get("service")
+    if info.get("downgraded"):
         return f"agent suspects {match['service']}, but it is wrong more often than right"
     if state == "brewing" and info.get("pressure"):
-        app = app_of(data, info["pressure"][0])
-        ooms = app.get("golden", {}).get("oomKills", 0)
-        tail = "OOM kills have started" if ooms else "no OOM kill yet"
-        return f"{info['pressure'][0]}: memory is saturating, {tail}"
+        tail = "OOM kills have started" if info.get("oomStarted") else "no OOM kill yet"
+        return f"{service}: memory is saturating, {tail}"
     if state == "brewing" and match:
         lead = f", usually ~{info['leadMin']} min of warning" if info.get("leadMin") else ""
-        return f"{match['matchedSteps']} of {match['totalSteps']} steps to a {service} failure{lead}"
+        return f"{match['matched']} of {match['total']} steps to a {service} failure{lead}"
     if state == "pressure":
         return f"some pressure in {service}, there is time" if service else "some resource pressure, there is time"
     return "nothing is brewing"
 
 
-def trust_caption(data: dict, state: str, info: dict) -> str:
-    if state == "blind":
-        if info.get("disconnectedMinutes") is not None:
-            return f"cluster agent disconnected for {info['disconnectedMinutes']} min"
-        return "not enough of the fleet is reporting"
-    services = tenant_block(data).get("services", 0)
-    if state == "partial":
-        dark = dark_services(data)
-        if dark:
-            longest = max(dark, key=lambda d: d["silentSeconds"])
-            return f"{join_names([d['name'] for d in dark])} silent for {longest['silentFor']}"
-        if info.get("unmapped"):
+TRUST_REASONS = {
+    "tenant_missing": "the core does not report this tenant",
+    "no_services": "the core reports no services for this tenant",
+    "coverage_unknown": "the core does not say how much of the fleet it sees",
+    "no_fresh_data": "no fresh data from any service",
+    "low_coverage": "not enough of the fleet is reporting",
+    "unmapped_services": "some services are not in the service graph",
+    "stale_traffic": "traffic data is stale for part of the fleet",
+    "stale_resources": "resource pressure data is stale, so the forecast is blind",
+    "no_resource_data": "resource pressure is not collected, so the forecast is blind",
+}
+
+
+def trust_caption(b: Bundle, state: str, info: dict) -> str:
+    reasons = info.get("reasons", [])
+    if "agent_disconnected" in reasons:
+        minutes = info.get("disconnectedMinutes")
+        return f"cluster agent disconnected for {minutes} min" if minutes is not None else "cluster agent disconnected"
+    if "dark_services" in reasons:
+        if b.dark:
+            longest = max((d.silent_s or 0) for d in b.dark)
+            return f"{join_names([d.name for d in b.dark])} silent for {age_text(longest)}"
+        return f"{plural(info['dark'], 'service')} went silent"
+    if reasons:
+        if reasons[0] == "unmapped_services":
             return f"{plural(info['unmapped'], 'service')} not in the service graph"
-        return f"fresh data from only {info.get('freshShare')}% of traffic"
-    age = oldest_data_age(data)
-    return f"seeing all {services} services, data is {age_text(age)} old" if age is not None else f"seeing all {services} services"
+        if reasons[0] == "stale_traffic":
+            return f"fresh data from only {info['freshShare']:g}% of traffic"
+        return TRUST_REASONS.get(reasons[0], "part of the picture is missing")
+    age = oldest_data_age(b)
+    return f"seeing all {b.services_total} services, data is {age_text(age)} old" if age is not None else f"seeing all {b.services_total} services"
 
 
-def day_caption(data: dict, state: str, info: dict) -> str:
+def day_caption(b: Bundle, state: str, info: dict) -> str:
     if state == "unknown":
-        return "not enough history yet"
-    facts = day_facts(data, info)
-    tenant = tenant_block(data)
+        if info.get("why") == "short_history":
+            return f"only {info['historyHours']:g} h of history so far"
+        return "too little traffic to judge the day"
     if state == "regressed":
-        ratio = info["errRecent"] / info["errBase"] if info.get("errBase") else 0
-        if ratio > 2 and facts.get("since"):
-            return f"errors {times_word(ratio)} the norm since {facts['since']}"
-        if info.get("repeatRate", 0) > 20:
-            return f"{info['repeatRate']}% of incidents keep coming back"
+        because = info.get("because")
+        if because == "errors" and info.get("since"):
+            return f"errors {times_word(info['ratio'])} the norm since {info['since']}"
+        if because == "repeats":
+            return f"{info['repeatRate']:g}% of incidents keep coming back"
         return f"{plural(info['incidentsToday'], 'incident')} today, more than usual"
     if state == "settled":
-        return f"{facts.get('peakAt', 'earlier')} spike settled, the agent closed it on its own"
-    if tenant.get("incidents", {}).get("openNow", 0):
+        return f"{info.get('spikeAt') or 'earlier'} spike settled, the agent closed it on its own"
+    if info.get("openNow"):
         return "quiet until the last few minutes"
-    closed = [i for i in data["incidents"]["incidents"] if i.get("resolvedBy") == "agent"]
+    closed = [i for i in b.incidents if i.resolved_by == "agent"]
     if closed:
         return f"quiet day, the agent closed {len(closed)} on its own"
-    noise = tenant.get("events", {}).get("noise")
-    return "quiet day, nothing reached a human" if noise else "quiet day"
+    return "quiet day, nothing reached a human"
 
 
 CAPTIONS = {"users": users_caption, "forecast": forecast_caption, "trust": trust_caption, "day": day_caption}
@@ -242,51 +204,62 @@ CAPTIONS = {"users": users_caption, "forecast": forecast_caption, "trust": trust
 
 # -------------------------------------------------------------- reason line ---
 
-def human_reason(data: dict, result: dict) -> str:
+def human_reason(b: Bundle, result: dict) -> str:
     trigger, detail, states = result["trigger"], result["detail"], result["states"]
 
     if trigger == "trust_blind":
-        return trust_caption(data, "blind", detail["trust"]) + ", the fleet is not visible"
+        return trust_caption(b, "blind", detail["trust"]) + ", the fleet is not visible"
 
     if trigger in ("users_broken", "critical_incident"):
-        info = detail.get("users", {})
-        open_incidents = [i for i in data["incidents"]["incidents"] if i.get("status") == "open"]
-        service = (info.get("tier1Broken") or [i["service"] for i in open_incidents] or info.get("affected") or ["a service"])[0]
-        callers = node_of(data, service).get("calledBy", [])
-        head = f"{service} is down" if trigger == "users_broken" else f"{service}: critical incident open"
+        opened = open_incidents(b)
+        if trigger == "users_broken":
+            service = detail["users"].get("service") or "a service"
+            head = f"{service} is down"
+        else:
+            service = opened[0].service if opened else "a service"
+            head = f"{service}: critical incident open"
+        callers = b.service(service).called_by
         return head + (f", {plural(len(callers), 'more service')} will be hit" if callers else "")
 
     if trigger == "forecast_imminent":
-        info, match = detail["forecast"], best_precursor(data)
-        return (f"{info['service']}: agent sees {match['matchedSteps']} of {match['totalSteps']} steps to a failure, "
+        info = detail["forecast"]
+        match = info["match"]
+        return (f"{info['service']}: agent sees {match['matched']} of {match['total']} steps to a failure, "
                 f"usually ~{info['leadMin']} min of warning")
 
     if trigger in ("users_escalated", "users_degraded"):
         info = detail["users"]
-        return f"{info['failingShare']}% of requests failing in {join_names(info['affected'])}"
+        where = join_names(info["affected"] or info["tier1Hurt"])
+        return f"{info['failingShare']}% of requests failing" + (f" in {where}" if where else "")
 
     if trigger == "forecast_risk":
-        return forecast_caption(data, "brewing", detail["forecast"])
+        return forecast_caption(b, "brewing", detail["forecast"])
 
     if trigger == "day_regressed":
-        names = affected_services(data)
-        return day_caption(data, "regressed", detail["day"]) + (f" in {join_names(names)}" if names else "")
+        names = detail["users"].get("affected", [])
+        tail = f" in {join_names(names)}" if names and detail["day"].get("because") == "errors" else ""
+        return day_caption(b, "regressed", detail["day"]) + tail
 
     if trigger == "warning_incident":
-        open_incidents = [i for i in data["incidents"]["incidents"] if i.get("status") == "open"]
-        return f"{open_incidents[0]['service']}: {open_incidents[0]['title']}" if open_incidents else "a warning incident is open"
+        opened = open_incidents(b)
+        return f"{opened[0].service}: {opened[0].title}" if opened else "a warning incident is open"
 
     if trigger == "trust_partial":
-        caption = trust_caption(data, "partial", detail["trust"])
-        return caption + (": healthy or dead, unknown" if dark_services(data) else "")
+        caption = trust_caption(b, "partial", detail["trust"])
+        return caption + (": healthy or dead, unknown" if "dark_services" in detail["trust"]["reasons"] else "")
+
+    if trigger == "calm_unverified":
+        missing = next(k for k in ("day", "forecast", "users") if states[k] == "unknown")
+        if missing == "day" and detail["day"].get("why") == "short_history":
+            return f"all normal so far; only {detail['day']['historyHours']:g} h of history, the day cannot be judged yet"
+        return f"all normal so far; {CAPTIONS[missing](b, 'unknown', detail[missing])}"
 
     # calm: say the most useful quiet-day thing we know
     if detail["forecast"].get("downgraded"):
-        match = best_precursor(data)
-        return f"all normal; agent suspects {match['service']} but is wrong more often than right"
+        return f"all normal; agent suspects {detail['forecast']['match']['service']} but is wrong more often than right"
     if states["day"] == "settled":
-        return day_caption(data, "settled", detail["day"])
-    noisy = noisy_log_source(data)
+        return day_caption(b, "settled", detail["day"])
+    noisy = noisy_log_source(b)
     if noisy:
         return f"{noisy} is noisy in logs, users are not affected"
     return "all normal, nothing happened in the last day"
@@ -298,20 +271,15 @@ def ring_value(key: str, state: str, info: dict) -> float:
     if state == "unknown":
         return 0.0
     if key == "users":
-        return clamp(1 - info.get("failingShare", 0) / 5, 0.06)
+        return clamp(1 - info.get("failingShare", 0) / T.USERS_BROKEN_SHARE_PCT, 0.06)
     if key == "forecast":
-        if info.get("pressure"):
-            return 0.35
-        return clamp(1 - info.get("precursorLevel", 0), 0.06)
+        return 0.35 if info.get("pressure") else clamp(1 - info.get("precursorLevel", 0), 0.06)
     if key == "trust":
         if state == "blind":
             return 0.06
-        return clamp(info.get("coverage", 0) / 100 * info.get("freshShare", 0) / 100, 0.06)
-    if key == "day":
-        base = info.get("errBase") or 0
-        ratio = info.get("errRecent", 0) / base if base else 1
-        return clamp(1 - (ratio - 1) / 2, 0.06)
-    return 0.0
+        return clamp((info.get("coverage") or 0) / 100 * info.get("freshShare", 0) / 100, 0.06)
+    ratio = info.get("ratio") or 1
+    return clamp(1 - (ratio - 1) / 2, 0.06)
 
 
 # ------------------------------------------------------------------ drill-in ---
@@ -320,103 +288,93 @@ def fact(label: str, value, hint: str | None = None) -> dict:
     return {"label": label, "value": str(value), **({"hint": hint} if hint else {})}
 
 
-def users_drill(data: dict, info: dict) -> dict:
-    now = parse(data["now"]).timestamp()
+def users_drill(b: Bundle, info: dict) -> dict:
     rows = []
-    for app in data["applications"]:
-        g = app["golden"]
-        if "reqPerSec" not in g:
+    for s in b.services.values():
+        if not s.rate:
             continue
-        node = node_of(data, app["name"])
-        rows.append({
-            "service": app["name"], "tier": node.get("tier"),
-            "errPct": g["errPct"], "reqPerSec": g["reqPerSec"], "p99Ms": g.get("p99Ms"),
-            "ready": app.get("ready", True), "fresh": now - g.get("rateAsOfUnix", 0) <= FRESH_S,
-            "hitsNext": node.get("calledBy", []),
-            "flag": "bad" if g["errPct"] >= 5 or not app.get("ready", True) else "warn" if g["errPct"] >= 1 else "good",
-        })
+        down = s.ready is False
+        flag = "bad" if s.rate.err_pct >= T.SERVICE_BROKEN_ERR_PCT or down else "warn" if s.rate.err_pct >= T.SERVICE_AFFECTED_ERR_PCT else "good"
+        rows.append({"service": s.name, "tier": s.tier, "errPct": s.rate.err_pct, "reqPerSec": s.rate.rps, "p99Ms": s.rate.p99_ms,
+                     "ready": not down, "fresh": s.rate.age_s is not None and s.rate.age_s <= T.FRESH_S,
+                     "hitsNext": list(s.called_by), "flag": flag})
     rows.sort(key=lambda r: (-r["errPct"], -r["reqPerSec"]))
     return {
-        "facts": [fact("Requests failing fleet-wide", f"{info.get('failingShare', DASH)}%", "weighted by traffic"),
+        "facts": [fact("Requests failing fleet-wide", shown(info.get("failingShare"), "%"), "weighted by traffic"),
                   fact("Services with errors above 1%", len(info.get("affected", []))),
-                  fact("Threshold", "0.5% schedule, 5% act now")],
+                  fact("Threshold", f"{T.USERS_DEGRADED_SHARE_PCT:g}% schedule, {T.USERS_BROKEN_SHARE_PCT:g}% act now")],
         "services": rows[:8],
     }
 
 
-def forecast_drill(data: dict, info: dict) -> dict:
-    match = best_precursor(data)
-    tenant = tenant_block(data)
-    hits, misses = tenant.get("predictionHits", 0), tenant.get("predictionMisses", 0)
+def forecast_drill(b: Bundle, info: dict) -> dict:
+    match = info.get("match")
     facts = []
-    if hits + misses:
-        facts.append(fact("Agent track record", f"{hits} right, {misses} wrong", f"{tenant.get('predictionPrecisionPct')}% precision"))
+    if match:
+        facts.append(fact("Pattern", match.get("pattern") or DASH, f"confidence {match['confidence']:.2f}"))
+    if info.get("hits", 0) + info.get("misses", 0):
+        facts.append(fact("Agent track record", f"{info['hits']} right, {info['misses']} wrong", f"{shown(info.get('precision'), '%')} precision"))
     if info.get("leadMin"):
         facts.append(fact("Usual warning time", f"~{info['leadMin']} min"))
     out: dict = {"facts": facts}
-    if match:
-        facts.insert(0, fact("Pattern", match.get("patternId", DASH), f"confidence {match['confidence']:.2f}"))
-        out["steps"] = ([{"text": s, "done": True} for s in match.get("matched", [])]
-                        + [{"text": s, "done": False} for s in match.get("remaining", [])])
-        if info.get("downgraded"):
-            out["note"] = "Shown dimmed: below 60% precision a forecast cannot move the verdict."
+    if match and (match["matchedSteps"] or match["remainingSteps"]):
+        out["steps"] = ([{"text": s, "done": True} for s in match["matchedSteps"]]
+                        + [{"text": s, "done": False} for s in match["remainingSteps"]])
+    if info.get("downgraded"):
+        out["note"] = f"Shown dimmed: below {T.FORECAST_MIN_PRECISION_PCT}% precision a forecast cannot move the verdict."
     pressure = []
-    for app in data["applications"]:
-        g = app["golden"]
-        worst = max(g.get("memPsiPct", 0), g.get("cpuPsiPct", 0), g.get("ioPsiPct", 0))
-        if worst >= 1 or g.get("oomKills", 0):
-            pressure.append({"service": app["name"], "memStallPct": g.get("memPsiPct"), "cpuStallPct": g.get("cpuPsiPct"),
-                             "ioStallPct": g.get("ioPsiPct"), "memOfRequestPct": g.get("memReqPct"), "oomKills": g.get("oomKills", 0)})
+    for name in info.get("pressure", []) + info.get("watch", []):
+        sat = b.service(name).saturation
+        pressure.append({"service": name, "memStallPct": sat.mem_stall_pct, "cpuStallPct": sat.cpu_stall_pct,
+                         "ioStallPct": sat.io_stall_pct, "memOfRequestPct": sat.mem_of_request_pct, "oomKills": int(sat.oom_kills or 0)})
     if pressure:
         out["pressure"] = pressure
     return out
 
 
-def trust_drill(data: dict, info: dict) -> dict:
-    tenant = tenant_block(data)
-    agent = data["status"].get("clusterAgentStats", {}).get(data["tenant"], {})
-    now = parse(data["now"]).timestamp()
-    age = oldest_data_age(data)
-    events = tenant.get("events", {})
+def trust_drill(b: Bundle, info: dict) -> dict:
+    link = {True: "connected", False: "disconnected", None: "not reported"}[b.agent_connected]
+    reporting = (b.services_total or 0) - (b.dark_count or 0)
     facts = [
-        fact("Cluster agent", "connected" if agent.get("connected") else "disconnected",
-             f"last message {age_text(now - agent.get('lastMessageUnix', now))} ago"),
-        fact("Services reporting", f"{tenant.get('services', 0) - tenant.get('servicesDark', 0)} of {tenant.get('services', 0)}",
-             f"{tenant.get('serviceCoveragePct', DASH)}% coverage"),
-        fact("Oldest data on screen", age_text(age) if age is not None else DASH, "fresh means under 5 min"),
-        fact("Not in the service graph", data["status"].get("unmappedServices", 0)),
+        fact("Cluster agent", link, f"last message {age_text(b.agent_silent_s)} ago" if b.agent_silent_s is not None else None),
+        fact("Services reporting", f"{reporting} of {shown(b.services_total)}", f"{shown(b.coverage_pct, '%')} coverage"),
+        fact("Oldest data on screen", age_text(oldest_data_age(b)), f"fresh means under {T.FRESH_S // 60} min"),
+        fact("Not in the service graph", b.unmapped),
     ]
-    if events:
-        facts.append(fact("Filtered as noise by the agent", f"{events.get('noise', 0):,}",
-                          f"{events.get('signal', 0)} signals, {events.get('incident', 0)} incidents"))
-    return {"facts": facts, "dark": dark_services(data)}
+    if b.events:
+        facts.append(fact("Filtered as noise by the agent", f"{int(b.events.get('noise', 0)):,}",
+                          f"{int(b.events.get('signal', 0))} signals, {int(b.events.get('incident', 0))} incidents"))
+    out = {"facts": facts, "dark": [{"name": d.name, "silentFor": age_text(d.silent_s)} for d in b.dark]}
+    notes = [TRUST_REASONS[r] for r in info.get("reasons", []) if r in TRUST_REASONS] + b.problems
+    if notes:
+        out["note"] = " · ".join(n[0].upper() + n[1:] for n in notes)
+    return out
 
 
-def day_drill(data: dict, info: dict) -> dict:
-    tenant = tenant_block(data)
-    history = tenant.get("signalsHistory", [])
+def day_drill(b: Bundle, info: dict) -> dict:
     points = []
-    for i in range(0, len(history), 3):
-        chunk = history[i:i + 3]
-        req = sum(b["requests"] for b in chunk)
-        points.append(round(100 * sum(b["requestErrors"] for b in chunk) / req, 3) if req else 0)
+    for i in range(0, len(b.history), 3):
+        chunk = b.history[i:i + 3]
+        requests = sum(x.requests for x in chunk)
+        points.append(round(100 * sum(x.errors for x in chunk) / requests, 3) if requests else 0)
     facts = [
-        fact("Errors, last 2 h", f"{info.get('errRecent', DASH)}%", f"norm {info.get('errBase', DASH)}%"),
-        fact("Incidents today", info.get("incidentsToday", 0), f"usual {info.get('normPerDay', DASH)} a day"),
+        fact("Errors, last 2 h", shown(info.get("errRecent"), "%"), f"norm {shown(info.get('errBase'), '%')}"),
+        fact("Incidents today", shown(info.get("incidentsToday")), f"usual {shown(info.get('normPerDay'))} a day"),
     ]
-    if tenant.get("sampledIncidents"):
-        facts.append(fact("Closed by the agent alone", f"{tenant.get('autoResolvedPct')}%"))
-        facts.append(fact("Coming back", f"{tenant.get('repeatRatePct')}%", "above 20% means schedule root-cause work"))
-    by_type = tenant.get("signalsByType", {})
+    if b.sampled_incidents:
+        facts.append(fact("Closed by the agent alone", shown(b.auto_resolved_pct, "%")))
+        facts.append(fact("Coming back", shown(b.repeat_rate_pct, "%"), f"above {T.DAY_REPEAT_RATE_PCT}% means schedule root-cause work"))
     names = {"log": "Logs", "red": "Requests", "use": "Resources", "k8s": "Platform"}
-    return {
+    out = {
         "facts": facts,
         "sparkline": points,
-        "recentFrom": len(points) - RECENT_BUCKETS // 3,
-        "signals": [{"label": names.get(k, k), "count": v} for k, v in by_type.items()],
-        "handled": [{"service": i["service"], "title": i["title"], "at": parse(i["firstSeen"]).strftime("%H:%M"), "rca": i.get("rca")}
-                    for i in data["incidents"]["incidents"] if i.get("resolvedBy") == "agent"],
+        "signals": [{"label": names.get(k, k), "count": int(v)} for k, v in b.signals_by_type.items()],
+        "handled": [{"service": i.service, "title": i.title, "at": i.first_seen.strftime("%H:%M") if i.first_seen else DASH, "rca": i.rca}
+                    for i in b.incidents if i.resolved_by == "agent"],
     }
+    if info.get("why") == "short_history":
+        out["note"] = f"The day is judged from {T.DAY_MIN_BUCKETS * 5 // 60} h of history. After a core restart this fills up by itself."
+    return out
 
 
 DRILLS = {"users": users_drill, "forecast": forecast_drill, "trust": trust_drill, "day": day_drill}
@@ -424,81 +382,75 @@ DRILLS = {"users": users_drill, "forecast": forecast_drill, "trust": trust_drill
 
 # ------------------------------------------------------------------- blocks ---
 
-def indicator_cards(data: dict, result: dict) -> list[dict]:
+def indicator_cards(b: Bundle, result: dict) -> list[dict]:
     cards = []
     blind = result["verdict"] == "blind"
+    how = T.explain()
     for key, meta in INDICATORS.items():
         state = result["states"][key]
         info = result["detail"].get(key, {})
         label, level = STATE_LABELS[state]
-        dimmed = key == "forecast" and bool(info.get("downgraded"))
+        greyed = blind and key != "trust"
         card = {
             "id": key, **meta, "state": state, "label": label,
-            "level": "muted" if dimmed else level,
+            "level": "muted" if info.get("downgraded") else level,
             "ring": ring_value(key, state, info),
             # blind: the other three are not "fine" and not "bad", they are unknown
-            "caption": "greyed out until data is back" if blind and key != "trust" else CAPTIONS[key](data, state, info),
-            "decides": key == result["trigger"].split("_")[0],
+            "caption": "greyed out until data is back" if greyed else CAPTIONS[key](b, state, info),
+            "decides": result["decidedBy"] == key,
+            "how": how[key],
         }
-        if not (blind and key != "trust"):
-            card["drill"] = DRILLS[key](data, info)
+        if not greyed:
+            card["drill"] = DRILLS[key](b, info)
         cards.append(card)
     return cards
 
 
-def incident_queue(data: dict) -> list[dict]:
-    now = parse(data["now"])
-    order = {"critical": 0, "warning": 1, "info": 2}
+def incident_queue(b: Bundle) -> list[dict]:
     queue = []
-    for inc in data["incidents"]["incidents"]:
-        if inc.get("status") != "open":
-            continue
-        callers = node_of(data, inc["service"]).get("calledBy", [])
+    for inc in open_incidents(b):
+        callers = list(b.service(inc.service).called_by)
         queue.append({
-            "id": inc["id"], "service": inc["service"], "severity": inc["severity"], "title": inc["title"],
-            "openFor": age_text((now - parse(inc["firstSeen"])).total_seconds()),
+            "id": inc.id, "service": inc.service, "severity": inc.severity, "title": inc.title,
+            "openFor": age_text((b.now - inc.first_seen).total_seconds()) if inc.first_seen else DASH,
             "impact": f"hits next: {join_names(callers)}" if callers else "no downstream callers",
-            "rca": inc.get("rca"), "plan": inc.get("investigationPlan", []), "related": inc.get("relatedEvents", []),
-            "_rank": (order.get(inc["severity"], 3), -inc.get("blastRadius", 0)),
+            "rca": inc.rca, "plan": list(inc.plan), "related": list(inc.related),
         })
-    queue.sort(key=lambda q: q["_rank"])
-    for q in queue:
-        q.pop("_rank")
     return queue
 
 
-def source_block(data: dict, mode: str) -> dict:
-    agent = data["status"].get("clusterAgentStats", {}).get(data["tenant"], {})
-    now = parse(data["now"]).timestamp()
+def source_block(b: Bundle, mode: str) -> dict:
     return {
         "mode": mode,
         "label": "Demo data" if mode == "demo" else "Live",
-        "tenant": data["tenant"],
-        "cluster": agent.get("cluster"),
-        "connected": bool(agent.get("connected")),
-        "age": age_text(now - agent.get("lastMessageUnix", now)),
-        "now": data["now"],
+        "tenant": b.tenant,
+        "cluster": b.cluster,
+        # an unreported link with fresh data flowing still counts as alive
+        "connected": b.agent_connected is not False and oldest_data_age(b) is not None,
+        "age": age_text(b.agent_silent_s if b.agent_silent_s is not None else oldest_data_age(b)),
+        "now": b.now.isoformat(timespec="seconds"),
     }
 
 
 def build_view(data: dict, result: dict, mode: str = "demo") -> dict:
-    meta = VERDICTS[result["verdict"]]
+    b = normalize(data)
+    dim = "partial" if result["states"]["trust"] == "partial" else "unverified" if result["trigger"] == "calm_unverified" else None
     view = {
-        "source": source_block(data, mode),
+        "source": source_block(b, mode),
         "decision": {
-            "verdict": result["verdict"], **meta,
+            "verdict": result["verdict"], **VERDICTS[result["verdict"]],
             "trigger": result["trigger"],
-            "reason": human_reason(data, result),
-            "dimmed": result["states"]["trust"] == "partial",
-            "rules": [{"id": rid, "text": text, "leadsTo": leads, "fired": rid == result["trigger"]}
-                      for rid, text, leads in RULES],
+            "reason": human_reason(b, result),
+            "dimmed": dim is not None,
+            "dimNote": DIM_NOTES.get(dim),
+            "rules": [{"id": rid, "text": text, "leadsTo": leads, "fired": rid == result["trigger"]} for rid, text, leads in RULES],
         },
-        "indicators": indicator_cards(data, result),
-        "queue": incident_queue(data),
+        "indicators": indicator_cards(b, result),
+        "queue": incident_queue(b),
     }
-    if "expected" in data:
-        expected = data["expected"]
-        view["scenario"] = {"id": data["scenario"], "title": data["title"], "story": data["story"]}
+    expected = data.get("expected") if isinstance(data, dict) else None
+    if expected:
+        view["scenario"] = {"id": data.get("scenario", ""), "title": data.get("title", ""), "story": data.get("story", "")}
         view["validation"] = {
             "passed": result["verdict"] == expected["verdict"] and result["states"] == expected["states"],
             "expected": {"verdict": expected["verdict"], "states": expected["states"], "reason": expected.get("reason")},
