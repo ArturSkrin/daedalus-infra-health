@@ -1,0 +1,1120 @@
+{
+  "components": {
+    "schemas": {
+      "DarkRow": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "silentFor": {
+            "title": "Silentfor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "silentFor"
+        ],
+        "title": "DarkRow",
+        "type": "object"
+      },
+      "Decision": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "dimNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimnote"
+          },
+          "dimmed": {
+            "title": "Dimmed",
+            "type": "boolean"
+          },
+          "level": {
+            "enum": [
+              "good",
+              "warn",
+              "bad",
+              "muted"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/Rule"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "all_clear",
+              "schedule",
+              "act_now",
+              "blind"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "word",
+          "action",
+          "level",
+          "trigger",
+          "reason",
+          "dimmed",
+          "rules"
+        ],
+        "title": "Decision",
+        "type": "object"
+      },
+      "Drill": {
+        "properties": {
+          "dark": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DarkRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dark"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/Fact"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "handled": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Handled"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handled"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "pressure": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PressureRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pressure"
+          },
+          "services": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ServiceRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Services"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SignalCount"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          },
+          "sparkline": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sparkline"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Step"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          }
+        },
+        "required": [
+          "facts"
+        ],
+        "title": "Drill",
+        "type": "object"
+      },
+      "Fact": {
+        "properties": {
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "Fact",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Handled": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "rca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rca"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "title",
+          "at"
+        ],
+        "title": "Handled",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "live": {
+            "title": "Live",
+            "type": "boolean"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "live"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "Indicator": {
+        "properties": {
+          "caption": {
+            "title": "Caption",
+            "type": "string"
+          },
+          "decides": {
+            "title": "Decides",
+            "type": "boolean"
+          },
+          "drill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Drill"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "horizon": {
+            "title": "Horizon",
+            "type": "string"
+          },
+          "how": {
+            "title": "How",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "users",
+              "forecast",
+              "trust",
+              "day"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "good",
+              "warn",
+              "bad",
+              "muted"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "ring": {
+            "title": "Ring",
+            "type": "number"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "question",
+          "horizon",
+          "state",
+          "label",
+          "level",
+          "ring",
+          "caption",
+          "decides",
+          "how"
+        ],
+        "title": "Indicator",
+        "type": "object"
+      },
+      "Outcome": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "states": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "States",
+            "type": "object"
+          },
+          "verdict": {
+            "enum": [
+              "all_clear",
+              "schedule",
+              "act_now",
+              "blind"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "states"
+        ],
+        "title": "Outcome",
+        "type": "object"
+      },
+      "PressureRow": {
+        "properties": {
+          "cpuStallPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpustallpct"
+          },
+          "ioStallPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iostallpct"
+          },
+          "memOfRequestPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memofrequestpct"
+          },
+          "memStallPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memstallpct"
+          },
+          "oomKills": {
+            "title": "Oomkills",
+            "type": "integer"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "oomKills"
+        ],
+        "title": "PressureRow",
+        "type": "object"
+      },
+      "QueueItem": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "impact": {
+            "title": "Impact",
+            "type": "string"
+          },
+          "openFor": {
+            "title": "Openfor",
+            "type": "string"
+          },
+          "plan": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Plan",
+            "type": "array"
+          },
+          "rca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rca"
+          },
+          "related": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "service",
+          "severity",
+          "title",
+          "openFor",
+          "impact",
+          "plan",
+          "related"
+        ],
+        "title": "QueueItem",
+        "type": "object"
+      },
+      "Rule": {
+        "properties": {
+          "fired": {
+            "title": "Fired",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "leadsTo": {
+            "title": "Leadsto",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "leadsTo",
+          "fired"
+        ],
+        "title": "Rule",
+        "type": "object"
+      },
+      "Scenario": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "story": {
+            "title": "Story",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "story"
+        ],
+        "title": "Scenario",
+        "type": "object"
+      },
+      "ScenarioListItem": {
+        "properties": {
+          "actual": {
+            "enum": [
+              "all_clear",
+              "schedule",
+              "act_now",
+              "blind"
+            ],
+            "title": "Actual",
+            "type": "string"
+          },
+          "expected": {
+            "enum": [
+              "all_clear",
+              "schedule",
+              "act_now",
+              "blind"
+            ],
+            "title": "Expected",
+            "type": "string"
+          },
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "file",
+          "expected",
+          "actual",
+          "passed"
+        ],
+        "title": "ScenarioListItem",
+        "type": "object"
+      },
+      "ServiceRow": {
+        "properties": {
+          "errPct": {
+            "title": "Errpct",
+            "type": "number"
+          },
+          "flag": {
+            "enum": [
+              "good",
+              "warn",
+              "bad",
+              "muted"
+            ],
+            "title": "Flag",
+            "type": "string"
+          },
+          "fresh": {
+            "title": "Fresh",
+            "type": "boolean"
+          },
+          "hitsNext": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hitsnext",
+            "type": "array"
+          },
+          "p99Ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P99Ms"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reqPerSec": {
+            "title": "Reqpersec",
+            "type": "number"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          }
+        },
+        "required": [
+          "service",
+          "errPct",
+          "reqPerSec",
+          "ready",
+          "fresh",
+          "hitsNext",
+          "flag"
+        ],
+        "title": "ServiceRow",
+        "type": "object"
+      },
+      "SignalCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "count"
+        ],
+        "title": "SignalCount",
+        "type": "object"
+      },
+      "Source": {
+        "properties": {
+          "age": {
+            "title": "Age",
+            "type": "string"
+          },
+          "cluster": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cluster"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "demo",
+              "live"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "now": {
+            "title": "Now",
+            "type": "string"
+          },
+          "tenant": {
+            "title": "Tenant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "tenant",
+          "connected",
+          "age",
+          "now"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "Step": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "done"
+        ],
+        "title": "Step",
+        "type": "object"
+      },
+      "Validation": {
+        "properties": {
+          "computed": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "expected": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "passed",
+          "expected",
+          "computed"
+        ],
+        "title": "Validation",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "View": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "indicators": {
+            "items": {
+              "$ref": "#/components/schemas/Indicator"
+            },
+            "title": "Indicators",
+            "type": "array"
+          },
+          "queue": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            },
+            "title": "Queue",
+            "type": "array"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Scenario"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Validation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "decision",
+          "indicators",
+          "queue"
+        ],
+        "title": "View",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Daedalus Infra Health",
+    "version": "0.3.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/live": {
+      "get": {
+        "description": "Same view model, computed from a real Triage core instead of a mock file.",
+        "operationId": "live_view_api_live_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live View"
+      }
+    },
+    "/api/scenarios": {
+      "get": {
+        "operationId": "scenarios_api_scenarios_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioListItem"
+                  },
+                  "title": "Response Scenarios Api Scenarios Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Scenarios"
+      }
+    },
+    "/api/scenarios/{scenario_id}": {
+      "get": {
+        "operationId": "scenario_api_scenarios__scenario_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/View"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scenario"
+      }
+    },
+    "/api/scenarios/{scenario_id}/raw": {
+      "get": {
+        "description": "The mock Triage responses behind a scenario, exactly as the engine receives them.",
+        "operationId": "scenario_raw_api_scenarios__scenario_id__raw_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Scenario Raw Api Scenarios  Scenario Id  Raw Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scenario Raw"
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Indicator, QueueItem } from '../types'
 
-const SEVERITY_COLOR: Record<QueueItem['severity'], string> = {
+const SEVERITY_COLOR: Record<string, string> = {
   critical: '#ef4444',
   warning: '#fbbf24',
   info: '#60a5fa',
@@ -12,7 +12,7 @@ function QueueRow({ item }: { item: QueueItem }) {
   return (
     <li className="rounded-xl border border-white/5 bg-panel-2/60">
       <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-3 px-3 py-2.5 text-left">
-        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: SEVERITY_COLOR[item.severity] }} />
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: SEVERITY_COLOR[item.severity] ?? SEVERITY_COLOR.info }} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate text-sm font-medium text-white/90">{item.service}</span>

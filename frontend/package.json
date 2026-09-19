@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint src",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gen:types": "npx --yes openapi-typescript@7.13.0 openapi.json -o src/api.gen.ts"
   },
   "dependencies": {
     "framer-motion": "^13.2.0",

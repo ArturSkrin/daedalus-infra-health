@@ -2,20 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { Sparkline } from './Sparkline'
 import { LEVEL, VERDICT_WORD } from '../theme'
-import type { Drill, DrillTarget, Fact, Indicator, View } from '../types'
-
-// What moves each indicator, in one paragraph. The thresholds themselves live
-// in backend/engine.py; this is the human wording from metrics_spec.md.
-const HOW_IT_DECIDES: Record<Indicator['id'], string> = {
-  users:
-    'Fine while under 0.5% of requests fail. Degraded from 0.5%, or when a service on the user path passes 1%: schedule, and act now if that service is on the user path. Broken from 5% fleet-wide, or when a user-path service passes 5% or is not ready: act now.',
-  forecast:
-    'Brewing when the agent matches at least half of a known failure pattern with 70% confidence, or when memory stalls while usage is above 90% of its request: schedule, and act now if it is a user-path service with under 30 min of usual warning. A forecast from an agent that is right less than 60% of the time is dimmed and cannot move the verdict.',
-  trust:
-    'Full when the cluster agent is connected, 95% of services report, none are silent, and data is under 5 min old. Partial blocks ALL CLEAR, because a silent service is either healthy or dead and the data cannot tell which. Blind greys out everything else.',
-  day:
-    'Compares errors in the last 2 hours with the 22 hours before. Regressed above twice the norm: schedule. Settled when there was a spike that came back down with nothing left open. Quiet otherwise. This is also where you see what the agent closed without you.',
-}
+import type { Drill, DrillTarget, Fact, View } from '../types'
 
 function Facts({ facts }: { facts: Fact[] }) {
   return (
@@ -254,7 +241,7 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
 
             {indicator && (
               <Section title="How this indicator decides">
-                <p className="text-xs leading-relaxed text-white/50">{HOW_IT_DECIDES[indicator.id]}</p>
+                <p className="text-xs leading-relaxed text-white/50">{indicator.how}</p>
               </Section>
             )}
           </motion.div>

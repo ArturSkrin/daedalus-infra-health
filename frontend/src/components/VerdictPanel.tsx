@@ -70,9 +70,7 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
 
       <p className="relative max-w-sm text-center text-[13px] leading-snug text-white/80 sm:text-sm">{decision.reason}</p>
 
-      {decision.dimmed && (
-        <p className="relative -mt-2 text-center text-[11px] text-white/40">Part of the fleet is not visible, so this is a floor, not a guarantee.</p>
-      )}
+      {decision.dimNote && <p className="relative -mt-2 text-center text-[11px] text-white/40">{decision.dimNote}</p>}
 
       <button
         type="button"
