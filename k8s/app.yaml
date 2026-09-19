@@ -70,6 +70,10 @@ spec:
         - name: frontend
           image: ghcr.io/arturskrin/daedalus-infra-health-frontend:latest
           imagePullPolicy: Always
+          env:
+            # nginx resolves this name itself and does not apply DNS search domains
+            - name: BACKEND_HOST
+              value: backend.daedalus.svc.cluster.local
           ports:
             - containerPort: 80
           readinessProbe:

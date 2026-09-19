@@ -13,7 +13,11 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# nginx resolvers ignore DNS search domains, so a cluster has to pass the full service name (see k8s/app.yaml)
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+ENV BACKEND_HOST=backend
+
+COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 COPY --from=build /app/dist /usr/share/nginx/html
 

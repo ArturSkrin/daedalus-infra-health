@@ -1,0 +1,31 @@
+# Rendered at container start by the nginx image (envsubst over /etc/nginx/templates).
+# Only ${NGINX_LOCAL_RESOLVERS} and ${BACKEND_HOST} are substituted; $host, $uri and friends are nginx variables.
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Resolve the backend on every request instead of once at startup. With a fixed name nginx keeps the
+    # IP it saw first, so recreating the backend container (a rebuild, or switching on live mode) left the
+    # frontend answering 502 until it was restarted too. The resolver address comes from /etc/resolv.conf,
+    # which is Docker's embedded DNS under compose and kube-dns in a cluster.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+
+    location /api/ {
+        set $backend "http://${BACKEND_HOST}:8000";
+        proxy_pass $backend;
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
