@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { liveAvailable as checkLive, loadLive, loadScenario, loadScenarios } from './api'
 import { DrillSheet } from './components/DrillSheet'
 import { Header, LIVE } from './components/Header'
 import { IndicatorTile } from './components/IndicatorTile'
+import { GridIcon, MobileTabBar, QueueIcon, WatchIcon } from './components/MobileTabBar'
 import { QueuePanel } from './components/QueuePanel'
 import { VerdictPanel } from './components/VerdictPanel'
 import { WatchFaces } from './components/WatchFaces'
+import { LEVEL, VERDICT_GLYPH } from './theme'
 import type { DrillTarget, ScenarioListItem, View } from './types'
 
 const DEFAULT_SCENARIO = 's01_calm'
@@ -35,7 +37,9 @@ function App() {
     loadScenarios().then(setScenarios).catch((e: Error) => setError(e.message))
     checkLive().then((available) => {
       setLive(available)
-      setSelected((current) => current ?? (available ? LIVE : DEFAULT_SCENARIO))
+      // Also overrides an explicit ?live=1: a stale link/bookmark from when live mode *was* configured
+      // must not strand the app on a permanent 503 with no way back to a working screen.
+      setSelected((current) => (current === null || (current === LIVE && !available) ? (available ? LIVE : DEFAULT_SCENARIO) : current))
     })
   }, [])
 
@@ -78,11 +82,45 @@ function App() {
     setSelected(id)
   }
 
+  const verdictRef = useRef<HTMLDivElement>(null)
+  const indicatorsRef = useRef<HTMLDivElement>(null)
+  const queueRef = useRef<HTMLDivElement>(null)
+  const watchRef = useRef<HTMLDivElement>(null)
+
+  // Stable identity across unrelated re-renders (e.g. opening a drill sheet elsewhere on the page): the tab
+  // bar's IntersectionObserver only needs to reset when the view itself changes, never just because App did.
+  const tabs = useMemo(
+    () =>
+      view && [
+        {
+          id: 'verdict',
+          label: 'Verdict',
+          ref: verdictRef,
+          icon: (
+            // Fixed to the same 18px box as the other tabs' SVG icons: a text glyph's line-height metrics
+            // differ from a fixed-size SVG, and this row is top-aligned, so an unboxed glyph would sit at a
+            // different height than its neighbors instead of sharing their baseline.
+            <span
+              className="flex h-4.5 w-4.5 items-center justify-center text-base font-black leading-none"
+              style={{ color: LEVEL[view.decision.level].color }}
+              aria-hidden="true"
+            >
+              {VERDICT_GLYPH[view.decision.verdict]}
+            </span>
+          ),
+        },
+        { id: 'indicators', label: 'Vitals', ref: indicatorsRef, icon: <GridIcon /> },
+        { id: 'queue', label: 'Queue', ref: queueRef, icon: <QueueIcon /> },
+        { id: 'watch', label: 'Watch', ref: watchRef, icon: <WatchIcon /> },
+      ],
+    [view],
+  )
+
   return (
     <div className="min-h-screen bg-bg px-3 py-3 sm:px-4 sm:py-5 lg:px-10 lg:py-9">
       <Header view={view} scenarios={scenarios} selected={selected ?? DEFAULT_SCENARIO} liveAvailable={live} onSelect={pick} />
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-3 sm:gap-4 lg:gap-6">
+      <main className="mx-auto flex max-w-6xl flex-col gap-3 pb-20 sm:gap-4 sm:pb-0 lg:gap-6">
         {error && (
           <div className="rounded-2xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-white/80">
             Could not load the tracker data: {error}
@@ -92,17 +130,25 @@ function App() {
         {view && (
           <>
             <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[1fr_1fr] lg:gap-6">
-              <VerdictPanel view={view} onOpen={setDrill} />
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
+              <div ref={verdictRef}>
+                <VerdictPanel view={view} onOpen={setDrill} />
+              </div>
+              <div ref={indicatorsRef} className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                 {view.indicators.map((indicator) => (
                   <IndicatorTile key={indicator.id} indicator={indicator} onOpen={() => setDrill(indicator.id)} />
                 ))}
               </div>
             </div>
 
-            <QueuePanel queue={view.queue} day={view.indicators.find((i) => i.id === 'day')} blind={view.decision.verdict === 'blind'} />
-            <WatchFaces view={view} />
+            <div ref={queueRef}>
+              <QueuePanel queue={view.queue} day={view.indicators.find((i) => i.id === 'day')} blind={view.decision.verdict === 'blind'} />
+            </div>
+            <div ref={watchRef}>
+              <WatchFaces view={view} />
+            </div>
             <DrillSheet view={view} target={drill} onClose={() => setDrill(null)} />
+
+            {tabs && <MobileTabBar tabs={tabs} />}
           </>
         )}
       </main>

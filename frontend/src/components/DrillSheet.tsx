@@ -1,8 +1,9 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useDragControls } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { Sparkline } from './Sparkline'
 import { LEVEL, VERDICT_WORD } from '../theme'
-import type { Drill, DrillTarget, Fact, View } from '../types'
+import { useCompact } from '../useCompact'
+import type { Drill, DrillTarget, Fact, Link, View } from '../types'
 
 function Facts({ facts }: { facts: Fact[] }) {
   return (
@@ -23,6 +24,32 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     <div>
       <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/40">{title}</h4>
       {children}
+    </div>
+  )
+}
+
+// An escape hatch, never part of the verdict itself: only rendered when the backend actually has a real tool
+// to point at (an operator configured a URL template for it). Placed right under the header, not buried past
+// a long table, so it doesn't need scrolling to find — and given its own accent color so it reads as an
+// action, not just more evidence text.
+function EvidenceLinks({ links, color }: { links: Link[]; color: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2.5" style={{ borderColor: `${color}55`, backgroundColor: `${color}14` }}>
+      <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color }}>
+        Verify in
+      </span>
+      {links.map((link) => (
+        <a
+          key={link.label}
+          href={link.url}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border px-3 py-1.5 text-xs font-semibold transition-transform active:scale-95 hover:brightness-125"
+          style={{ borderColor: `${color}88`, color, backgroundColor: `${color}1f` }}
+        >
+          {link.label} <span aria-hidden="true">↗</span>
+        </a>
+      ))}
     </div>
   )
 }
@@ -194,6 +221,8 @@ function VerdictBody({ view }: { view: View }) {
 export function DrillSheet({ view, target, onClose }: { view: View; target: DrillTarget | null; onClose: () => void }) {
   const indicator = target && target !== 'verdict' ? view.indicators.find((i) => i.id === target) : undefined
   const tone = indicator ? LEVEL[indicator.level] : LEVEL[view.decision.level]
+  const compact = useCompact()
+  const dragControls = useDragControls()
 
   return (
     // initial={false}: a sheet opened by ?drill= on load is visible at once, not after an animation
@@ -213,9 +242,28 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ type: 'spring', damping: 32, stiffness: 350 }}
             onClick={(e) => e.stopPropagation()}
+            // Only the grabber handle below starts the drag (dragListener={false}), so pulling the sheet down
+            // never fights a finger trying to scroll its contents.
+            drag={compact ? 'y' : false}
+            dragListener={false}
+            dragControls={dragControls}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 120 || info.velocity.y > 800) onClose()
+            }}
           >
+            {compact && (
+              <div
+                onPointerDown={(e) => dragControls.start(e)}
+                className="-mt-2 mb-0.5 flex shrink-0 touch-none cursor-grab justify-center py-2 active:cursor-grabbing"
+              >
+                <div className="h-1.5 w-10 rounded-full bg-white/20" />
+              </div>
+            )}
+
             <header className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-white/40">{indicator ? indicator.title : 'Fleet state'}</div>
@@ -224,10 +272,17 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
                 </div>
                 <p className="mt-0.5 text-sm text-white/70">{indicator ? indicator.caption : view.decision.reason}</p>
               </div>
-              <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/50 hover:text-white">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/50 transition-transform active:scale-90 hover:text-white"
+              >
                 Close
               </button>
             </header>
+
+            {indicator?.drill?.links && indicator.drill.links.length > 0 && <EvidenceLinks links={indicator.drill.links} color={tone.color} />}
 
             {indicator ? (
               indicator.drill ? (

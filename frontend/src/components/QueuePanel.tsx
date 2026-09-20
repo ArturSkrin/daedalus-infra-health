@@ -11,7 +11,11 @@ function QueueRow({ item }: { item: QueueItem }) {
   const [open, setOpen] = useState(false)
   return (
     <li className="rounded-xl border border-white/5 bg-panel-2/60">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-start gap-3 px-3 py-2.5 text-left">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-transform active:scale-[0.985]"
+      >
         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: SEVERITY_COLOR[item.severity] ?? SEVERITY_COLOR.info }} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">

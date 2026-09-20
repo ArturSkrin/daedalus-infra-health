@@ -9,6 +9,7 @@ export type View = Schemas['View']
 export type Indicator = Schemas['Indicator']
 export type Drill = Schemas['Drill']
 export type Fact = Schemas['Fact']
+export type Link = Schemas['Link']
 export type QueueItem = Schemas['QueueItem']
 export type ScenarioListItem = Schemas['ScenarioListItem']
 

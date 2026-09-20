@@ -13,7 +13,8 @@ export function IndicatorTile({ indicator, onOpen }: { indicator: Indicator; onO
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full flex-col gap-1.5 rounded-2xl border bg-panel-2/70 p-3 text-left transition hover:border-white/25 sm:gap-2.5 sm:p-3.5 lg:p-4"
+      aria-label={`${indicator.title}: ${indicator.label} — open for details`}
+      className="group flex h-full cursor-pointer flex-col gap-1.5 rounded-2xl border bg-panel-2/70 p-3 text-left transition hover:border-white/25 active:scale-[0.97] sm:gap-2.5 sm:p-3.5 lg:p-4"
       style={{ borderColor: indicator.decides ? `${tone.color}88` : 'rgba(255,255,255,0.1)' }}
     >
       <div className="flex items-center gap-2.5">
@@ -26,6 +27,22 @@ export function IndicatorTile({ indicator, onOpen }: { indicator: Indicator; onO
             {indicator.label}
           </div>
         </div>
+        {/* Always visible, unlike the bottom-row "details" hint (which a driving indicator overrides with
+            "drives the verdict") -- this is the one disclosure cue every tile keeps no matter its state. */}
+        <svg
+          className="shrink-0 text-white/20 transition group-hover:translate-x-0.5 group-hover:text-white/45"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m9 6 6 6-6 6" />
+        </svg>
       </div>
 
       <p className="line-clamp-3 text-xs leading-snug text-white/75 sm:text-[13px]">{indicator.caption}</p>

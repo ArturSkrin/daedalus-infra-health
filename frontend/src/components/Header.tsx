@@ -36,20 +36,35 @@ export function Header({ view, scenarios, selected, liveAvailable, onSelect }: H
           </span>
         )}
 
-        <label className="flex items-center gap-1.5 rounded-full border border-white/10 py-1 pl-3 pr-1 text-[11px] text-white/40">
+        <label className="flex items-center gap-1.5 rounded-full border border-white/10 bg-panel-2/50 py-1 pl-3 pr-1.5 text-[11px] text-white/40 transition-transform active:scale-[0.97]">
           Scenario
-          <select
-            value={selected}
-            onChange={(e) => onSelect(e.target.value)}
-            className="max-w-[15rem] truncate rounded-full bg-panel-2 px-2 py-0.5 text-[11px] text-white/85 outline-none sm:max-w-none"
-          >
-            {liveAvailable && <option value={LIVE}>Live data</option>}
-            {scenarios.map((s, i) => (
-              <option key={s.id} value={s.id}>
-                S{String(i + 1).padStart(2, '0')} · {s.title} · {VERDICT_WORD[s.expected]}
-              </option>
-            ))}
-          </select>
+          <span className="relative flex items-center">
+            <select
+              value={selected}
+              onChange={(e) => onSelect(e.target.value)}
+              className="max-w-52 appearance-none truncate rounded-full bg-panel-2 py-0.5 pl-2 pr-5 text-[11px] font-medium text-white/85 outline-none sm:max-w-none"
+            >
+              {liveAvailable && <option value={LIVE}>Live data</option>}
+              {scenarios.map((s, i) => (
+                <option key={s.id} value={s.id}>
+                  S{String(i + 1).padStart(2, '0')} · {s.title} · {VERDICT_WORD[s.expected]}
+                </option>
+              ))}
+            </select>
+            <svg
+              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-white/40"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
         </label>
       </div>
     </header>

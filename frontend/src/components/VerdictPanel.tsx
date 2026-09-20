@@ -35,7 +35,7 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
               type="button"
               aria-label={`${indicator.title}: ${indicator.label}`}
               onClick={() => onOpen(indicator.id)}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform active:scale-90"
               style={{ width: size, height: size }}
             >
               <Ring percent={indicator.ring * 100} size={size} strokeWidth={STROKE} color={color.color} glow={color.glow} />
@@ -53,7 +53,7 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
       <button
         type="button"
         onClick={() => onOpen('verdict')}
-        className={`relative flex flex-col items-center gap-0.5 rounded-2xl border px-6 py-2 sm:gap-1 sm:px-7 sm:py-3 ${urgent ? 'animate-pulse-glow' : ''}`}
+        className={`relative flex flex-col items-center gap-0.5 rounded-2xl border px-6 py-2 transition-transform active:scale-[0.96] sm:gap-1 sm:px-7 sm:py-3 ${urgent ? 'animate-pulse-glow' : ''}`}
         style={{
           opacity: decision.dimmed ? 0.8 : 1,
           borderColor: `${tone.color}55`,
@@ -75,7 +75,7 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
       <button
         type="button"
         onClick={() => onOpen('verdict')}
-        className="relative hidden text-[11px] font-semibold uppercase tracking-wide text-white/35 underline-offset-4 hover:text-white/60 hover:underline sm:block"
+        className="relative hidden text-[11px] font-semibold uppercase tracking-wide text-white/35 underline-offset-4 transition-transform hover:text-white/60 hover:underline active:scale-95 sm:block"
       >
         Why this word
       </button>
