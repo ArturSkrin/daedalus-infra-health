@@ -1,0 +1,35 @@
+# Exercise live mode -- and the drill-in's "Verify in" evidence links -- without a real Triage core
+# or the EVE shim: serves one mock scenario's own blocks over the same /v2/agent/* endpoints a real
+# core exposes, and points the backend at it with LOGS_URL_TEMPLATE/TRACES_URL_TEMPLATE set.
+#
+#   docker compose -f docker-compose.yaml -f docker-compose.fake-triage.yaml up -d --build
+#
+# The base docker-compose.yaml stays untouched, so the normal demo-scenario flow is unaffected.
+# Pick a different scenario with FAKE_TRIAGE_SCENARIO=s04_memory_pressure (any mock_data/*.json id).
+services:
+  fake-triage:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["python", "mock_data/fake_triage.py"]
+    restart: unless-stopped
+    environment:
+      FAKE_TRIAGE_SCENARIO: ${FAKE_TRIAGE_SCENARIO:-s07_outage}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    environment:
+      # The fake core speaks the Triage API, so live mode needs nothing but its address.
+      TRIAGE_BASE_URL: http://fake-triage:9100
+      TRIAGE_TENANT: digital-purchases
+      # Opens in *your* browser, so it points at localhost:$TRACKER_PORT and the two placeholder pages in
+      # frontend/public/mock-tools/ -- point these at your real Grafana/Loki/Jaeger instead, once you have one.
+      LOGS_URL_TEMPLATE: "http://localhost:${TRACKER_PORT:-8080}/mock-tools/logs.html?tenant={tenant}&service={service}"
+      TRACES_URL_TEMPLATE: "http://localhost:${TRACKER_PORT:-8080}/mock-tools/traces.html?tenant={tenant}&service={service}"
+    depends_on:
+      fake-triage:
+        condition: service_healthy

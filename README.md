@@ -101,6 +101,7 @@ Triage API ───────┘   reads raw     rules and     words, caption
 - **schemas.py** is the response contract. FastAPI validates every response against it, and the frontend types in `frontend/src/api.gen.ts` are generated from the OpenAPI document with `npm run gen:types`. CI fails when the generated files lag behind the code.
 - **frontend** computes nothing and knows no threshold. Raw values appear only in the drill-in.
 - **live.py** assembles the same five blocks from a real Triage core. Live mode is switched on with `TRIAGE_BASE_URL`, `TRIAGE_TOKEN` and `TRIAGE_TENANT`, after which "Live data" appears in the scenario list. Requests to the core run in parallel, the answer is cached for 20 seconds, and the core's error text is never passed to the client. Without access to the organizers' core this path has not been run on live data.
+- **Evidence links.** In live mode, a drill-in can show a quiet "Verify in" row linking out to whatever real log/trace/metrics tool watches the fleet — set `LOGS_URL_TEMPLATE`, `TRACES_URL_TEMPLATE` and/or `METRICS_URL_TEMPLATE`, each with `{tenant}`, `{cluster}` and `{service}` placeholders the backend fills in, e.g. `LOGS_URL_TEMPLATE=https://logs.example.com/explore?tenant={tenant}&service={service}`. Unset by default, and never shown for a demo scenario: a mock has no real tool behind it, and this is an escape hatch for a human who wants to check, never part of the verdict itself.
 
 ## Live mode on a real application
 

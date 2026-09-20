@@ -38,6 +38,10 @@ services:
       # The collector speaks the Triage API, so live mode needs nothing but its address.
       TRIAGE_BASE_URL: http://collector:9000
       TRIAGE_TENANT: eve-tools
+      # Opens in *your* browser, so it points at localhost:$TRACKER_PORT and the two placeholder pages in
+      # frontend/public/mock-tools/ -- point these at your real Grafana/Loki/Jaeger instead, once you have one.
+      LOGS_URL_TEMPLATE: "http://localhost:${TRACKER_PORT:-8080}/mock-tools/logs.html?tenant={tenant}&service={service}"
+      TRACES_URL_TEMPLATE: "http://localhost:${TRACKER_PORT:-8080}/mock-tools/traces.html?tenant={tenant}&service={service}"
     depends_on:
       collector:
         condition: service_healthy
