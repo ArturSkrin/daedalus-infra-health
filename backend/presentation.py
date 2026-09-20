@@ -8,6 +8,8 @@ decision. Raw values (error %, stall %, p99) appear only inside `drill`.
 """
 from __future__ import annotations
 
+import os
+
 from backend import thresholds as T
 from backend.bundle import Bundle, normalize
 
@@ -397,6 +399,32 @@ def day_drill(b: Bundle, info: dict) -> dict:
 
 DRILLS = {"users": users_drill, "forecast": forecast_drill, "trust": trust_drill, "day": day_drill}
 
+LINK_ENV = {"Logs": "LOGS_URL_TEMPLATE", "Traces": "TRACES_URL_TEMPLATE", "Metrics": "METRICS_URL_TEMPLATE"}
+
+
+def pick_service(key: str, info: dict) -> str | None:
+    """The one service a drill-in's evidence links should scope to, when the indicator names one."""
+    if key == "users":
+        return info.get("service") or next(iter(info.get("affected") or info.get("tier1Hurt") or []), None)
+    if key == "forecast":
+        return info.get("service")
+    return None
+
+
+def evidence_links(tenant: str, cluster: str | None, service: str | None) -> list[dict] | None:
+    """Deep links out to whatever real log/trace/metrics tool watches this fleet, built from operator-supplied
+    URL templates (LOGS_URL_TEMPLATE etc., with {tenant}/{cluster}/{service} placeholders). Unset by default,
+    so nothing appears until an operator deliberately configures one -- at that point it renders for demo
+    scenarios too, since it's the operator's own explicit setup that makes a link non-fabricated, not the
+    mode. A human who wants to verify can jump out; the verdict itself never depends on this.
+    """
+    links = [
+        {"label": label, "url": template.format(tenant=tenant, cluster=cluster or "", service=service or "")}
+        for label, env_name in LINK_ENV.items()
+        if (template := os.environ.get(env_name))
+    ]
+    return links or None
+
 
 # ------------------------------------------------------------------- blocks ---
 
@@ -420,6 +448,9 @@ def indicator_cards(b: Bundle, result: dict) -> list[dict]:
         }
         if not greyed:
             card["drill"] = DRILLS[key](b, info)
+            links = evidence_links(b.tenant, b.cluster, pick_service(key, info))
+            if links:
+                card["drill"]["links"] = links
         cards.append(card)
     return cards
 

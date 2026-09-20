@@ -141,6 +141,8 @@ export interface components {
             facts: components["schemas"]["Fact"][];
             /** Handled */
             handled?: components["schemas"]["Handled"][] | null;
+            /** Links */
+            links?: components["schemas"]["Link"][] | null;
             /** Note */
             note?: string | null;
             /** Pressure */
@@ -220,6 +222,13 @@ export interface components {
             state: string;
             /** Title */
             title: string;
+        };
+        /** Link */
+        Link: {
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
         };
         /** Outcome */
         Outcome: {

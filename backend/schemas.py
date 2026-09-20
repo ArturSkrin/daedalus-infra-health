@@ -59,6 +59,11 @@ class SignalCount(BaseModel):
     count: int
 
 
+class Link(BaseModel):
+    label: str
+    url: str
+
+
 class Handled(BaseModel):
     service: str
     title: str
@@ -76,6 +81,7 @@ class Drill(BaseModel):
     sparkline: list[float] | None = None
     signals: list[SignalCount] | None = None
     handled: list[Handled] | None = None
+    links: list[Link] | None = None
 
 
 class Indicator(BaseModel):

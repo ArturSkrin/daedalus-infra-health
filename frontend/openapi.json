@@ -130,6 +130,20 @@
             ],
             "title": "Handled"
           },
+          "links": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Link"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Links"
+          },
           "note": {
             "anyOf": [
               {
@@ -396,6 +410,24 @@
           "how"
         ],
         "title": "Indicator",
+        "type": "object"
+      },
+      "Link": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "Link",
         "type": "object"
       },
       "Outcome": {
