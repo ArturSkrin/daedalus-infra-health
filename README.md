@@ -26,7 +26,9 @@ The main screen has five indicators, and none of them is a raw metric:
 
 ## How to view the prototype
 
-Only Docker is needed.
+Hosted, nothing to install: **https://arturskrin.github.io/daedalus-infra-health/**. It is the same frontend reading view models exported by the same engine, so every demo scenario and drill-in works; live mode needs the backend and is local only.
+
+To run it yourself, only Docker is needed.
 
 ```bash
 docker compose up -d --build
