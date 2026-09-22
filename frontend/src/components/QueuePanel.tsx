@@ -52,7 +52,7 @@ function QueueRow({ item }: { item: QueueItem }) {
 export function QueuePanel({ queue, day, blind }: { queue: QueueItem[]; day?: Indicator; blind: boolean }) {
   const handled = day?.drill?.handled ?? []
   return (
-    <section className="rounded-3xl border border-white/10 bg-panel/60 p-5">
+    <section className="rounded-3xl border border-white/10 bg-panel/60 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl lg:shadow-none lg:backdrop-blur-none">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-white/60">Needs a human</h2>
         <span className="text-xs text-white/30">{blind ? 'unknown' : queue.length === 0 ? 'nothing' : `${queue.length} open`}</span>

@@ -238,7 +238,7 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
           <motion.div
             role="dialog"
             aria-modal="true"
-            className="scrollbar-thin flex max-h-[88vh] w-full max-w-xl flex-col gap-4 overflow-y-auto rounded-t-3xl border border-white/10 bg-panel p-5 lg:rounded-3xl"
+            className="scrollbar-thin flex max-h-[88vh] w-full max-w-xl flex-col gap-4 overflow-y-auto rounded-t-3xl border border-white/10 bg-panel/85 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-2xl lg:rounded-3xl lg:bg-panel lg:shadow-none lg:backdrop-blur-none"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}

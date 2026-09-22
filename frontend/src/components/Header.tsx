@@ -18,7 +18,7 @@ export function Header({ view, scenarios, selected, liveAvailable, onSelect }: H
   const healthy = source?.connected ?? false
 
   return (
-    <header className="mx-auto mb-3 flex max-w-6xl flex-col gap-2 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 lg:mb-7">
+    <header className="sticky top-0 z-30 -mx-3 mb-3 flex flex-col gap-2 border-b border-white/10 bg-bg/80 px-3 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-xl sm:static sm:mx-auto sm:mb-5 sm:max-w-6xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:border-none sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none sm:backdrop-blur-none lg:mb-7">
       <div>
         <h1 className="text-base font-bold tracking-tight sm:text-lg lg:text-xl">Infra Health Tracker</h1>
         <p className="hidden text-xs text-white/40 sm:block">The agent already decided. This is what it decided, and why you can believe it.</p>

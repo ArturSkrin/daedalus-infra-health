@@ -17,7 +17,7 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
   const GAP = compact ? 4 : 5
 
   return (
-    <section className="relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-panel/60 px-5 py-4 sm:gap-5 sm:px-6 sm:py-7 lg:py-9">
+    <section className="relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-panel/60 px-5 py-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:gap-5 sm:px-6 sm:py-7 lg:py-9 lg:shadow-none lg:backdrop-blur-none">
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{ background: `radial-gradient(circle at 50% 32%, ${tone.glow}, transparent 62%)` }}

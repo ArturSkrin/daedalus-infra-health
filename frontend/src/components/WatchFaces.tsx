@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Ring } from './Ring'
 import { LEVEL } from '../theme'
@@ -19,6 +20,60 @@ function Face({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
+// A real swipeable, snap-scrolling page carousel on a phone -- the label under "On the wrist" has always said
+// "swipe", but the layout only ever wrapped or squeezed. Desktop keeps the original static row (three faces
+// fit comfortably side by side there, so paging would just add friction).
+function FacesCarousel({ children }: { children: ReactNode[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const cardRefs = useRef<Array<HTMLDivElement | null>>([])
+  const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+        if (!visible) return
+        const index = cardRefs.current.findIndex((el) => el === visible.target)
+        if (index !== -1) setActive(index)
+      },
+      { root: container, threshold: [0.5, 0.75, 1] },
+    )
+
+    cardRefs.current.forEach((card) => card && observer.observe(card))
+    return () => observer.disconnect()
+  }, [children.length])
+
+  return (
+    <div>
+      <div
+        ref={containerRef}
+        className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:justify-around lg:overflow-visible lg:px-0 lg:pb-0"
+      >
+        {children.map((child, i) => (
+          <div
+            key={i}
+            ref={(el) => {
+              cardRefs.current[i] = el
+            }}
+            className="shrink-0 snap-center lg:shrink"
+          >
+            {child}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center justify-center gap-1.5 lg:hidden">
+        {children.map((_, i) => (
+          <span key={i} className={`h-1.5 rounded-full transition-all duration-200 ${i === active ? 'w-4 bg-white/60' : 'w-1.5 bg-white/20'}`} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Three faces on swipe. The wrist shows the same decision as the phone, with
 // less: readable at arm's length, in the dark, in one second.
 export function WatchFaces({ view }: { view: View }) {
@@ -29,13 +84,13 @@ export function WatchFaces({ view }: { view: View }) {
   const ringSize = 100
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-panel/60 p-5">
+    <section className="rounded-3xl border border-white/10 bg-panel/60 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl lg:shadow-none lg:backdrop-blur-none">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-white/60">On the wrist</h2>
         <span className="text-xs text-white/30">three faces, swipe</span>
       </div>
 
-      <div className="flex flex-wrap items-start justify-around gap-5">
+      <FacesCarousel>
         <Face label="1 · the glance">
           <div className="relative -translate-y-3" style={{ width: ringSize, height: ringSize }}>
             {indicators.map((indicator, i) => {
@@ -76,7 +131,7 @@ export function WatchFaces({ view }: { view: View }) {
             <span className="line-clamp-3 text-[11px] leading-tight text-white/60">{forecast?.caption}</span>
           </div>
         </Face>
-      </div>
+      </FacesCarousel>
 
       <p className="mt-4 text-center text-[11px] text-white/30">
         Acknowledging from the wrist is offered only for SCHEDULE. ACT NOW needs context, so it sends you to the phone.
