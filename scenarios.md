@@ -354,6 +354,8 @@ Indicator 5 says Quiet, and that is honest: until 17:41 the day really was quiet
 
 **Coverage.** Each of the three decisions occurs at least twice. Each of indicators 2–5 is the deciding one at least once. Indicator 1 never decides on its own, it only rolls up, and that is correct.
 
+**What changed, and why.** Every drill-in ends with a journal. In live mode the backend records each transition of the word, of an indicator, or of the incident queue, with the reason line of that moment; running the EVE stand-in through an outage and back produced this sequence: ALL CLEAR → ACT NOW "nginx is down", Incident opened: app, Incident opened: nginx, Users now: Broken → Fine, ACT NOW → ALL CLEAR, Incident closed: app, Incident closed: nginx. A demo scenario is one frozen moment, so its journal is read off its own timestamps.
+
 **How to reproduce.** Each scenario is a file in `mock_data/`. The rules of `metrics_spec.md` live in `backend/engine.py`; `mock_data/evaluate.py` runs them over every scenario and compares the result with the expected one, and `tests/` does the same plus both sides of every threshold. The data run caught two errors that the paper run missed (S03 and S07), so the table above reflects the state after both runs.
 
 **What changed in `metrics_spec.md` after the run.**

@@ -47,7 +47,7 @@ Switch scenarios with the list in the header or with a URL parameter. The drill-
 /?scenario=s09_precursor_imminent&drill=forecast
 ```
 
-Values of `drill`: `users`, `forecast`, `trust`, `day`, `verdict`. PNG exports of all eleven scenarios and five drill-ins are in [design/](design/).
+Values of `drill`: `users`, `forecast`, `trust`, `day`, `verdict`. Each sheet ends with "What changed": in live mode the recorded transitions of that indicator (`/api/live/journal` has the whole list), in demo mode a timeline read off the scenario. PNG exports of all eleven scenarios and five drill-ins are in [design/](design/).
 
 After a merge into `main` the same prototype is built for GitHub Pages by [pages.yml](.github/workflows/pages.yml). There is no backend there, so the screen models are exported to static JSON by the same engine, and the frontend reads them instead of the API.
 
@@ -99,6 +99,7 @@ Triage API ───────┘   reads raw     rules and     words, caption
 - **engine.py** decides. It takes the normalised Bundle and returns the states of the four indicators, the decision, the rule that fired, and every fact the wording needs. An indicator that cannot be measured is "unknown", never green.
 - **presentation.py** turns the decision into human language: the word, the reason line, tile captions, ring fill, drill-in content, the queue. It holds no thresholds and never re-derives a decision.
 - **schemas.py** is the response contract. FastAPI validates every response against it, and the frontend types in `frontend/src/api.gen.ts` are generated from the OpenAPI document with `npm run gen:types`. CI fails when the generated files lag behind the code.
+- **journal.py** remembers the previous picture and writes an event whenever the word, an indicator or the incident queue changes, with the reason line of that moment. A watcher thread observes the live source every 20 s even with no page open, and the journal lives on a volume. Every drill-in shows "What changed" for its indicator; the verdict sheet shows all of it. Demo scenarios get a timeline read off their own timestamps instead.
 - **frontend** computes nothing and knows no threshold. Raw values appear only in the drill-in.
 - **live.py** assembles the same five blocks from a real Triage core. Live mode is switched on with `TRIAGE_BASE_URL`, `TRIAGE_TOKEN` and `TRIAGE_TENANT`, after which "Live data" appears in the scenario list. Requests to the core run in parallel, the answer is cached for 20 seconds, and the core's error text is never passed to the client. Without access to the organizers' core this path has not been run on live data.
 - **Evidence links.** In live mode, a drill-in can show a quiet "Verify in" row linking out to whatever real log/trace/metrics tool watches the fleet — set `LOGS_URL_TEMPLATE`, `TRACES_URL_TEMPLATE` and/or `METRICS_URL_TEMPLATE`, each with `{tenant}`, `{cluster}` and `{service}` placeholders the backend fills in, e.g. `LOGS_URL_TEMPLATE=https://logs.example.com/explore?tenant={tenant}&service={service}`. Unset by default, and never shown for a demo scenario: a mock has no real tool behind it, and this is an escape hatch for a human who wants to check, never part of the verdict itself.
@@ -144,7 +145,7 @@ Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.
 | A state that means "all good" exists | ALL CLEAR in S01, S02, S06, S10; dimmed in S11 | design/phone_s01_calm.png |
 | No framework names or raw values on the main screen | errPct, PSI, p99, blastRadius only in the drill-in; a test checks it | design/drill_users_s07.png |
 | USE, RED, SIG became a state, not menu sections | yes | design_rationale.md |
-| Main screen plus one level deep | a tile, a ring or the word opens the drill-in | design/drill_*.png |
+| Main screen plus one level deep | a tile, a ring or the word opens the drill-in, with what changed and why | design/drill_*.png |
 | Phone and watch | five indicators and the queue without scrolling at 390×844; three watch faces | design/phone_*.png |
 | At least 8 scenarios with input values and a decision | 11 scenarios, 181 tests | scenarios.md, tests/ |
 | Mock data for each scenario, with instructions | deterministic, with a check | mock_data/ |

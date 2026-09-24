@@ -82,6 +82,7 @@ EVE="docker compose"                                                  # in the E
 | 9 | `$TR restart collector` | "h of history" in the reason line keeps growing instead of resetting | history persists on the volume |
 | 10 | `$TR stop collector` | within 30 s the tracker shows an error banner, not a green screen | a dead collector is never read as calm |
 | 11 | from another machine: `curl -i http://<server>/internal/vitals` | `404` | the endpoint is not public |
+| 11a | open the verdict sheet ("Why this word") after steps 4 to 6 | "What changed" lists every transition with its time and reason: ALL CLEAR → ACT NOW "nginx is down", the incidents opening, the recovery | the decision journal |
 | 12 | leave it running for 19 h | How the day went turns from — to **Quiet**, and ALL CLEAR is no longer dimmed | the day indicator needs a day |
 
 Step 7 needs a CPU limit because pressure is time spent waiting for a resource: on an idle multi-core host four busy loops wait for nothing, and PSI stays at zero however hot the CPU runs. That is the point the hackathon brief makes about PSI against utilisation.

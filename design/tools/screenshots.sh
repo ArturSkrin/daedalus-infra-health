@@ -7,10 +7,15 @@ PORT="${TRACKER_PORT:-8088}"
 OUT="$(cd "$(dirname "$0")/.." && (pwd -W 2>/dev/null || pwd))"
 BASE="http://host.docker.internal:$PORT"
 
+# Wide or tall captures at device scale 2 crash the software renderer under the glass panels' backdrop
+# blur, so anything larger than a phone screen drops to scale 1. --timeout forces the shot even if the
+# page never settles, and the shell timeout caps a stuck container.
 shot() { # name url width height
-  MSYS_NO_PATHCONV=1 docker run --rm -v "$OUT:/out" --add-host=host.docker.internal:host-gateway zenika/alpine-chrome:latest \
-    --no-sandbox --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
-    --window-size="$3,$4" --virtual-time-budget=6000 --screenshot="/out/$1.png" "$2" >/dev/null 2>&1
+  local scale=2
+  if [ "$3" -gt 600 ] || [ "$4" -gt 900 ]; then scale=1; fi
+  MSYS_NO_PATHCONV=1 timeout 120 docker run --rm -v "$OUT:/out" --add-host=host.docker.internal:host-gateway zenika/alpine-chrome:latest \
+    --no-sandbox --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=$scale \
+    --window-size="$3,$4" --timeout=25000 --virtual-time-budget=6000 --screenshot="/out/$1.png" "$2" >/dev/null 2>&1 || true
   echo "$1.png"
 }
 
@@ -28,3 +33,5 @@ shot "drill_forecast_s09" "$BASE/?scenario=s09_precursor_imminent&drill=forecast
 shot "drill_trust_s08"    "$BASE/?scenario=s08_dark_services&drill=trust"         390 844
 shot "drill_day_s03"      "$BASE/?scenario=s03_release_regressed&drill=day"       390 844
 shot "drill_verdict_s07"  "$BASE/?scenario=s07_outage&drill=verdict"              390 844
+# the verdict sheet of a scenario with history: the timeline at the bottom needs a taller page
+shot "drill_journal_s02"  "$BASE/?scenario=s02_release_settled&drill=verdict"     390 1400

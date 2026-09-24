@@ -35,12 +35,17 @@ The drill-in is where raw values are allowed: error rates, stall percentages, p9
 | What's brewing: pattern steps and the agent's track record | [drill_forecast_s09.png](drill_forecast_s09.png) |
 | Can we trust it: agent link, coverage, silent services | [drill_trust_s08.png](drill_trust_s08.png) |
 | How the day went: 24 h of failing requests, what the agent handled | [drill_day_s03.png](drill_day_s03.png) |
+| The journal: what changed and why, on the verdict sheet of a scenario with history | [drill_journal_s02.png](drill_journal_s02.png) |
 
 ## Live mode on a compose application
 
 The same screen fed by the compose shim instead of a mock file, with a stand-in for EVE Online Tools on the shared network.
 
 [live_eve_healthy.png](live_eve_healthy.png) · [live_eve_down.png](live_eve_down.png)
+
+## Material
+
+Panels are liquid glass: a translucent, saturating blur with a specular rim brightest at the top left and an inner highlight along the top edge. Behind the page three slow pools of colour follow the verdict, so an outage tints the whole room red before a word is read, and a quiet fleet sits on green. Browsers without `backdrop-filter` get the solid panel back.
 
 ## Reading the screen
 
