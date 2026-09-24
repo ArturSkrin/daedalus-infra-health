@@ -22,6 +22,9 @@ services:
       retries: 5
 
   backend:
+    volumes:
+      # the decision journal survives a restart of the backend
+      - tracker-data:/data
     environment:
       # The fake core speaks the Triage API, so live mode needs nothing but its address.
       TRIAGE_BASE_URL: http://fake-triage:9100
@@ -33,3 +36,6 @@ services:
     depends_on:
       fake-triage:
         condition: service_healthy
+
+volumes:
+  tracker-data:

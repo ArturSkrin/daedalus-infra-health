@@ -90,6 +90,7 @@ class Incident:
     status: str
     title: str
     first_seen: datetime | None
+    resolved_at: datetime | None
     resolved_by: str | None
     rca: str | None
     plan: tuple[str, ...]
@@ -243,6 +244,7 @@ def _incidents(raw: dict, now: datetime, bundle: Bundle) -> None:
             status=text(item.get("status")) or "open",
             title=text(item.get("title")) or text(item.get("message")) or "incident",
             first_seen=as_dt(item.get("firstSeen"), now.tzinfo),
+            resolved_at=as_dt(item.get("resolvedAt"), now.tzinfo),
             resolved_by=text(item.get("resolvedBy")),
             rca=text(item.get("rca")),
             plan=tuple(s for s in as_list(item.get("investigationPlan")) if isinstance(s, str)),

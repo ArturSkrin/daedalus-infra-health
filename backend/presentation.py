@@ -468,6 +468,35 @@ def incident_queue(b: Bundle) -> list[dict]:
     return queue
 
 
+def scenario_timeline(b: Bundle, result: dict, reason: str) -> list[dict]:
+    """A demo scenario is one frozen moment, so its journal is read off the data instead: when incidents opened
+    and closed, when the error curve spiked, and what the word is now. Newest first, like the live journal."""
+    def stamp(dt) -> str:
+        return dt.isoformat(timespec="seconds")
+
+    events: list[dict] = []
+    for inc in b.incidents:
+        level = {"critical": "bad", "warning": "warn"}.get(inc.severity, "muted")
+        if inc.first_seen:
+            events.append({"at": stamp(inc.first_seen), "kind": "incident", "indicator": "users", "level": level,
+                           "title": f"Incident opened: {inc.service}", "detail": inc.title, "incident": inc.id})
+    day = result["detail"].get("day", {})
+    if day.get("spikeAt") and result["states"].get("day") in ("settled", "regressed"):
+        at = b.now.replace(hour=int(day["spikeAt"][:2]), minute=int(day["spikeAt"][3:]), second=0, microsecond=0)
+        detail = f"peak bucket {day.get('peakBucket')}% against a norm of {day.get('errBase')}%"
+        events.append({"at": stamp(at), "kind": "timeline", "indicator": "day", "level": "warn", "title": "Errors rose above the norm",
+                       "detail": detail})
+    for inc in b.incidents:
+        if inc.resolved_at:
+            events.append({"at": stamp(inc.resolved_at), "kind": "incident", "indicator": "users", "level": "good",
+                           "title": f"Incident closed: {inc.service}", "detail": f"resolved by the {inc.resolved_by or 'operator'}",
+                           "incident": inc.id})
+    events.append({"at": stamp(b.now), "kind": "verdict", "indicator": "verdict", "level": VERDICTS[result["verdict"]]["level"],
+                   "title": f"Now: {VERDICTS[result['verdict']]['word']}", "detail": reason})
+    events.sort(key=lambda e: e["at"])
+    return list(reversed(events))
+
+
 def source_block(b: Bundle, mode: str) -> dict:
     return {
         "mode": mode,
@@ -481,7 +510,7 @@ def source_block(b: Bundle, mode: str) -> dict:
     }
 
 
-def build_view(data: dict, result: dict, mode: str = "demo") -> dict:
+def build_view(data: dict, result: dict, mode: str = "demo", journal: list[dict] | None = None) -> dict:
     b = normalize(data)
     # trust can be blind here only when the visible part of the fleet is already broken (engine: evidence can convict)
     unseen = result["states"]["trust"] in ("partial", "blind")
@@ -499,6 +528,10 @@ def build_view(data: dict, result: dict, mode: str = "demo") -> dict:
         "indicators": indicator_cards(b, result),
         "queue": incident_queue(b),
     }
+    if journal is not None:
+        view["journal"], view["journalSource"] = journal, "live"
+    else:
+        view["journal"], view["journalSource"] = scenario_timeline(b, result, view["decision"]["reason"]), "scenario"
     expected = data.get("expected") if isinstance(data, dict) else None
     if expected:
         view["scenario"] = {"id": data.get("scenario", ""), "title": data.get("title", ""), "story": data.get("story", "")}

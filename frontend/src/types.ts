@@ -10,6 +10,7 @@ export type Indicator = Schemas['Indicator']
 export type Drill = Schemas['Drill']
 export type Fact = Schemas['Fact']
 export type Link = Schemas['Link']
+export type Event = Schemas['Event']
 export type QueueItem = Schemas['QueueItem']
 export type ScenarioListItem = Schemas['ScenarioListItem']
 

@@ -41,6 +41,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/live/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Journal
+         * @description Every recorded change for the live tenant, newest first.
+         */
+        get: operations["live_journal_api_live_journal_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scenarios": {
         parameters: {
             query?: never;
@@ -155,6 +175,29 @@ export interface components {
             sparkline?: number[] | null;
             /** Steps */
             steps?: components["schemas"]["Step"][] | null;
+        };
+        /** Event */
+        Event: {
+            /** At */
+            at: string;
+            /** Detail */
+            detail: string;
+            /** Incident */
+            incident?: string | null;
+            /** Indicator */
+            indicator?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "started" | "verdict" | "indicator" | "incident" | "timeline";
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "good" | "warn" | "bad" | "muted";
+            /** Title */
+            title: string;
         };
         /** Fact */
         Fact: {
@@ -404,6 +447,13 @@ export interface components {
             decision: components["schemas"]["Decision"];
             /** Indicators */
             indicators: components["schemas"]["Indicator"][];
+            /** Journal */
+            journal: components["schemas"]["Event"][];
+            /**
+             * Journalsource
+             * @enum {string}
+             */
+            journalSource: "live" | "scenario";
             /** Queue */
             queue: components["schemas"]["QueueItem"][];
             scenario?: components["schemas"]["Scenario"] | null;
@@ -457,6 +507,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["View"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_journal_api_live_journal_get: {
+        parameters: {
+            query?: {
+                tenant?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"][];
                 };
             };
             /** @description Validation Error */

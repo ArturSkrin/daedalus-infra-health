@@ -1,15 +1,56 @@
 from __future__ import annotations
 
+import logging
+import os
+import threading
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import live
+from backend import journal, live
 from backend.engine import verdict
 from backend.presentation import build_view
 from backend.repository import ScenarioNotFound, list_scenarios, load_scenario
-from backend.schemas import Health, ScenarioListItem, View
+from backend.schemas import Event, Health, ScenarioListItem, View
 
-app = FastAPI(title="Daedalus Infra Health", version="0.3.0")
+log = logging.getLogger("daedalus")
+JOURNAL_POLL_S = int(os.environ.get("JOURNAL_POLL_S", "20"))
+
+
+def observe_live(tenant: str | None = None) -> dict:
+    """Fetch, decide, word, and write to the journal whatever changed. One path for the endpoint and the watcher."""
+    data = live.load_live(tenant)
+    result = verdict(data)
+    view = build_view(data, result, mode="live", journal=[])
+    journal.observe(data["tenant"], view, at=data["now"])
+    view["journal"] = journal.events(data["tenant"])
+    return view
+
+
+def _watch(stop: threading.Event) -> None:
+    # The journal must not depend on somebody having the page open: a change at 03:00 is exactly the one
+    # people want to read about at 09:00. The cache in live.py keeps this from doubling the load on the core.
+    while not stop.is_set():
+        try:
+            observe_live()
+        except live.LiveUnavailable as error:
+            log.warning("journal watcher: %s", error)
+        except Exception:
+            log.exception("journal watcher failed")
+        stop.wait(JOURNAL_POLL_S)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    stop = threading.Event()
+    if live.configured():
+        threading.Thread(target=_watch, args=(stop,), name="journal-watcher", daemon=True).start()
+    yield
+    stop.set()
+
+
+app = FastAPI(title="Daedalus Infra Health", version="0.4.0", lifespan=lifespan)
 
 # Read-only API with no credentials. Behind nginx the frontend is same-origin;
 # the open CORS policy only matters for `npm run dev` against a local backend.
@@ -59,7 +100,18 @@ def scenario_raw(scenario_id: str) -> dict:
 def live_view(tenant: str | None = None) -> dict:
     """Same view model, computed from a real Triage core instead of a mock file."""
     try:
-        data = live.load_live(tenant)
+        return observe_live(tenant)
     except live.LiveUnavailable as error:
         raise HTTPException(status_code=503, detail=f"Live data unavailable: {error}") from None
-    return build_view(data, verdict(data), mode="live")
+
+
+@app.get("/api/live/journal", response_model=list[Event], response_model_exclude_none=True)
+def live_journal(tenant: str | None = None, limit: int = 200) -> list[dict]:
+    """Every recorded change for the live tenant, newest first."""
+    name = tenant or os.environ.get("TRIAGE_TENANT")
+    if not name:
+        try:
+            name = live.load_live(None)["tenant"]
+        except live.LiveUnavailable as error:
+            raise HTTPException(status_code=503, detail=f"Live data unavailable: {error}") from None
+    return journal.events(name, limit=max(1, min(limit, 500)))

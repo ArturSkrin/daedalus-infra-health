@@ -140,6 +140,16 @@ class Decision(BaseModel):
     rules: list[Rule]
 
 
+class Event(BaseModel):
+    at: str
+    kind: Literal["started", "verdict", "indicator", "incident", "timeline"]
+    indicator: str | None = None
+    level: Level
+    title: str
+    detail: str
+    incident: str | None = None
+
+
 class Scenario(BaseModel):
     id: str
     title: str
@@ -163,6 +173,8 @@ class View(BaseModel):
     decision: Decision
     indicators: list[Indicator]
     queue: list[QueueItem]
+    journal: list[Event]
+    journalSource: Literal["live", "scenario"]
     scenario: Scenario | None = None
     validation: Validation | None = None
 

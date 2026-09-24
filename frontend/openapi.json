@@ -232,6 +232,74 @@
         "title": "Drill",
         "type": "object"
       },
+      "Event": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "incident": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident"
+          },
+          "indicator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indicator"
+          },
+          "kind": {
+            "enum": [
+              "started",
+              "verdict",
+              "indicator",
+              "incident",
+              "timeline"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "good",
+              "warn",
+              "bad",
+              "muted"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "kind",
+          "level",
+          "title",
+          "detail"
+        ],
+        "title": "Event",
+        "type": "object"
+      },
       "Fact": {
         "properties": {
           "hint": {
@@ -932,6 +1000,21 @@
             "title": "Indicators",
             "type": "array"
           },
+          "journal": {
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            },
+            "title": "Journal",
+            "type": "array"
+          },
+          "journalSource": {
+            "enum": [
+              "live",
+              "scenario"
+            ],
+            "title": "Journalsource",
+            "type": "string"
+          },
           "queue": {
             "items": {
               "$ref": "#/components/schemas/QueueItem"
@@ -967,7 +1050,9 @@
           "source",
           "decision",
           "indicators",
-          "queue"
+          "queue",
+          "journal",
+          "journalSource"
         ],
         "title": "View",
         "type": "object"
@@ -976,7 +1061,7 @@
   },
   "info": {
     "title": "Daedalus Infra Health",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -1043,6 +1128,67 @@
           }
         },
         "summary": "Live View"
+      }
+    },
+    "/api/live/journal": {
+      "get": {
+        "description": "Every recorded change for the live tenant, newest first.",
+        "operationId": "live_journal_api_live_journal_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Event"
+                  },
+                  "title": "Response Live Journal Api Live Journal Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Journal"
       }
     },
     "/api/scenarios": {
