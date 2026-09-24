@@ -67,7 +67,7 @@ export function MobileTabBar({ tabs }: { tabs: MobileTab[] }) {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-panel/75 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:hidden"
+      className="glass-strong fixed inset-x-0 bottom-0 z-40 !rounded-none !border-x-0 !border-b-0 sm:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="mx-auto grid max-w-6xl grid-cols-4 px-1 py-1">

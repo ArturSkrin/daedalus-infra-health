@@ -84,7 +84,7 @@ export function WatchFaces({ view }: { view: View }) {
   const ringSize = 100
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-panel/60 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl lg:shadow-none lg:backdrop-blur-none">
+    <section className="glass rounded-3xl p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-white/60">On the wrist</h2>
         <span className="text-xs text-white/30">three faces, swipe</span>

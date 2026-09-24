@@ -15,9 +15,20 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
   const SIZE = compact ? 150 : 236
   const STROKE = compact ? 9 : 13
   const GAP = compact ? 4 : 5
+  // How long the word has held, and what it was before: the one line that makes a live screen a story.
+  const lastChange = view.journalSource === 'live' ? view.journal.find((e) => e.kind === 'verdict' || e.kind === 'started') : undefined
+  const heldSince = lastChange
+    ? (() => {
+        const d = new Date(lastChange.at)
+        if (Number.isNaN(d.getTime())) return null
+        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const from = lastChange.title.includes('→') ? lastChange.title.split('→')[0].trim() : null
+        return from ? `since ${time}, was ${from}` : `since ${time}`
+      })()
+    : null
 
   return (
-    <section className="relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl border border-white/10 bg-panel/60 px-5 py-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:gap-5 sm:px-6 sm:py-7 lg:py-9 lg:shadow-none lg:backdrop-blur-none">
+    <section className="glass relative flex flex-col items-center gap-3 overflow-hidden rounded-3xl px-5 py-4 sm:gap-5 sm:px-6 sm:py-7 lg:py-9">
       <div
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{ background: `radial-gradient(circle at 50% 32%, ${tone.glow}, transparent 62%)` }}
@@ -53,7 +64,7 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
       <button
         type="button"
         onClick={() => onOpen('verdict')}
-        className={`relative flex flex-col items-center gap-0.5 rounded-2xl border px-6 py-2 transition-transform active:scale-[0.96] sm:gap-1 sm:px-7 sm:py-3 ${urgent ? 'animate-pulse-glow' : ''}`}
+        className={`glass-pill relative flex flex-col items-center gap-0.5 !rounded-2xl px-6 py-2 transition-transform active:scale-[0.96] sm:gap-1 sm:px-7 sm:py-3 ${urgent ? 'animate-pulse-glow' : ''}`}
         style={{
           opacity: decision.dimmed ? 0.8 : 1,
           borderColor: `${tone.color}55`,
@@ -71,6 +82,12 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
       <p className="relative max-w-sm text-center text-[13px] leading-snug text-white/80 sm:text-sm">{decision.reason}</p>
 
       {decision.dimNote && <p className="relative -mt-2 text-center text-[11px] text-white/40">{decision.dimNote}</p>}
+
+      {heldSince && (
+        <button type="button" onClick={() => onOpen('verdict')} className="relative -mt-2 text-[11px] text-white/35 hover:text-white/60">
+          {heldSince}
+        </button>
+      )}
 
       <button
         type="button"

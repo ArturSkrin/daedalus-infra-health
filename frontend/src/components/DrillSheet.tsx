@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Sparkline } from './Sparkline'
 import { LEVEL, VERDICT_WORD } from '../theme'
 import { useCompact } from '../useCompact'
-import type { Drill, DrillTarget, Fact, Link, View } from '../types'
+import type { Drill, DrillTarget, Event, Fact, Link, View } from '../types'
 
 function Facts({ facts }: { facts: Fact[] }) {
   return (
@@ -51,6 +51,61 @@ function EvidenceLinks({ links, color }: { links: Link[]; color: string }) {
         </a>
       ))}
     </div>
+  )
+}
+
+function clock(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function dayOf(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { day: '2-digit', month: 'short' })
+}
+
+// The answer to "why did this change": every transition of this indicator (or of the word, for the verdict sheet)
+// with the reason line the screen showed at that moment. Live: written by the backend as it watches the core.
+// Demo: read off the scenario's own timestamps, so the hosted prototype shows the same thing.
+function Journal({ events, scope, source }: { events: Event[]; scope: string; source: View['journalSource'] }) {
+  const own = scope === 'verdict' ? events : events.filter((e) => e.indicator === scope)
+  const title = source === 'live' ? 'What changed' : 'Timeline, from the scenario data'
+  if (own.length === 0) {
+    const since = events.length ? events[events.length - 1] : null
+    return (
+      <Section title={title}>
+        <p className="text-xs text-white/40">
+          {since ? `No change since the journal started at ${clock(since.at)}.` : 'Nothing recorded yet.'}
+        </p>
+      </Section>
+    )
+  }
+  const days = new Set(own.map((e) => dayOf(e.at)))
+  return (
+    <Section title={title}>
+      <ol className="relative flex flex-col gap-2 border-l border-white/10 pl-4">
+        {own.slice(0, 40).map((e, i) => {
+          const tone = LEVEL[e.level]
+          return (
+            <li key={`${e.at}-${i}`} className="relative text-xs">
+              <span
+                className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ring-2 ring-panel"
+                style={{ backgroundColor: tone.color, boxShadow: `0 0 8px ${tone.glow}` }}
+              />
+              <div className="flex items-baseline gap-2">
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-white/40">
+                  {days.size > 1 ? `${dayOf(e.at)} ` : ''}
+                  {clock(e.at)}
+                </span>
+                <span className="font-semibold text-white/90">{e.title}</span>
+              </div>
+              {e.detail && <p className="mt-0.5 text-white/55">{e.detail}</p>}
+            </li>
+          )
+        })}
+      </ol>
+      {own.length > 40 && <p className="mt-2 text-[11px] text-white/30">and {own.length - 40} earlier</p>}
+    </Section>
   )
 }
 
@@ -229,7 +284,7 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
     <AnimatePresence initial={false}>
       {target && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm lg:items-center"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-[3px] lg:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -238,7 +293,7 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
           <motion.div
             role="dialog"
             aria-modal="true"
-            className="scrollbar-thin flex max-h-[88vh] w-full max-w-xl flex-col gap-4 overflow-y-auto rounded-t-3xl border border-white/10 bg-panel/85 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)] backdrop-blur-2xl lg:rounded-3xl lg:bg-panel lg:shadow-none lg:backdrop-blur-none"
+            className="glass-strong scrollbar-thin flex max-h-[88vh] w-full max-w-xl flex-col gap-4 overflow-y-auto rounded-t-3xl p-5 lg:rounded-3xl"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
@@ -293,6 +348,8 @@ export function DrillSheet({ view, target, onClose }: { view: View; target: Dril
             ) : (
               <VerdictBody view={view} />
             )}
+
+            <Journal events={view.journal} scope={indicator ? indicator.id : 'verdict'} source={view.journalSource} />
 
             {indicator && (
               <Section title="How this indicator decides">

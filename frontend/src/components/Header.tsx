@@ -1,4 +1,5 @@
 import { VERDICT_WORD } from '../theme'
+import { useCompact } from '../useCompact'
 import type { ScenarioListItem, View } from '../types'
 
 interface HeaderProps {
@@ -16,9 +17,13 @@ export const LIVE = '__live__'
 export function Header({ view, scenarios, selected, liveAvailable, onSelect }: HeaderProps) {
   const source = view?.source
   const healthy = source?.connected ?? false
+  // On a phone the header is a glass bar pinned to the top; on wider screens it is plain text over the page.
+  const compact = useCompact()
 
   return (
-    <header className="sticky top-0 z-30 -mx-3 mb-3 flex flex-col gap-2 border-b border-white/10 bg-bg/80 px-3 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-xl sm:static sm:mx-auto sm:mb-5 sm:max-w-6xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:border-none sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none sm:backdrop-blur-none lg:mb-7">
+    <header
+      className={`${compact ? 'glass-strong !rounded-none !border-x-0 !border-t-0' : ''} sticky top-0 z-30 -mx-3 mb-3 flex flex-col gap-2 px-3 py-3 sm:static sm:mx-auto sm:mb-5 sm:max-w-6xl sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-0 sm:py-0 lg:mb-7`}
+    >
       <div>
         <h1 className="text-base font-bold tracking-tight sm:text-lg lg:text-xl">Infra Health Tracker</h1>
         <p className="hidden text-xs text-white/40 sm:block">The agent already decided. This is what it decided, and why you can believe it.</p>
@@ -26,7 +31,7 @@ export function Header({ view, scenarios, selected, liveAvailable, onSelect }: H
 
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {source && (
-          <span className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-[11px] text-white/55">
+          <span className="glass-pill flex items-center gap-1.5 px-3 py-1 text-[11px] text-white/55">
             <span className={`h-1.5 w-1.5 rounded-full ${healthy ? 'animate-pulse bg-good' : 'bg-bad'}`} />
             <span className={source.mode === 'demo' ? 'font-semibold text-warn' : 'font-semibold text-good'}>{source.label}</span>
             <span className="text-white/25">·</span>
@@ -36,7 +41,7 @@ export function Header({ view, scenarios, selected, liveAvailable, onSelect }: H
           </span>
         )}
 
-        <label className="flex items-center gap-1.5 rounded-full border border-white/10 bg-panel-2/50 py-1 pl-3 pr-1.5 text-[11px] text-white/40 transition-transform active:scale-[0.97]">
+        <label className="glass-pill flex items-center gap-1.5 py-1 pl-3 pr-1.5 text-[11px] text-white/40 transition-transform active:scale-[0.97]">
           Scenario
           <span className="relative flex items-center">
             <select

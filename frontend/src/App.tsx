@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { liveAvailable as checkLive, loadLive, loadScenario, loadScenarios } from './api'
+import { Ambient } from './components/Ambient'
 import { DrillSheet } from './components/DrillSheet'
 import { Header, LIVE } from './components/Header'
 import { IndicatorTile } from './components/IndicatorTile'
@@ -117,7 +118,8 @@ function App() {
   )
 
   return (
-    <div className="min-h-screen bg-bg px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pb-5 sm:pt-[max(1.25rem,env(safe-area-inset-top))] lg:px-10 lg:py-9">
+    <div className="min-h-screen px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pb-5 sm:pt-[max(1.25rem,env(safe-area-inset-top))] lg:px-10 lg:py-9">
+      <Ambient level={view?.decision.level} />
       <Header view={view} scenarios={scenarios} selected={selected ?? DEFAULT_SCENARIO} liveAvailable={live} onSelect={pick} />
 
       <main className="mx-auto flex max-w-6xl flex-col gap-3 pb-20 sm:gap-4 sm:pb-0 lg:gap-6">

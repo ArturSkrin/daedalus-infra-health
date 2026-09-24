@@ -14,8 +14,8 @@ export function IndicatorTile({ indicator, onOpen }: { indicator: Indicator; onO
       type="button"
       onClick={onOpen}
       aria-label={`${indicator.title}: ${indicator.label} — open for details`}
-      className="group flex h-full cursor-pointer flex-col gap-1.5 rounded-2xl border bg-panel-2/70 p-3 text-left shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition hover:border-white/25 active:scale-[0.97] sm:gap-2.5 sm:p-3.5 lg:p-4 lg:shadow-none lg:backdrop-blur-none"
-      style={{ borderColor: indicator.decides ? `${tone.color}88` : 'rgba(255,255,255,0.1)' }}
+      className="glass group flex h-full cursor-pointer flex-col gap-1.5 rounded-2xl p-3 text-left transition hover:brightness-110 active:scale-[0.97] sm:gap-2.5 sm:p-3.5 lg:p-4"
+      style={indicator.decides ? { borderColor: `${tone.color}99`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.16), 0 0 0 1px ${tone.color}33, 0 18px 48px -22px ${tone.color}66` } : undefined}
     >
       <div className="flex items-center gap-2.5">
         <div className="shrink-0">
