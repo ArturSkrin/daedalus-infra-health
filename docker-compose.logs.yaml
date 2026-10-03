@@ -1,0 +1,80 @@
+# Real logs for the application the tracker watches: Loki stores them, Grafana Alloy ships them, Grafana
+# shows them, and the "Logs" link in a drill-in opens Grafana already filtered to the service it names.
+#
+#   docker compose -f docker-compose.yaml -f docker-compose.eve.yaml -f docker-compose.logs.yaml up -d --build
+#
+# Put this file last: it replaces the placeholder Logs link of the EVE overlay and drops the Traces one.
+#
+# Nothing changes in the watched application. Alloy asks the Docker daemon for the containers of one compose
+# project (LOGS_COMPOSE_PROJECT, the folder name of that project unless it sets its own) and tails their
+# output through the Docker API.
+#
+# Two things to know before running this on a host others can reach:
+#   - Alloy mounts /var/run/docker.sock. The ":ro" only protects the socket file; whoever controls that
+#     container can still ask the daemon for anything. It is the standard way to read container logs, and it
+#     is why this is an opt-in overlay rather than part of the base stack.
+#   - Grafana is served through the tracker's own nginx under /grafana/ with anonymous read-only access and
+#     the login form off, so whoever can open the tracker can read these logs. EVE's request log includes
+#     response bodies. Keep the tracker port off the public internet, or put auth in front of it.
+services:
+  loki:
+    image: grafana/loki:3.7.8
+    command: ["-config.file=/etc/loki/config.yaml"]
+    restart: unless-stopped
+    volumes:
+      - ./observability/loki/config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    restart: unless-stopped
+    environment:
+      LOGS_COMPOSE_PROJECT: ${LOGS_COMPOSE_PROJECT:-eve-online-tools}
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # read positions survive a restart, so logs are neither re-sent nor skipped
+      - alloy-data:/var/lib/alloy/data
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    environment:
+      # Served under /grafana/ behind the tracker's nginx: one address, one port, and relative links.
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # Read-only for everyone, and no way to log in: there is no default admin password to guess.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/tracker-logs.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki
+
+  backend:
+    environment:
+      # Relative, like every link the viewer's browser opens. {service_re} is the service a drill-in names,
+      # or ".+" when it names none, which is what the dashboard's regex filter wants.
+      LOGS_URL_TEMPLATE: "grafana/d/tracker-logs/logs?var-project=${LOGS_COMPOSE_PROJECT:-eve-online-tools}&var-service={service_re}&from=now-1h&to=now"
+      # There is no trace store. An empty template hides the button instead of pointing it at a placeholder.
+      TRACES_URL_TEMPLATE: ""
+
+volumes:
+  loki-data:
+  alloy-data:

@@ -1,5 +1,11 @@
 # Rendered at container start by the nginx image (envsubst over /etc/nginx/templates).
-# Only ${NGINX_LOCAL_RESOLVERS} and ${BACKEND_HOST} are substituted; $host, $uri and friends are nginx variables.
+# Only ${NGINX_LOCAL_RESOLVERS}, ${BACKEND_HOST} and ${GRAFANA_HOST} are substituted; $host, $uri and friends
+# are nginx variables.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 80;
     server_name _;
@@ -23,6 +29,21 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Grafana from docker-compose.logs.yaml, under the tracker's own address, so the Logs link in a drill-in
+    # is relative and works from wherever the tracker was opened. The name is resolved per request, like the
+    # backend's: without that overlay there is no such host, and this location alone answers 502.
+    location /grafana/ {
+        set $grafana "http://${GRAFANA_HOST}:3000";
+        proxy_pass $grafana;
+
+        proxy_http_version 1.1;
+
+        # $http_host keeps the port, which Grafana compares with the Origin header of its own requests
+        proxy_set_header Host $http_host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
     }
 
     location / {

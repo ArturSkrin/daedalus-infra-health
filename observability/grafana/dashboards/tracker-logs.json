@@ -1,0 +1,120 @@
+{
+  "uid": "tracker-logs",
+  "title": "Logs",
+  "description": "Container logs of the application the Infra Health Tracker watches. A drill-in's Logs link opens this page already filtered to the service it names.",
+  "tags": ["daedalus"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "type": "textbox",
+        "name": "project",
+        "label": "Compose project",
+        "query": "eve-online-tools",
+        "current": { "selected": true, "text": "eve-online-tools", "value": "eve-online-tools" },
+        "options": [{ "selected": true, "text": "eve-online-tools", "value": "eve-online-tools" }]
+      },
+      {
+        "type": "textbox",
+        "name": "service",
+        "label": "Service (regex)",
+        "description": "A service name such as app, or .+ for every service",
+        "query": ".+",
+        "current": { "selected": true, "text": ".+", "value": ".+" },
+        "options": [{ "selected": true, "text": ".+", "value": ".+" }]
+      },
+      {
+        "type": "textbox",
+        "name": "search",
+        "label": "Contains (regex)",
+        "query": "",
+        "current": { "selected": true, "text": "", "value": "" },
+        "options": [{ "selected": true, "text": "", "value": "" }]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Log lines per service",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (service) (count_over_time({project=\"$project\", service=~\"$service\"} |~ \"(?i)$search\" [$__auto]))",
+          "legendFormat": "{{service}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 0, "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Lines that look like errors",
+      "description": "Lines matching error, fatal, panic or exception, case-insensitive. A count here is attribution, not alarm: the tracker's verdict moves on failed requests, not on log lines.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (service) (count_over_time({project=\"$project\", service=~\"$service\"} |~ \"(?i)(error|fatal|panic|exception)\" [$__auto]))",
+          "legendFormat": "{{service}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 0, "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Log lines",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 18, "w": 24, "x": 0, "y": 7 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{project=\"$project\", service=~\"$service\"} |~ \"(?i)$search\"",
+          "queryType": "range",
+          "maxLines": 500
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}
