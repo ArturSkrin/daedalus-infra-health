@@ -8,10 +8,14 @@ decision. Raw values (error %, stall %, p99) appear only inside `drill`.
 """
 from __future__ import annotations
 
+import logging
 import os
+from urllib.parse import quote
 
 from backend import thresholds as T
 from backend.bundle import Bundle, normalize
+
+log = logging.getLogger("daedalus.presentation")
 
 DASH = "—"
 
@@ -413,16 +417,31 @@ def pick_service(key: str, info: dict) -> str | None:
 
 def evidence_links(tenant: str, cluster: str | None, service: str | None) -> list[dict] | None:
     """Deep links out to whatever real log/trace/metrics tool watches this fleet, built from operator-supplied
-    URL templates (LOGS_URL_TEMPLATE etc., with {tenant}/{cluster}/{service} placeholders). Unset by default,
+    URL templates (LOGS_URL_TEMPLATE etc., with {tenant}/{cluster}/{service}/{service_re} placeholders). Unset by default,
     so nothing appears until an operator deliberately configures one -- at that point it renders for demo
     scenarios too, since it's the operator's own explicit setup that makes a link non-fabricated, not the
     mode. A human who wants to verify can jump out; the verdict itself never depends on this.
+
+    Values are URL-quoted. {service_re} is for tools that filter by regex: the named service, or ".+" when the
+    indicator names none, so a fleet-wide link shows everything instead of nothing. A template may be relative
+    ("grafana/d/..."): the browser resolves it against the address the tracker was opened at. A template that
+    cannot be filled in is skipped with a warning, never a 500: a typo in an env var must not take the screen down.
     """
-    links = [
-        {"label": label, "url": template.format(tenant=tenant, cluster=cluster or "", service=service or "")}
-        for label, env_name in LINK_ENV.items()
-        if (template := os.environ.get(env_name))
-    ]
+    values = {
+        "tenant": quote(tenant, safe=""),
+        "cluster": quote(cluster or "", safe=""),
+        "service": quote(service or "", safe=""),
+        "service_re": quote(service or ".+", safe=""),
+    }
+    links = []
+    for label, env_name in LINK_ENV.items():
+        template = os.environ.get(env_name)
+        if not template:
+            continue
+        try:
+            links.append({"label": label, "url": template.format(**values)})
+        except (KeyError, IndexError, ValueError) as error:
+            log.warning("%s cannot be filled in (%r), link skipped", env_name, error)
     return links or None
 
 
