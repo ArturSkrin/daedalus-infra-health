@@ -53,13 +53,14 @@ After a merge into `main` the same prototype is built for GitHub Pages by [pages
 
 ## How to reproduce the scenarios
 
-The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 181 tests check them:
+The rules of the five indicators live in one place, [backend/engine.py](backend/engine.py), and every threshold in [backend/thresholds.py](backend/thresholds.py). 203 tests check them:
 
 - the decision, the states and the reason line on screen for each of the eleven scenarios;
 - both sides of every threshold (0.49% and 0.5%, 29 and 30 minutes of warning, 94% and 95% coverage);
 - 35 kinds of incomplete data on two scenarios: the backend never crashes and always gives a decision;
 - the HTTP API, the response contract, and live mode against a fake core;
-- the compose shim: what the tracker finally says when EVE is healthy, unpatched, down, recovering, or restarted.
+- the compose shim: what the tracker finally says when EVE is healthy, unpatched, down, recovering, or restarted;
+- the decision journal and the evidence links.
 
 ```bash
 docker run --rm -v "$PWD:/src" -w /src python:3.12-slim sh -c "pip install -q -r backend/requirements-dev.txt && python -m pytest -q"
@@ -102,7 +103,7 @@ Triage API ───────┘   reads raw     rules and     words, caption
 - **journal.py** remembers the previous picture and writes an event whenever the word, an indicator or the incident queue changes, with the reason line of that moment. A watcher thread observes the live source every 20 s even with no page open, and the journal lives on a volume. Every drill-in shows "What changed" for its indicator; the verdict sheet shows all of it. Demo scenarios get a timeline read off their own timestamps instead.
 - **frontend** computes nothing and knows no threshold. Raw values appear only in the drill-in.
 - **live.py** assembles the same five blocks from a real Triage core. Live mode is switched on with `TRIAGE_BASE_URL`, `TRIAGE_TOKEN` and `TRIAGE_TENANT`, after which "Live data" appears in the scenario list. Requests to the core run in parallel, the answer is cached for 20 seconds, and the core's error text is never passed to the client. Without access to the organizers' core this path has not been run on live data.
-- **Evidence links.** In live mode, a drill-in can show a quiet "Verify in" row linking out to whatever real log/trace/metrics tool watches the fleet — set `LOGS_URL_TEMPLATE`, `TRACES_URL_TEMPLATE` and/or `METRICS_URL_TEMPLATE`, each with `{tenant}`, `{cluster}` and `{service}` placeholders the backend fills in, e.g. `LOGS_URL_TEMPLATE=https://logs.example.com/explore?tenant={tenant}&service={service}`. Unset by default, and never shown for a demo scenario: a mock has no real tool behind it, and this is an escape hatch for a human who wants to check, never part of the verdict itself.
+- **Evidence links.** In live mode, a drill-in can show a quiet "Verify in" row linking out to whatever real log/trace/metrics tool watches the fleet — set `LOGS_URL_TEMPLATE`, `TRACES_URL_TEMPLATE` and/or `METRICS_URL_TEMPLATE`, each with `{tenant}`, `{cluster}`, `{service}` and `{service_re}` placeholders the backend fills in (URL-quoted; `{service_re}` is the service or `.+` when the indicator names none; a template may be relative), e.g. `LOGS_URL_TEMPLATE=https://logs.example.com/explore?tenant={tenant}&service={service}`. Unset by default, and never shown for a demo scenario: a mock has no real tool behind it, and this is an escape hatch for a human who wants to check, never part of the verdict itself.
 
 ## Live mode on a real application
 
@@ -116,6 +117,10 @@ This wires the tracker to [EVE Online Tools](https://github.com/ArturSkrin/Eve-O
 
 Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.yml](.github/workflows/images.yml).
 
+### Real logs
+
+A third overlay, [docker-compose.logs.yaml](docker-compose.logs.yaml), adds Loki, Grafana Alloy and Grafana. Alloy tails the watched application's containers through the Docker API, so nothing changes in the application. The Logs button of a drill-in then opens Grafana, served under `/grafana/` by the tracker's own nginx, already filtered to the service that drill-in names. The verdict still never reads a log line: logs explain a decision, they do not make it. Configuration lives in [observability/](observability/); the security notes are in [integrations/eve-tools/](integrations/eve-tools/).
+
 ## Repository layout
 
 | Path | What it holds |
@@ -128,6 +133,7 @@ Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.
 | [design/](design/) | PNGs of the main screen for every scenario, the drill-ins, the watch faces |
 | [adapter/](adapter/) | Triage-compatible shim for compose applications without an agent |
 | [integrations/eve-tools/](integrations/eve-tools/) | What to add to EVE Online Tools: a vitals endpoint and a compose override |
+| [observability/](observability/) | Loki, Alloy and Grafana configuration for the optional logs overlay |
 | [backend/](backend/) | FastAPI: bundle, thresholds, engine, presentation, schemas, live, static and OpenAPI export |
 | [frontend/](frontend/) | React, Tailwind, Vite |
 | [tests/](tests/) | pytest: scenarios, threshold boundaries, incomplete data, API |
@@ -147,7 +153,7 @@ Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.
 | USE, RED, SIG became a state, not menu sections | yes | design_rationale.md |
 | Main screen plus one level deep | a tile, a ring or the word opens the drill-in, with what changed and why | design/drill_*.png |
 | Phone and watch | five indicators and the queue without scrolling at 390×844; three watch faces | design/phone_*.png |
-| At least 8 scenarios with input values and a decision | 11 scenarios, 181 tests | scenarios.md, tests/ |
+| At least 8 scenarios with input values and a decision | 11 scenarios, 203 tests | scenarios.md, tests/ |
 | Mock data for each scenario, with instructions | deterministic, with a check | mock_data/ |
 | A log error spike with no RED impact leads to "nothing" | scenario S06 | scenarios.md |
 | Silent services are not mistaken for healthy ones | scenarios S05 and S08 | scenarios.md |

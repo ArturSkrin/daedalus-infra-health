@@ -43,6 +43,8 @@ The same screen fed by the compose shim instead of a mock file, with a stand-in 
 
 [live_eve_healthy.png](live_eve_healthy.png) · [live_eve_down.png](live_eve_down.png)
 
+With the logs overlay the Logs button of a drill-in opens Grafana, filtered to the service it names: [live_logs_grafana.png](live_logs_grafana.png).
+
 ## Material
 
 Panels are liquid glass: a translucent, saturating blur with a specular rim brightest at the top left and an inner highlight along the top edge. Behind the page three slow pools of colour follow the verdict, so an outage tints the whole room red before a word is read, and a quiet fleet sits on green. Browsers without `backdrop-filter` get the solid panel back.

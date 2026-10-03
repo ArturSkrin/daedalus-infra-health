@@ -87,6 +87,30 @@ EVE="docker compose"                                                  # in the E
 
 Step 7 needs a CPU limit because pressure is time spent waiting for a resource: on an idle multi-core host four busy loops wait for nothing, and PSI stays at zero however hot the CPU runs. That is the point the hackathon brief makes about PSI against utilisation.
 
+## Real logs behind the Logs button
+
+The tracker decides from requests, readiness and resource pressure. It reads no logs, and it does not need them to say whether something is broken. Logs answer the next question, why, and for that there is a third overlay:
+
+```bash
+EVE_APP_URL=http://app:3000 docker compose -f docker-compose.yaml -f docker-compose.eve.yaml -f docker-compose.logs.yaml up -d --build
+```
+
+Keep `docker-compose.logs.yaml` last. It adds Loki, Grafana Alloy and Grafana, replaces the placeholder Logs link of the EVE overlay with a real one, and removes the Traces link, because there is no trace store and EVE emits no traces.
+
+- **Nothing changes in EVE.** Alloy asks the Docker daemon for the containers of one compose project and tails their output through the Docker API. The project is `eve-online-tools` by default, the name of EVE's folder; set `LOGS_COMPOSE_PROJECT` if yours differs (`docker compose ls` shows it).
+- **The link follows the drill-in.** "Users now" on an outage opens the logs of the service that is down; "Can we trust it" and "How the day went" name no service and open all of them.
+- **One address.** Grafana is served by the tracker's own nginx under `/grafana/`, so the link is relative and works from localhost, a LAN address or a domain alike. No extra port is published.
+- **Seven days** of logs are kept on a volume. Alloy remembers how far it has read, so a restart neither repeats nor skips lines.
+
+What you get is one dashboard: lines per service over time, lines that look like errors, and the lines themselves, with a regex filter ([design/live_logs_grafana.png](../../design/live_logs_grafana.png)).
+
+Read this before running it on a host others can reach:
+
+- Alloy mounts `/var/run/docker.sock`. The `:ro` protects the socket file only; whoever controls that container can ask the daemon for anything. This is the standard way to read container logs, and the reason it is an opt-in overlay.
+- Grafana gives anonymous read-only access with the login form off, so **whoever can open the tracker can read EVE's logs**, and EVE's request log includes response bodies. Keep the tracker port off the public internet or put auth in front of it.
+
+What the logs still do not change: the verdict. An error count in the log is attribution, not alarm. The tracker moves on failed requests, exactly as in scenario S06, where 8.9 thousand error lines leave the screen at ALL CLEAR.
+
 ## When a target stays dark
 
 ```bash
