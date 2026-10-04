@@ -10,6 +10,7 @@ import { VerdictPanel } from './components/VerdictPanel'
 import { WatchFaces } from './components/WatchFaces'
 import { LEVEL, VERDICT_GLYPH } from './theme'
 import type { DrillTarget, ScenarioListItem, View } from './types'
+import { useFavicon } from './useFavicon'
 
 const DEFAULT_SCENARIO = 's01_calm'
 const LIVE_REFRESH_MS = 30_000
@@ -77,6 +78,8 @@ function App() {
       window.clearInterval(timer)
     }
   }, [selected])
+
+  useFavicon(view?.decision.level)
 
   const pick = (id: string) => {
     setDrill(null)
