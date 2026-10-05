@@ -113,7 +113,7 @@ The tracker reads a Triage core. For an application that has no Triage agent the
 docker compose -f docker-compose.yaml -f docker-compose.eve.yaml up -d --build
 ```
 
-This wires the tracker to [EVE Online Tools](https://github.com/ArturSkrin/Eve-Online-Tools) running under compose on the same host, over EVE's `proxy` network. The three steps on the EVE side, and what the screen says after each of them (BLIND, then SCHEDULE, then ALL CLEAR), are in [integrations/eve-tools/](integrations/eve-tools/). The shim reports readiness, traffic, errors and resource pressure. It does not do the agent's work: no event classification, no precursors, no RCA. The end-to-end run was checked against a stand-in for EVE on the same network names ([design/live_eve_healthy.png](design/live_eve_healthy.png), [design/live_eve_down.png](design/live_eve_down.png)), not yet against the real EVE stack.
+This wires the tracker to [EVE Online Tools](https://github.com/ArturSkrin/Eve-Online-Tools) running under compose on the same host, over EVE's `proxy` network. The three steps on the EVE side, and what the screen says after each of them (BLIND, then SCHEDULE, then ALL CLEAR), are in [integrations/eve-tools/](integrations/eve-tools/). The shim reports readiness, traffic, errors and resource pressure. It does not do the agent's work: no event classification, no precursors, no RCA. It runs against the real EVE stack; the two captures ([design/live_eve_healthy.png](design/live_eve_healthy.png), [design/live_eve_down.png](design/live_eve_down.png)) were taken earlier on a stand-in with the same network names.
 
 Kubernetes deployment is described in [k8s/](k8s/); images are built by [images.yml](.github/workflows/images.yml).
 
