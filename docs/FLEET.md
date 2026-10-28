@@ -130,3 +130,4 @@ docker compose logs --tail 50 agent docker-proxy
 - **2026-10-16**: агент. Автообнаружение контейнеров через Docker API, cgroup, BLIND при молчащем демоне, `docker-compose.agent.yaml` с docker-proxy. 12 тестов (`tests/test_docker_discovery.py`).
 - **2026-10-28**: `docker-compose.agent-local.yaml` для пробы на одном сервере. Создан этот документ.
 - **2026-10-28**: первый запуск на `eastern-green`. Агент нашёл 5 контейнеров (`optima-asset/web` и 4 своих), cgroup читается, docker-proxy отвечает 200. Порты, опубликованные только на loopback, больше не дают tier 1. Настройки хоста перенесены в `.env` (`COMPOSE_FILE`).
+- **2026-10-28**: дашборд доступен с ноутбука через `ssh -N daedalus` (алиас в `~/.ssh/config`: ProxyJump через dev, LocalForward 8080). Первая проба на одном сервере работает от конца до конца.
