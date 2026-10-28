@@ -1,0 +1,20 @@
+# A one-server trial: the tracker on the agent's own host, reading that agent directly. No central tracker needed.
+#
+#   TRACKER_PORT=127.0.0.1:8080 AGENT_TENANT=vps-1 \
+#     docker compose -f docker-compose.yaml -f docker-compose.agent.yaml -f docker-compose.agent-local.yaml up -d --build
+#
+# TRACKER_PORT with 127.0.0.1 keeps the dashboard off the internet; open it through `ssh -L 8080:127.0.0.1:8080 <host>`.
+services:
+  backend:
+    environment:
+      TRIAGE_BASE_URL: http://agent:9000
+      TRIAGE_TENANT: ${AGENT_TENANT:?set AGENT_TENANT to this host's name}
+    volumes:
+      # the decision journal survives a restart of the backend
+      - tracker-data:/data
+    depends_on:
+      agent:
+        condition: service_healthy
+
+volumes:
+  tracker-data:
