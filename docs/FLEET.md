@@ -66,8 +66,8 @@ Compose-файлы:
   - `exited 0`, если политика рестарта `no` или `on-failure`, — готов: задача отработала (миграции, разовые задачи).
   - Остальное — не готов: exit ≠ 0, OOM, `restarting`, `paused`, `created`.
 - **Tier**:
-  - 1 (пользовательский путь): у контейнера есть опубликованный порт;
-  - 2: всё остальное;
+  - 1 (пользовательский путь): у контейнера есть порт, опубликованный не только на loopback;
+  - 2: всё остальное, включая порты только на `127.0.0.1` (собственные служебные сервисы);
   - метка `daedalus.tier=N` задаёт уровень вручную.
 - **Последствия**:
   - не готов контейнер tier 1 → ACT NOW;
@@ -90,14 +90,16 @@ Compose-файлы:
 ## Развёртывание: проба на одном сервере
 
 ```bash
-git clone -b feat/fleet-agent https://github.com/ArturSkrin/daedalus-infra-health.git /opt/daedalus
-cd /opt/daedalus
-TRACKER_PORT=127.0.0.1:8080 AGENT_TENANT=eastern-green \
-  docker compose -f docker-compose.yaml -f docker-compose.agent.yaml -f docker-compose.agent-local.yaml up -d --build
+sudo git clone -b feat/fleet-agent https://github.com/ArturSkrin/daedalus-infra-health.git /opt/daedalus
+sudo chown -R deploy: /opt/daedalus && cd /opt/daedalus
+# настройки хоста в .env (он в .gitignore): после этого любые команды compose идут без префиксов
+printf 'AGENT_TENANT=eastern-green\nTRACKER_PORT=127.0.0.1:8080\nCOMPOSE_FILE=docker-compose.yaml:docker-compose.agent.yaml:docker-compose.agent-local.yaml\n' > .env
+docker compose up -d --build
 curl -s http://127.0.0.1:9000/debug/targets          # что видит агент
+docker compose logs --tail 50 agent docker-proxy
 ```
 
-Дашборд открывается с ноутбука через `ssh -L 8080:127.0.0.1:8080 deploy@<host>` по адресу `http://localhost:8080`.
+Дашборд открывается с ноутбука через SSH-туннель (PowerShell, встроенный OpenSSH): `ssh -N -L 8080:127.0.0.1:8080 deploy@<eastern-green>`, если ключ ноутбука принят на сервере; через dev — `ssh -N -J deploy@192.168.8.112 -L 8080:127.0.0.1:8080 deploy@<eastern-green>`. Адрес: `http://localhost:8080`.
 Откат — та же команда с `down`. Агент только читает, поэтому сервисы хоста он не меняет.
 
 ## Безопасность
@@ -127,3 +129,4 @@ curl -s http://127.0.0.1:9000/debug/targets          # что видит аге�
 
 - **2026-10-16**: агент. Автообнаружение контейнеров через Docker API, cgroup, BLIND при молчащем демоне, `docker-compose.agent.yaml` с docker-proxy. 12 тестов (`tests/test_docker_discovery.py`).
 - **2026-10-28**: `docker-compose.agent-local.yaml` для пробы на одном сервере. Создан этот документ.
+- **2026-10-28**: первый запуск на `eastern-green`. Агент нашёл 5 контейнеров (`optima-asset/web` и 4 своих), cgroup читается, docker-proxy отвечает 200. Порты, опубликованные только на loopback, больше не дают tier 1. Настройки хоста перенесены в `.env` (`COMPOSE_FILE`).

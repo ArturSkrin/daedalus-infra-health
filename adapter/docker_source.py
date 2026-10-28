@@ -75,9 +75,10 @@ def _readiness(state: dict, restart_policy: str) -> tuple[bool, str]:
 def _tier(info: dict, labels: dict) -> int:
     if (labels.get("daedalus.tier") or "").isdigit():
         return int(labels["daedalus.tier"])
-    # a published port is the door users come in through; everything behind it is tier 2
+    # a port published beyond loopback is the door users come in through; everything behind it is tier 2
     bindings = (info.get("HostConfig") or {}).get("PortBindings") or {}
-    return 1 if any(bindings.values()) else 2
+    public = [b for host in bindings.values() for b in host or [] if b.get("HostIp") not in ("127.0.0.1", "::1")]
+    return 1 if public else 2
 
 
 def _read(directory: Path, name: str) -> str | None:
