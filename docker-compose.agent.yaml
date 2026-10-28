@@ -1,0 +1,48 @@
+# The agent for one host: every container on it becomes a target, with no list to maintain.
+#
+#   AGENT_TENANT=vps-1 AGENT_BIND=10.8.0.11 docker compose -f docker-compose.agent.yaml up -d --build
+#
+# The tracker reads it like a Triage core: TRIAGE_BASE_URL=http://<AGENT_BIND>:9000, TRIAGE_TENANT=<AGENT_TENANT>.
+#
+# Access: the agent never touches docker.sock. A socket proxy in front of it allows GET /containers/* and nothing else,
+# so whoever takes over the agent can read container state and inspect output (which includes the containers'
+# environment variables), but cannot start, stop or exec anything. Port 9000 is published on AGENT_BIND only:
+# set it to the host's WireGuard address, never 0.0.0.0.
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["uvicorn", "adapter.main:app", "--host", "0.0.0.0", "--port", "9000"]
+    restart: unless-stopped
+    environment:
+      ADAPTER_DISCOVER: docker
+      ADAPTER_TENANT: ${AGENT_TENANT:?set AGENT_TENANT to this host's name}
+      ADAPTER_CLUSTER: docker-compose
+      DOCKER_URL: http://docker-proxy:2375
+      CGROUP_ROOT: /host/cgroup
+    volumes:
+      # discovered containers, history and incidents survive a restart of the agent
+      - agent-data:/data
+      # PSI, memory and OOM kills of every container, read from the host's cgroup v2 tree
+      - /sys/fs/cgroup:/host/cgroup:ro
+    ports:
+      - "${AGENT_BIND:-127.0.0.1}:9000:9000"
+    depends_on:
+      - docker-proxy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1         # GET /containers/*; POST and every other section stay off (the image's defaults)
+    volumes:
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
+
+volumes:
+  agent-data:

@@ -12,10 +12,10 @@ import json
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from adapter import sources
+from adapter import docker_source, sources
 from adapter.config import Settings, Target
 
 BUCKET_S = 300
@@ -28,6 +28,8 @@ CYCLES_TO_OPEN = 2              # consecutive failed cycles before an incident o
 CYCLES_TO_CLOSE = 2
 EXTERNAL_EVERY_S = 60
 INCIDENTS_KEPT_S = 24 * 3600
+# shortcut: a removed compose project reads as down for a day before it is forgotten; add an explicit "forget" when that annoys
+FORGET_AFTER_S = 24 * 3600
 
 
 @dataclass
@@ -79,6 +81,8 @@ class Collector:
         self.started_at = now()
         self.last_cycle_at: float | None = None
         self.sequence = 0
+        self.containers: dict[str, docker_source.Container] = {}
+        self.docker_answered = True
         self._path = Path(settings.data_dir) / "collector-state.json"
         self._load()
 
@@ -96,6 +100,8 @@ class Collector:
         self.incidents = saved.get("incidents", [])
         self.sequence = saved.get("sequence", 0)
         for name, seen in saved.get("seen", {}).items():
+            if name not in self.states and self.settings.discover:
+                self.states[name] = TargetState()           # a discovered container: its target comes back with discovery
             if name in self.states:
                 # without this a restart of the collector would turn a stopped container back into a merely dark one
                 self.states[name].last_seen = seen
@@ -116,6 +122,8 @@ class Collector:
 
     def cycle(self) -> None:
         now = self.now()
+        if self.settings.discover:
+            self._discover(now)
         samples = {t.name: self._observe(t, now) for t in self.settings.targets if not t.via}
         with self.lock:
             fleet_requests = fleet_errors = 0.0
@@ -137,8 +145,43 @@ class Collector:
             self.last_cycle_at = now
             self._save()
 
+    def _discover(self, now: float) -> None:
+        """Targets follow the host: new containers join, vanished ones stay down for a while, then are forgotten."""
+        seen = docker_source.discover(self.settings.docker_url, self.settings.cgroup_root, self.settings.timeout_s)
+        with self.lock:
+            self.docker_answered = seen is not None
+            if seen is None:
+                return                  # we cannot see, which is not the same as everything having stopped
+            self.containers = {c.name: c for c in seen}
+            static = [t for t in self.settings.targets if not t.container]
+            static_names = {t.name for t in static}
+            previous = {t.name: t for t in self.settings.targets}
+            remembered = {name for name, s in self.states.items()
+                          if name not in static_names and s.last_seen is not None and now - s.last_seen < FORGET_AFTER_S}
+            names = sorted(set(self.containers) | remembered)
+            tiers = {**{name: t.tier for name, t in previous.items()}, **{name: c.tier for name, c in self.containers.items()}}
+            discovered = tuple(Target(name=name, container=True, tier=tiers.get(name, 2)) for name in names)
+            self.settings = replace(self.settings, targets=(*static, *discovered))
+            for name in names:
+                self.states.setdefault(name, TargetState())
+            for name in [n for n in self.states if n not in static_names and n not in names]:
+                del self.states[name]
+                for incident in self.incidents:
+                    if incident["service"] == name and incident["status"] == "open":
+                        incident.update(status="resolved", resolvedUnix=now, resolvedBy="agent")
+
     def _observe(self, target: Target, now: float):
         """Network calls only, outside the lock. Returns (probe or None, vitals or None, skipped)."""
+        if target.container:
+            if not self.docker_answered:
+                return None, None, True
+            container = self.containers.get(target.name)
+            if container is None:
+                # not reachable: _apply turns "seen before, gone now" into down, and stops refreshing last_seen
+                return sources.Probe(False, False, None, "container is gone"), None, False
+            # the daemon's word stands in for a probe; cgroup files are what an in-app vitals endpoint would report
+            vitals = {"cgroup": container.cgroup} if container.cgroup else None
+            return sources.Probe(True, container.ok, None, container.detail), vitals, False
         state = self.states[target.name]
         if target.external and now - state.last_external_check < EXTERNAL_EVERY_S:
             return None, None, True
@@ -185,7 +228,9 @@ class Collector:
         state.ready = ready
 
         # every probe is one request we made ourselves; real traffic is kept apart because it ages differently
-        probe_requests, probe_errors = (1.0, 0.0 if probe.ok else 1.0) if probe else (0.0, 0.0)
+        # A container's state is readiness, not a request a user made: it keeps the rate fresh but never counts as a
+        # failed request, or one stopped worker among three containers would read as a third of users failing.
+        probe_requests, probe_errors = (1.0, 0.0 if probe.ok or target.container else 1.0) if probe else (0.0, 0.0)
         requests, errors, buckets = 0.0, 0.0, {}
         if vitals is not None:
             previous = state.previous

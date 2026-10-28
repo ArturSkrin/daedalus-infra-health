@@ -44,6 +44,7 @@ class Target:
     calls: tuple[str, ...] = ()
     external: bool = False          # a third-party dependency: probed less often, never opens an incident
     headers: dict[str, str] = field(default_factory=dict)
+    container: bool = False         # found by Docker discovery: readiness comes from the daemon, not a probe
 
 
 @dataclass(frozen=True)
@@ -55,12 +56,20 @@ class Settings:
     data_dir: str
     vitals_token: str | None
     targets: tuple[Target, ...]
+    discover: bool = False          # add every container on the host as a target (ADAPTER_DISCOVER=docker)
+    docker_url: str = "unix:///var/run/docker.sock"
+    cgroup_root: str = "/host/cgroup"
 
 
 def load() -> Settings:
     raw = os.environ.get("ADAPTER_TARGETS")
-    items = json.loads(raw) if raw else eve_preset(os.environ.get("EVE_APP_URL") or "http://app:5000",
-                                                   os.environ.get("EVE_NGINX_URL") or "http://nginx/")
+    discover = os.environ.get("ADAPTER_DISCOVER") == "docker"
+    if raw:
+        items = json.loads(raw)
+    elif discover:
+        items = []                  # the host's containers are the targets; ADAPTER_TARGETS only adds to them
+    else:
+        items = eve_preset(os.environ.get("EVE_APP_URL") or "http://app:5000", os.environ.get("EVE_NGINX_URL") or "http://nginx/")
     targets = tuple(Target(name=i["name"], tier=int(i.get("tier", 2)), probe=i.get("probe"), vitals=i.get("vitals"),
                            tcp=i.get("tcp"), via=i.get("via"), calls=tuple(i.get("calls", ())), external=bool(i.get("external", False)),
                            headers=dict(i.get("headers", {}))) for i in items)
@@ -72,4 +81,7 @@ def load() -> Settings:
         data_dir=os.environ.get("ADAPTER_DATA_DIR", "/data"),
         vitals_token=os.environ.get("VITALS_TOKEN") or None,
         targets=targets,
+        discover=discover,
+        docker_url=os.environ.get("DOCKER_URL", "unix:///var/run/docker.sock"),
+        cgroup_root=os.environ.get("CGROUP_ROOT", "/host/cgroup"),
     )

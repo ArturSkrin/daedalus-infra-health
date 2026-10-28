@@ -77,6 +77,12 @@ def applications(collector: Collector) -> list[dict]:
     return apps
 
 
+def _plan(service: str) -> list[str]:
+    project, _, name = service.rpartition("/")         # discovered containers are "<project>/<service>"
+    scope = f"-p {project} " if project else ""
+    return [f"docker compose {scope}ps {name}", f"docker compose {scope}logs --tail 100 {name}"]
+
+
 def incidents(collector: Collector) -> dict:
     blast = _blast_radius(collector)
     with collector.lock:
@@ -85,7 +91,7 @@ def incidents(collector: Collector) -> dict:
             "firstSeen": _iso(i["firstSeenUnix"]), "resolvedAt": _iso(i["resolvedUnix"]) if i["resolvedUnix"] else None,
             "resolvedBy": i["resolvedBy"], "blastRadius": blast.get(i["service"], 0),
             "rca": "Reported by the compose shim: the service stopped answering its probe. No agent analysed this.",
-            "investigationPlan": [f"docker compose ps {i['service']}", f"docker compose logs --tail 100 {i['service']}"],
+            "investigationPlan": _plan(i["service"]),
             "relatedEvents": [],
         } for i in collector.incidents]
     opened = [i for i in items if i["status"] == "open"]
@@ -122,7 +128,9 @@ def status(collector: Collector) -> dict:
             "tenantStats": {"tenants": {settings.tenant: tenant}},
             # The collector plays the cluster agent. While its loop runs it is "connected";
             # lastMessageUnix is the last finished cycle, so a stuck loop shows up as silence.
-            "clusterAgentStats": {settings.tenant: {"cluster": settings.cluster, "connected": collector.last_cycle_at is not None,
+            # A Docker daemon that does not answer leaves the agent with nothing to say: disconnected, so BLIND.
+            "clusterAgentStats": {settings.tenant: {"cluster": settings.cluster,
+                                                    "connected": collector.last_cycle_at is not None and collector.docker_answered,
                                                     "lastMessageUnix": int(collector.last_cycle_at or collector.started_at)}},
             "unmappedServices": 0,
         }
