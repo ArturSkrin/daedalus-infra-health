@@ -62,6 +62,9 @@ def _readiness(state: dict, restart_policy: str) -> tuple[bool, str]:
         if health == "unhealthy":
             return False, "running, but its healthcheck fails"
         return True, f"running ({health})" if health else "running"
+    if status == "created":
+        # compose creates a container and starts it once its depends_on are healthy; during a deploy that is half a minute
+        return True, "created, waiting to start"
     if state.get("OOMKilled"):
         return False, "killed: out of memory"
     if status == "exited":
@@ -69,7 +72,7 @@ def _readiness(state: dict, restart_policy: str) -> tuple[bool, str]:
         if code == 0 and restart_policy in ("", "no", "on-failure"):
             return True, "finished its job"         # a migration or a one-shot task, not a service that died
         return False, f"stopped (exit code {code})"
-    return False, status or "unknown state"          # restarting, paused, created, dead
+    return False, status or "unknown state"          # restarting, paused, dead
 
 
 def _tier(info: dict, labels: dict) -> int:

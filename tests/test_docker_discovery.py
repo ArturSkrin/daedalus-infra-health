@@ -50,9 +50,11 @@ def test_daemon_states_become_readiness(monkeypatch, tmp_path):
         _container("a6", "debug", labels={"daedalus.ignore": "true"}),
         _container("a7", "api", labels={"com.docker.compose.oneoff": "True"}),
         _container("a8", "admin", ports={"8080/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8080"}]}),
+        _container("a9", "frontend", "created"),
     ]))
     found = {c.name: c for c in docker_source.discover("unix:///x", str(tmp_path), 1)}
-    assert set(found) == {"shop/web", "shop/api", "shop/worker", "shop/migrate", "shop/cache", "shop/admin"}
+    assert set(found) == {"shop/web", "shop/api", "shop/worker", "shop/migrate", "shop/cache", "shop/admin", "shop/frontend"}
+    assert found["shop/frontend"].ok                                          # waiting for depends_on during a deploy
     assert found["shop/admin"].tier == 2                                       # published on loopback only: not the users' door
     assert (found["shop/web"].ok, found["shop/web"].tier) == (True, 1)       # published port: the users' door
     assert (found["shop/api"].ok, found["shop/api"].tier) == (False, 2)
