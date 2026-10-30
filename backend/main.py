@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend import journal, live
 from backend.engine import verdict
+from backend.fleet import FLEET
 from backend.presentation import build_view
 from backend.repository import ScenarioNotFound, list_scenarios, load_scenario
 from backend.schemas import Event, FleetItem, Health, ScenarioListItem, View
@@ -32,7 +33,8 @@ def _watch(stop: threading.Event) -> None:
     # The journal must not depend on somebody having the page open: a change at 03:00 is exactly the one
     # people want to read about at 09:00. The cache in live.py keeps this from doubling the load on the core.
     while not stop.is_set():
-        for tenant in live.tenants():
+        # the fleet summary first: its journal is the one that says "something somewhere changed"
+        for tenant in ([FLEET] if live.agents() else []) + live.tenants():
             try:
                 observe_live(tenant)
             except live.LiveUnavailable as error:
@@ -127,7 +129,7 @@ def fleet() -> list[dict]:
 @app.get("/api/live/journal", response_model=list[Event], response_model_exclude_none=True)
 def live_journal(tenant: str | None = None, limit: int = 200) -> list[dict]:
     """Every recorded change for the live tenant, newest first."""
-    name = tenant or os.environ.get("TRIAGE_TENANT")
+    name = tenant or (FLEET if live.agents() else os.environ.get("TRIAGE_TENANT"))
     if not name:
         try:
             name = live.load_live(None)["tenant"]

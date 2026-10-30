@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { liveAvailable as checkLive, loadFleet, loadLive, loadScenario, loadScenarios } from './api'
+import { liveAvailable as checkLive, loadLive, loadScenario, loadScenarios } from './api'
 import { Ambient } from './components/Ambient'
 import { DrillSheet } from './components/DrillSheet'
-import { FleetBar } from './components/FleetBar'
 import { Header, LIVE } from './components/Header'
 import { IndicatorTile } from './components/IndicatorTile'
 import { GridIcon, MobileTabBar, QueueIcon, WatchIcon } from './components/MobileTabBar'
@@ -10,7 +9,7 @@ import { QueuePanel } from './components/QueuePanel'
 import { VerdictPanel } from './components/VerdictPanel'
 import { WatchFaces } from './components/WatchFaces'
 import { LEVEL, VERDICT_GLYPH } from './theme'
-import type { DrillTarget, FleetItem, ScenarioListItem, View } from './types'
+import type { DrillTarget, ScenarioListItem, View } from './types'
 
 const DEFAULT_SCENARIO = 's01_calm'
 const LIVE_REFRESH_MS = 30_000
@@ -30,9 +29,8 @@ function App() {
   const [view, setView] = useState<View | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(false)
-  const [fleet, setFleet] = useState<FleetItem[]>([])
-  // which host the live screen shows; null: the backend's default (the first agent)
-  const [tenant, setTenant] = useState<string | null>(() => new URLSearchParams(window.location.search).get('tenant'))
+  // ?tenant=<host> shows one host; without it live mode shows the backend's default, the whole fleet
+  const [tenant] = useState<string | null>(() => new URLSearchParams(window.location.search).get('tenant'))
   // ?drill=users|forecast|trust|day|verdict opens one level deep on load, for deep links
   const [drill, setDrill] = useState<DrillTarget | null>(
     () => new URLSearchParams(window.location.search).get('drill') as DrillTarget | null,
@@ -66,12 +64,8 @@ function App() {
           if (selected === LIVE) setView(null)
         })
 
-    const loadAll = () => {
-      load()
-      if (selected === LIVE) loadFleet().then((f) => !cancelled && setFleet(f)).catch(() => !cancelled && setFleet([]))
-    }
-    loadAll()
-    const timer = selected === LIVE ? window.setInterval(loadAll, LIVE_REFRESH_MS) : undefined
+    load()
+    const timer = selected === LIVE ? window.setInterval(load, LIVE_REFRESH_MS) : undefined
 
     const params = new URLSearchParams(window.location.search)
     params.delete('live')
@@ -131,16 +125,6 @@ function App() {
     <div className="min-h-screen px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pb-5 sm:pt-[max(1.25rem,env(safe-area-inset-top))] lg:px-10 lg:py-9">
       <Ambient level={view?.decision.level} />
       <Header view={view} scenarios={scenarios} selected={selected ?? DEFAULT_SCENARIO} liveAvailable={live} onSelect={pick} />
-      {selected === LIVE && (
-        <FleetBar
-          fleet={fleet}
-          tenant={view?.source.tenant ?? tenant}
-          onPick={(t) => {
-            setDrill(null)
-            setTenant(t)
-          }}
-        />
-      )}
 
       <main className="mx-auto flex max-w-6xl flex-col gap-3 pb-20 sm:gap-4 sm:pb-0 lg:gap-6">
         {error && (

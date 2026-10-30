@@ -1,4 +1,4 @@
-import type { FleetItem, ScenarioListItem, View } from './types'
+import type { ScenarioListItem, View } from './types'
 
 // With the backend running, the app talks to /api. On static hosting (GitHub
 // Pages) there is no backend, so it falls back to view models exported at
@@ -34,5 +34,3 @@ export async function liveAvailable(): Promise<boolean> {
 
 export const loadLive = (tenant?: string) =>
   getJson<View>(`${import.meta.env.BASE_URL}api/live${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''}`)
-
-export const loadFleet = () => getJson<FleetItem[]>(`${import.meta.env.BASE_URL}api/fleet`)

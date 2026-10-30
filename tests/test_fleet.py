@@ -65,10 +65,36 @@ def test_fleet_has_one_line_per_agent_and_a_silent_one_is_blind(fleet):
     assert (items["vps-c"]["verdict"], items["vps-c"]["level"]) == ("blind", "bad")
 
 
-def test_live_view_is_per_tenant_and_defaults_to_the_first(fleet):
+def test_live_view_is_per_tenant_and_defaults_to_the_whole_fleet(fleet):
     assert fleet.get("/api/live", params={"tenant": "vps-b"}).json()["decision"]["verdict"] == "act_now"
-    assert fleet.get("/api/live").json()["source"]["tenant"] == "vps-a"
+    assert fleet.get("/api/live").json()["source"]["tenant"] == "fleet"
     assert fleet.get("/api/live", params={"tenant": "nobody"}).status_code == 503
+
+
+def test_fleet_summary_judges_every_host_on_one_screen(fleet):
+    view = fleet.get("/api/live").json()
+    assert view["decision"]["verdict"] == "act_now"                     # a user-facing service is down on vps-b
+    assert view["source"]["cluster"] == "3 hosts"
+    users = next(i for i in view["indicators"] if i["id"] == "users")
+    assert {r["service"] for r in users["drill"]["services"]} >= {"vps-a:shop/web", "vps-b:blog/web"}
+    trust = next(i for i in view["indicators"] if i["id"] == "trust")
+    assert "vps-c:agent" in {d["name"] for d in trust["drill"]["dark"]}  # the silent host is named, not hidden
+
+
+def test_one_silent_host_among_healthy_ones_is_scheduled_work_not_blindness(monkeypatch, tmp_path):
+    from backend.engine import verdict
+    from backend.fleet import merge
+
+    monkeypatch.setattr(docker_source, "discover", lambda url, root, timeout: [
+        Container(f"app{i}/web", 1, True, "running", CALM) for i in range(10)])
+    settings = Settings(tenant="vps-a", cluster="docker-compose", interval_s=15, timeout_s=1, data_dir=str(tmp_path),
+                        vitals_token=None, targets=(), discover="docker")
+    agent = Collector(settings, now=time.time)
+    for _ in range(3):
+        agent.cycle()
+    raw = {"tenant": "vps-a", **{path.rsplit("/", 1)[1]: block(agent) for path, block in SHIM.items()}}
+    result = verdict(merge({"vps-a": raw, "vps-c": None}, shim._iso(time.time())))
+    assert (result["verdict"], result["states"]["trust"]) == ("schedule", "partial")
 
 
 def test_each_tenant_keeps_its_own_journal(fleet):

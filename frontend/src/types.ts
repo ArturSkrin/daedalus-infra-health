@@ -13,7 +13,6 @@ export type Link = Schemas['Link']
 export type Event = Schemas['Event']
 export type QueueItem = Schemas['QueueItem']
 export type ScenarioListItem = Schemas['ScenarioListItem']
-export type FleetItem = Schemas['FleetItem']
 
 export type Level = Indicator['level']
 export type Verdict = View['decision']['verdict']

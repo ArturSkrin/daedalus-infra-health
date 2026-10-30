@@ -9,7 +9,7 @@ omits, so this module only fetches. Configure with environment variables:
     TRIAGE_TOKEN      bearer token, optional
     TRIAGE_TENANT     default tenant when the request names none
     AGENTS            a fleet instead: "vps-1=http://10.77.0.2:9000,vps-1-k3s=http://10.77.0.2:9001",
-                      one Daedalus agent per tenant; the first is the default
+                      one Daedalus agent per tenant; the default view is all of them merged (tenant "fleet")
 """
 from __future__ import annotations
 
@@ -22,6 +22,8 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+
+from backend.fleet import FLEET, merge
 
 log = logging.getLogger("daedalus.live")
 
@@ -101,10 +103,23 @@ def _fetch(tenant: str | None) -> dict:
             "status": status, **blocks}
 
 
+def _or_none(host: str) -> dict | None:
+    try:
+        return load_live(host)
+    except LiveUnavailable:
+        return None
+
+
 def load_live(tenant: str | None = None) -> dict:
     if not configured():
         raise LiveUnavailable("live mode is not configured")
-    tenant = tenant or os.environ.get("TRIAGE_TENANT") or next(iter(agents()), None)
+    hosts = agents()
+    if hosts and tenant in (None, FLEET):
+        # in parallel: a silent host costs one timeout, not one timeout per host in a row
+        with ThreadPoolExecutor(max_workers=min(8, len(hosts))) as pool:
+            raws = dict(zip(hosts, pool.map(_or_none, hosts), strict=True))
+        return merge(raws, datetime.now(UTC).astimezone().isoformat(timespec="seconds"))
+    tenant = tenant or os.environ.get("TRIAGE_TENANT") or None
     key = tenant or ""
     with _lock:
         hit = _cache.get(key)
