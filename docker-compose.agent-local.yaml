@@ -9,6 +9,8 @@ services:
     environment:
       TRIAGE_BASE_URL: http://agent:9000
       TRIAGE_TENANT: ${AGENT_TENANT:?set AGENT_TENANT to this host's name}
+      # A fleet: "<tenant>=<url>,...". When set, it replaces TRIAGE_BASE_URL; list this host's own agent as http://agent:9000.
+      AGENTS: ${AGENTS:-}
     volumes:
       # the decision journal survives a restart of the backend
       - tracker-data:/data
