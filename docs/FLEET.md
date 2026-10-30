@@ -161,3 +161,7 @@ docker compose logs --tail 50 agent docker-proxy
   - Агенты отвечают по `:9001` как `eastern-green.ptr.network-k3s`, `ccb-k3s`, `clc-firm-k3s`.
   - Урок: `wg syncconf` (reload) стирает приватный ключ, если его нет в конфиге, а у нас ключ задаётся через `PostUp`. Поэтому роль делает restart.
   - Агент, привязанный к адресу `wg0`, пережил рестарт туннеля без перезапуска пода.
+- **2026-10-30**: трекер на `eastern-green` читает четыре источника:
+  - `AGENTS=eastern-green=http://agent:9000,eastern-green.ptr.network-k3s=http://10.77.0.1:9001,ccb-k3s=http://10.77.0.2:9001,clc-firm-k3s=http://10.77.0.3:9001`;
+  - backend из Docker достаёт до всех, включая свой собственный k3s-агент через docker-мост;
+  - `/api/fleet` и полоса хостов работают, все четыре источника в ALL CLEAR.
