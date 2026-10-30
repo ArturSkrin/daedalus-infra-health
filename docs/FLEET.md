@@ -116,17 +116,13 @@ docker compose logs --tail 50 agent docker-proxy
 
 Образ — тот же backend: `ghcr.io/arturskrin/daedalus-infra-health-backend`. CI (`images.yml`) собирает его на каждый push в `main` (тег `latest`) и в `feat/**` (тег — имя ветки через `-`).
 
-Запись в `argocd_apps` в group_vars каждой группы `k3s_landing` и `k3s_heavy`:
+Раскатка — отдельный плейбук `playbooks/monitoring.yml` в Ansible-vps. Роль k3s он не трогает.
 
-```yaml
-  - name: daedalus-agent
-    repo_url: https://github.com/ArturSkrin/daedalus-infra-health.git   # публичный, без ключа
-    path: k8s/agent
-    revision: feat/fleet-agent
-    namespace: daedalus-agent
-```
-
-Раскатка: `ansible-playbook playbooks/k3s.yml --limit k3s_servers --tags argocd`. До этого на хосте должен быть `wg0`, иначе агент не стартует.
+- Роль `wireguard` поднимает `wg0` и добавляет правила в `host_firewall` через drop-in к `nftables.service`. Правила лежат в `/etc/nftables.d/daedalus-wireguard.nft` и дописываются после каждого start/reload, поэтому переживают и перезагрузку, и прогон `k3s.yml`.
+- Роль `daedalus_agent`:
+  - на k3s-хостах кладёт Argo CD Application в auto-deploy папку k3s, и Argo сам забирает `k8s/agent` из публичного репозитория;
+  - на Docker-хостах запускает compose в `/opt/daedalus-agent` с портом на wg-адресе.
+- Inventory: группа `[wireguard]` с `wireguard_address=10.77.0.N` у каждого хоста и `wireguard_hub: CLC-Firm` в group_vars.
 
 ## Безопасность
 
@@ -159,4 +155,4 @@ docker compose logs --tail 50 agent docker-proxy
 - **2026-10-28**: дашборд доступен с ноутбука через `ssh -N daedalus` (алиас в `~/.ssh/config`: ProxyJump через dev, LocalForward 8080). Первая проба на одном сервере работает от конца до конца.
 - **2026-10-28**: smoke-тест пройден. Остановка контейнера tier 1 дала ACT NOW примерно за минуту, после старта инцидент закрылся сам. Ложный инцидент при деплое (`created`, пока compose ждёт `depends_on`) исправлен.
 - **2026-10-30**: агент для k3s. Источник Kubernetes API (`k8s_source.py`), запуск на адресе `wg0` (`serve.py`), манифесты `k8s/agent/` для Argo CD, сборка образа для `feat/**`. Подсеть WireGuard — `10.77.0.0/24`, центр `.1`. 7 тестов (`tests/test_k8s_discovery.py`).
-- **2026-10-30**: несколько агентов в одном трекере: `AGENTS`, `/api/fleet`, watcher и журнал по каждому хосту, полоса хостов во фронте. В Ansible-vps (ветка `feat/wireguard`) — роль `wireguard` (хаб и спицы) и `k3s_firewall_extra_rules`. 5 тестов (`tests/test_fleet.py`).
+- **2026-10-30**: несколько агентов в одном трекере: `AGENTS`, `/api/fleet`, watcher и журнал по каждому хосту, полоса хостов во фронте. В Ansible-vps (ветка `feat/wireguard`) — плейбук `monitoring.yml` с ролями `wireguard` (хаб и спицы, правила файрвола через drop-in) и `daedalus_agent`. Роль k3s не изменена. 5 тестов (`tests/test_fleet.py`).
