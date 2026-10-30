@@ -12,7 +12,7 @@ from backend import journal, live
 from backend.engine import verdict
 from backend.presentation import build_view
 from backend.repository import ScenarioNotFound, list_scenarios, load_scenario
-from backend.schemas import Event, Health, ScenarioListItem, View
+from backend.schemas import Event, FleetItem, Health, ScenarioListItem, View
 
 log = logging.getLogger("daedalus")
 JOURNAL_POLL_S = int(os.environ.get("JOURNAL_POLL_S", "20"))
@@ -32,12 +32,13 @@ def _watch(stop: threading.Event) -> None:
     # The journal must not depend on somebody having the page open: a change at 03:00 is exactly the one
     # people want to read about at 09:00. The cache in live.py keeps this from doubling the load on the core.
     while not stop.is_set():
-        try:
-            observe_live()
-        except live.LiveUnavailable as error:
-            log.warning("journal watcher: %s", error)
-        except Exception:
-            log.exception("journal watcher failed")
+        for tenant in live.tenants():
+            try:
+                observe_live(tenant)
+            except live.LiveUnavailable as error:
+                log.warning("journal watcher (%s): %s", tenant, error)
+            except Exception:
+                log.exception("journal watcher failed (%s)", tenant)
         stop.wait(JOURNAL_POLL_S)
 
 
@@ -103,6 +104,24 @@ def live_view(tenant: str | None = None) -> dict:
         return observe_live(tenant)
     except live.LiveUnavailable as error:
         raise HTTPException(status_code=503, detail=f"Live data unavailable: {error}") from None
+
+
+@app.get("/api/fleet", response_model=list[FleetItem])
+def fleet() -> list[dict]:
+    """One line per tenant: the word and why. An agent that does not answer is BLIND, never left out."""
+    if not live.configured():
+        return []
+    items = []
+    for tenant in live.tenants():
+        try:
+            view = observe_live(tenant)
+        except live.LiveUnavailable as error:
+            items.append({"tenant": tenant or "live", "verdict": "blind", "word": "BLIND", "level": "bad", "reason": str(error)})
+            continue
+        decision = view["decision"]
+        items.append({"tenant": view["source"]["tenant"], "verdict": decision["verdict"], "word": decision["word"],
+                      "level": decision["level"], "reason": decision["reason"]})
+    return items
 
 
 @app.get("/api/live/journal", response_model=list[Event], response_model_exclude_none=True)

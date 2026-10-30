@@ -51,8 +51,8 @@
 | agent | `adapter/` (`docker_source.py`, `collector.py`, `shim.py`) | Находит все контейнеры хоста через Docker API, читает их cgroup, открывает и закрывает инциденты, хранит историю за 24 ч. Отдаёт API в формате Triage (`/v2/agent/*`), плюс `/healthz` и `/debug/targets`. |
 | agent (k3s) | `adapter/k8s_source.py`, `adapter/serve.py`, `k8s/agent/` | Тот же агент внутри кластера: читает Deployment/StatefulSet/DaemonSet и поды через Kubernetes API (только get/list). Деплоится Argo CD. hostNetwork, слушает только адрес `wg0`, порт 9001. |
 | docker-proxy | образ `tecnativa/docker-socket-proxy` | Единственный, кто видит `docker.sock`. Пропускает только `GET /containers/*`. |
-| backend | `backend/` | Забирает данные агента (`live.py`) и считает вердикт: `bundle → engine → presentation`. Ведёт журнал изменений. |
-| frontend | `frontend/` | React. Сам ничего не считает. Если `/api/health` отвечает `live: true`, включается live-режим. |
+| backend | `backend/` | Забирает данные агентов (`live.py`) и считает вердикт: `bundle → engine → presentation`. Агенты задаются в `AGENTS` (`tenant=url,…`). `/api/fleet` отдаёт одну строку на хост, молчащий агент = BLIND. Журнал ведётся по каждому хосту отдельно. |
+| frontend | `frontend/` | React. Сам ничего не считает. Если `/api/health` отвечает `live: true`, включается live-режим. При двух и более хостах сверху показывается полоса хостов (худшие слева), клик открывает экран хоста (`?live=1&tenant=…`). |
 
 Compose-файлы:
 - `docker-compose.yaml`: backend и frontend;
@@ -109,7 +109,7 @@ curl -s http://127.0.0.1:9000/debug/targets          # что видит аге�
 docker compose logs --tail 50 agent docker-proxy
 ```
 
-Дашборд открывается с ноутбука через SSH-туннель (PowerShell, встроенный OpenSSH): `ssh -N -L 8080:127.0.0.1:8080 deploy@<eastern-green>`, если ключ ноутбука принят на сервере; через dev — `ssh -N -J deploy@192.168.8.112 -L 8080:127.0.0.1:8080 deploy@<eastern-green>`. Адрес: `http://localhost:8080`.
+Дашборд открывается с ноутбука через SSH-туннель (PowerShell, встроенный OpenSSH): `ssh -N -L 8080:127.0.0.1:8080 deploy@<eastern-green>`, если ключ ноутбука принят на сервере; через dev — `ssh -N -J deploy@192.168.8.104 -L 8080:127.0.0.1:8080 deploy@<eastern-green>`. Адрес: `http://localhost:8080`.
 Откат — та же команда с `down`. Агент только читает, поэтому сервисы хоста он не меняет.
 
 ## Развёртывание: агент в k3s
@@ -159,3 +159,4 @@ docker compose logs --tail 50 agent docker-proxy
 - **2026-10-28**: дашборд доступен с ноутбука через `ssh -N daedalus` (алиас в `~/.ssh/config`: ProxyJump через dev, LocalForward 8080). Первая проба на одном сервере работает от конца до конца.
 - **2026-10-28**: smoke-тест пройден. Остановка контейнера tier 1 дала ACT NOW примерно за минуту, после старта инцидент закрылся сам. Ложный инцидент при деплое (`created`, пока compose ждёт `depends_on`) исправлен.
 - **2026-10-30**: агент для k3s. Источник Kubernetes API (`k8s_source.py`), запуск на адресе `wg0` (`serve.py`), манифесты `k8s/agent/` для Argo CD, сборка образа для `feat/**`. Подсеть WireGuard — `10.77.0.0/24`, центр `.1`. 7 тестов (`tests/test_k8s_discovery.py`).
+- **2026-10-30**: несколько агентов в одном трекере: `AGENTS`, `/api/fleet`, watcher и журнал по каждому хосту, полоса хостов во фронте. В Ansible-vps (ветка `feat/wireguard`) — роль `wireguard` (хаб и спицы) и `k3s_firewall_extra_rules`. 5 тестов (`tests/test_fleet.py`).

@@ -329,6 +329,51 @@
         "title": "Fact",
         "type": "object"
       },
+      "FleetItem": {
+        "properties": {
+          "level": {
+            "enum": [
+              "good",
+              "warn",
+              "bad",
+              "muted"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "tenant": {
+            "title": "Tenant",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "all_clear",
+              "schedule",
+              "act_now",
+              "blind"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant",
+          "verdict",
+          "word",
+          "level",
+          "reason"
+        ],
+        "title": "FleetItem",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1065,6 +1110,29 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/fleet": {
+      "get": {
+        "description": "One line per tenant: the word and why. An agent that does not answer is BLIND, never left out.",
+        "operationId": "fleet_api_fleet_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FleetItem"
+                  },
+                  "title": "Response Fleet Api Fleet Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Fleet"
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "health_api_health_get",

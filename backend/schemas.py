@@ -188,6 +188,14 @@ class ScenarioListItem(BaseModel):
     passed: bool
 
 
+class FleetItem(BaseModel):
+    tenant: str
+    verdict: Verdict
+    word: str
+    level: Level
+    reason: str
+
+
 class Health(BaseModel):
     status: Literal["ok"]
     live: bool

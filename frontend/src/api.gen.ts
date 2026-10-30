@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/fleet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fleet
+         * @description One line per tenant: the word and why. An agent that does not answer is BLIND, never left out.
+         */
+        get: operations["fleet_api_fleet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -207,6 +227,25 @@ export interface components {
             label: string;
             /** Value */
             value: string;
+        };
+        /** FleetItem */
+        FleetItem: {
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "good" | "warn" | "bad" | "muted";
+            /** Reason */
+            reason: string;
+            /** Tenant */
+            tenant: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "all_clear" | "schedule" | "act_now" | "blind";
+            /** Word */
+            word: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -469,6 +508,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    fleet_api_fleet_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FleetItem"][];
+                };
+            };
+        };
+    };
     health_api_health_get: {
         parameters: {
             query?: never;
