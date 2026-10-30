@@ -81,12 +81,19 @@ spec:
               value: /host/cgroup
             - name: ADAPTER_DATA_DIR
               value: /data
+            - name: HOST_METRICS        # host/disk and host/memory of this node
+              value: "1"
+            - name: HOST_DISK
+              value: /host/disk
           volumeMounts:
             - name: cgroup
               mountPath: /host/cgroup
               readOnly: true
             - name: data
               mountPath: /data
+            - name: disk
+              mountPath: /host/disk
+              readOnly: true
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -99,6 +106,11 @@ spec:
             limits:
               memory: 192Mi
       volumes:
+        # one file on the root filesystem: statvfs on it measures the whole disk, and no other host file is visible
+        - name: disk
+          hostPath:
+            path: /etc/hostname
+            type: File
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup

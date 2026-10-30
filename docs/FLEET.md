@@ -85,6 +85,11 @@ Compose-файлы:
   - Метки `daedalus.tier` и `daedalus.ignore` на ворклоаде работают так же, как в Docker.
   - CronJob и Job пока не наблюдаются.
   - Tenant — `<имя ноды>-k3s`.
+- **Хост** (`host_source.py`, `HOST_METRICS=1`) — две цели рядом с контейнерами:
+  - `host/disk`: заполненность корневой ФС. В агента монтируется один файл `/etc/hostname`, и `statvfs` по нему меряет весь диск; других файлов хоста агент не видит;
+  - `host/memory`: доля памяти по `MemAvailable`, кэш считается свободным. Плюс PSI хоста идёт в прогноз;
+  - от 90% — цель tier 2 не готова (SCHEDULE), от 97% — tier 1 (ACT NOW);
+  - на хосте с двумя агентами (eastern-green) включено только у k3s-агента: в `.env` трекера `HOST_METRICS=0`.
 - **Ресурсы.** PSI CPU/RAM/IO, `memory.current`/`memory.max` и OOM-kill из cgroup v2 хоста. Поля те же, что у `integrations/eve-tools/vitals.ts`.
 
 ## Конфигурация агента
@@ -144,7 +149,7 @@ docker compose logs --tail 50 agent docker-proxy
 Порядок согласован 2026-10-30:
 
 1. Сводный экран по всему парку — сделан.
-2. Диск и память хоста.
+2. Диск и память хоста — сделаны.
 3. Базы: Neon (`SELECT 1`) и проверка восстановления бэкапов.
 4. Логи со всех серверов (Alloy → Loki).
 5. Порядок в репозитории: слить `feat/fleet-agent` в `main`, закрепить образы на `sha`.
@@ -175,3 +180,4 @@ docker compose logs --tail 50 agent docker-proxy
   - Один молчащий хост даёт SCHEDULE (неполное доверие), а не BLIND на весь экран.
   - Полоса хостов удалена.
   - 3 теста в `tests/test_fleet.py`.
+- **2026-10-30**: диск и память хоста (`host/disk`, `host/memory`) в агенте для compose, k3s и в Ansible-шаблоне. 6 тестов (`tests/test_host_metrics.py`).

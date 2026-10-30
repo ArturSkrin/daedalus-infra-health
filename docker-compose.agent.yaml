@@ -21,11 +21,16 @@ services:
       ADAPTER_CLUSTER: docker-compose
       DOCKER_URL: http://docker-proxy:2375
       CGROUP_ROOT: /host/cgroup
+      # host/disk and host/memory; set HOST_METRICS=0 where another agent on the same host reports them (k3s)
+      HOST_METRICS: ${HOST_METRICS:-1}
+      HOST_DISK: /host/disk
     volumes:
       # discovered containers, history and incidents survive a restart of the agent
       - agent-data:/data
       # PSI, memory and OOM kills of every container, read from the host's cgroup v2 tree
       - /sys/fs/cgroup:/host/cgroup:ro
+      # one file on the root filesystem: statvfs on it measures the whole disk, and no other host file is visible
+      - /etc/hostname:/host/disk:ro
     ports:
       - "${AGENT_BIND:-127.0.0.1}:9000:9000"
     depends_on:
