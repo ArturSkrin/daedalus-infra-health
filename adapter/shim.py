@@ -128,9 +128,9 @@ def status(collector: Collector) -> dict:
             "tenantStats": {"tenants": {settings.tenant: tenant}},
             # The collector plays the cluster agent. While its loop runs it is "connected";
             # lastMessageUnix is the last finished cycle, so a stuck loop shows up as silence.
-            # A Docker daemon that does not answer leaves the agent with nothing to say: disconnected, so BLIND.
+            # A Docker daemon or Kubernetes API that does not answer leaves the agent with nothing to say: BLIND.
             "clusterAgentStats": {settings.tenant: {"cluster": settings.cluster,
-                                                    "connected": collector.last_cycle_at is not None and collector.docker_answered,
+                                                    "connected": collector.last_cycle_at is not None and collector.source_answered,
                                                     "lastMessageUnix": int(collector.last_cycle_at or collector.started_at)}},
             "unmappedServices": 0,
         }

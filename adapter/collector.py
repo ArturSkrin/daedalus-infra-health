@@ -15,7 +15,7 @@ from collections import deque
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from adapter import docker_source, sources
+from adapter import docker_source, k8s_source, sources
 from adapter.config import Settings, Target
 
 BUCKET_S = 300
@@ -82,7 +82,7 @@ class Collector:
         self.last_cycle_at: float | None = None
         self.sequence = 0
         self.containers: dict[str, docker_source.Container] = {}
-        self.docker_answered = True
+        self.source_answered = True         # the Docker daemon or the Kubernetes API answered the last discovery
         self._path = Path(settings.data_dir) / "collector-state.json"
         self._load()
 
@@ -147,9 +147,13 @@ class Collector:
 
     def _discover(self, now: float) -> None:
         """Targets follow the host: new containers join, vanished ones stay down for a while, then are forgotten."""
-        seen = docker_source.discover(self.settings.docker_url, self.settings.cgroup_root, self.settings.timeout_s)
+        s = self.settings
+        if s.discover == "kubernetes":
+            seen = k8s_source.discover(s.k8s_skip_namespaces, s.k8s_tier2_namespaces, s.cgroup_root, s.timeout_s)
+        else:
+            seen = docker_source.discover(s.docker_url, s.cgroup_root, s.timeout_s)
         with self.lock:
-            self.docker_answered = seen is not None
+            self.source_answered = seen is not None
             if seen is None:
                 return                  # we cannot see, which is not the same as everything having stopped
             self.containers = {c.name: c for c in seen}
@@ -173,7 +177,7 @@ class Collector:
     def _observe(self, target: Target, now: float):
         """Network calls only, outside the lock. Returns (probe or None, vitals or None, skipped)."""
         if target.container:
-            if not self.docker_answered:
+            if not self.source_answered:
                 return None, None, True
             container = self.containers.get(target.name)
             if container is None:

@@ -94,7 +94,7 @@ def host(monkeypatch, tmp_path):
     clock = [1_790_000_000.0]
     monkeypatch.setattr(docker_source, "discover", lambda url, root, timeout: world["containers"])
     settings = Settings(tenant="vps-1", cluster="docker-compose", interval_s=15, timeout_s=1, data_dir=str(tmp_path),
-                        vitals_token=None, targets=(), discover=True)
+                        vitals_token=None, targets=(), discover="docker")
     collector = Collector(settings, now=lambda: clock[0])
 
     def run(cycles=1):

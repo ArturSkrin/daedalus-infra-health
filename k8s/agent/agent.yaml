@@ -1,0 +1,108 @@
+# The Daedalus agent for one k3s cluster: every Deployment, StatefulSet and DaemonSet becomes a target.
+# Deployed by Argo CD (argocd_apps entry, path k8s/agent, namespace daedalus-agent); the same files fit every cluster:
+# the tenant is the node name, the address is whatever wg0 has on that host.
+#
+# Network: hostNetwork, listening on the WireGuard address only (adapter/serve.py refuses to start without wg0).
+# The host firewall must accept tcp/9001 on wg0; nothing else changes.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: daedalus-agent
+  namespace: daedalus-agent
+---
+# Read-only. Pod specs carry env values, so whoever controls the agent can read them: keep :9001 inside WireGuard.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: daedalus-agent
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: daedalus-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: daedalus-agent
+subjects:
+  - kind: ServiceAccount
+    name: daedalus-agent
+    namespace: daedalus-agent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: daedalus-agent
+  namespace: daedalus-agent
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate              # hostNetwork: old and new pod cannot hold the same port at once
+  selector:
+    matchLabels:
+      app: daedalus-agent
+  template:
+    metadata:
+      labels:
+        app: daedalus-agent
+    spec:
+      serviceAccountName: daedalus-agent
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: agent
+          # shortcut: a branch tag pulled on every start; pin sha-<commit> once this is merged to main
+          image: ghcr.io/arturskrin/daedalus-infra-health-backend:feat-fleet-agent
+          imagePullPolicy: Always
+          command: ["python", "-m", "adapter.serve"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ADAPTER_TENANT
+              value: "$(NODE_NAME)-k3s"
+            - name: ADAPTER_CLUSTER
+              value: k3s
+            - name: ADAPTER_DISCOVER
+              value: kubernetes
+            - name: AGENT_BIND_IFACE
+              value: wg0
+            - name: AGENT_PORT
+              value: "9001"
+            - name: CGROUP_ROOT
+              value: /host/cgroup
+            - name: ADAPTER_DATA_DIR
+              value: /data
+          volumeMounts:
+            - name: cgroup
+              mountPath: /host/cgroup
+              readOnly: true
+            - name: data
+              mountPath: /data
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001          # the image's "tracker" user; a named USER cannot be verified as non-root
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 192Mi
+      volumes:
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory
+        # shortcut: history and incidents survive a container restart, not a pod rescheduling; a hostPath when that matters
+        - name: data
+          emptyDir: {}

@@ -56,14 +56,18 @@ class Settings:
     data_dir: str
     vitals_token: str | None
     targets: tuple[Target, ...]
-    discover: bool = False          # add every container on the host as a target (ADAPTER_DISCOVER=docker)
+    discover: str = ""              # "docker" or "kubernetes": every container/workload becomes a target (ADAPTER_DISCOVER)
     docker_url: str = "unix:///var/run/docker.sock"
     cgroup_root: str = "/host/cgroup"
+    k8s_skip_namespaces: frozenset[str] = frozenset({"kube-system", "kube-public", "kube-node-lease"})
+    k8s_tier2_namespaces: frozenset[str] = frozenset({"argocd"})     # platform parts users never call directly
 
 
 def load() -> Settings:
     raw = os.environ.get("ADAPTER_TARGETS")
-    discover = os.environ.get("ADAPTER_DISCOVER") == "docker"
+    discover = os.environ.get("ADAPTER_DISCOVER", "")
+    if discover not in ("", "docker", "kubernetes"):
+        raise ValueError(f"ADAPTER_DISCOVER must be docker or kubernetes, not {discover!r}")
     if raw:
         items = json.loads(raw)
     elif discover:
@@ -84,4 +88,7 @@ def load() -> Settings:
         discover=discover,
         docker_url=os.environ.get("DOCKER_URL", "unix:///var/run/docker.sock"),
         cgroup_root=os.environ.get("CGROUP_ROOT", "/host/cgroup"),
+        **{field: frozenset(n for n in os.environ[env].split(",") if n)
+           for field, env in (("k8s_skip_namespaces", "K8S_SKIP_NAMESPACES"), ("k8s_tier2_namespaces", "K8S_TIER2_NAMESPACES"))
+           if env in os.environ},
     )

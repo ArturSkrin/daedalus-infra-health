@@ -49,6 +49,7 @@
 | Компонент | Код | Что делает |
 |---|---|---|
 | agent | `adapter/` (`docker_source.py`, `collector.py`, `shim.py`) | Находит все контейнеры хоста через Docker API, читает их cgroup, открывает и закрывает инциденты, хранит историю за 24 ч. Отдаёт API в формате Triage (`/v2/agent/*`), плюс `/healthz` и `/debug/targets`. |
+| agent (k3s) | `adapter/k8s_source.py`, `adapter/serve.py`, `k8s/agent/` | Тот же агент внутри кластера: читает Deployment/StatefulSet/DaemonSet и поды через Kubernetes API (только get/list). Деплоится Argo CD. hostNetwork, слушает только адрес `wg0`, порт 9001. |
 | docker-proxy | образ `tecnativa/docker-socket-proxy` | Единственный, кто видит `docker.sock`. Пропускает только `GET /containers/*`. |
 | backend | `backend/` | Забирает данные агента (`live.py`) и считает вердикт: `bundle → engine → presentation`. Ведёт журнал изменений. |
 | frontend | `frontend/` | React. Сам ничего не считает. Если `/api/health` отвечает `live: true`, включается live-режим. |
@@ -76,6 +77,14 @@ Compose-файлы:
 - **Пропали из Docker** (удалены) — считаются упавшими. Через 24 ч без появления о них забываем, инциденты закрываются.
 - **Docker-демон не отвечает** → BLIND: агент сообщает «нет связи», а не «всё упало».
 - **Метка `daedalus.ignore=true`** исключает контейнер из наблюдения. Одноразовые контейнеры (`docker compose run`) пропускаются всегда.
+- **k3s.** Цель — ворклоад `namespace/имя`, а не под: поды меняются на каждом развёртывании.
+  - Работает, пока готова хотя бы одна реплика. `replicas: 0` — норма.
+  - При 0 готовых причина берётся из пода: `CrashLoopBackOff`, `ImagePullBackOff` и т. п., плюс причина последнего выхода (OOMKilled).
+  - Namespace `kube-system`, `kube-public`, `kube-node-lease` не наблюдаются (`K8S_SKIP_NAMESPACES`).
+  - `argocd` — tier 2 (`K8S_TIER2_NAMESPACES`), всё остальное — tier 1, включая `cloudflared`: без него лежат все сайты кластера.
+  - Метки `daedalus.tier` и `daedalus.ignore` на ворклоаде работают так же, как в Docker.
+  - CronJob и Job пока не наблюдаются.
+  - Tenant — `<имя ноды>-k3s`.
 - **Ресурсы.** PSI CPU/RAM/IO, `memory.current`/`memory.max` и OOM-kill из cgroup v2 хоста. Поля те же, что у `integrations/eve-tools/vitals.ts`.
 
 ## Конфигурация агента
@@ -102,6 +111,22 @@ docker compose logs --tail 50 agent docker-proxy
 
 Дашборд открывается с ноутбука через SSH-туннель (PowerShell, встроенный OpenSSH): `ssh -N -L 8080:127.0.0.1:8080 deploy@<eastern-green>`, если ключ ноутбука принят на сервере; через dev — `ssh -N -J deploy@192.168.8.112 -L 8080:127.0.0.1:8080 deploy@<eastern-green>`. Адрес: `http://localhost:8080`.
 Откат — та же команда с `down`. Агент только читает, поэтому сервисы хоста он не меняет.
+
+## Развёртывание: агент в k3s
+
+Образ — тот же backend: `ghcr.io/arturskrin/daedalus-infra-health-backend`. CI (`images.yml`) собирает его на каждый push в `main` (тег `latest`) и в `feat/**` (тег — имя ветки через `-`).
+
+Запись в `argocd_apps` в group_vars каждой группы `k3s_landing` и `k3s_heavy`:
+
+```yaml
+  - name: daedalus-agent
+    repo_url: https://github.com/ArturSkrin/daedalus-infra-health.git   # публичный, без ключа
+    path: k8s/agent
+    revision: feat/fleet-agent
+    namespace: daedalus-agent
+```
+
+Раскатка: `ansible-playbook playbooks/k3s.yml --limit k3s_servers --tags argocd`. До этого на хосте должен быть `wg0`, иначе агент не стартует.
 
 ## Безопасность
 
@@ -133,3 +158,4 @@ docker compose logs --tail 50 agent docker-proxy
 - **2026-10-28**: первый запуск на `eastern-green`. Агент нашёл 5 контейнеров (`optima-asset/web` и 4 своих), cgroup читается, docker-proxy отвечает 200. Порты, опубликованные только на loopback, больше не дают tier 1. Настройки хоста перенесены в `.env` (`COMPOSE_FILE`).
 - **2026-10-28**: дашборд доступен с ноутбука через `ssh -N daedalus` (алиас в `~/.ssh/config`: ProxyJump через dev, LocalForward 8080). Первая проба на одном сервере работает от конца до конца.
 - **2026-10-28**: smoke-тест пройден. Остановка контейнера tier 1 дала ACT NOW примерно за минуту, после старта инцидент закрылся сам. Ложный инцидент при деплое (`created`, пока compose ждёт `depends_on`) исправлен.
+- **2026-10-30**: агент для k3s. Источник Kubernetes API (`k8s_source.py`), запуск на адресе `wg0` (`serve.py`), манифесты `k8s/agent/` для Argo CD, сборка образа для `feat/**`. Подсеть WireGuard — `10.77.0.0/24`, центр `.1`. 7 тестов (`tests/test_k8s_discovery.py`).
