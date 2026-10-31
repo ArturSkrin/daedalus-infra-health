@@ -63,6 +63,7 @@ class Settings:
     k8s_tier2_namespaces: frozenset[str] = frozenset({"argocd"})     # platform parts users never call directly
     host_metrics: bool = False      # add host/disk and host/memory (HOST_METRICS=1); one agent per host should
     host_disk: str = "/host/disk"   # a path on the host's root filesystem, mounted into the agent
+    checks_dir: str = ""            # JSON results of outside checks (adapter/checks_source.py); empty: none
 
 
 def load() -> Settings:
@@ -92,6 +93,7 @@ def load() -> Settings:
         cgroup_root=os.environ.get("CGROUP_ROOT", "/host/cgroup"),
         host_metrics=os.environ.get("HOST_METRICS") == "1",
         host_disk=os.environ.get("HOST_DISK", "/host/disk"),
+        checks_dir=os.environ.get("CHECKS_DIR", ""),
         **{field: frozenset(n for n in os.environ[env].split(",") if n)
            for field, env in (("k8s_skip_namespaces", "K8S_SKIP_NAMESPACES"), ("k8s_tier2_namespaces", "K8S_TIER2_NAMESPACES"))
            if env in os.environ},

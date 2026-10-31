@@ -15,7 +15,7 @@ from collections import deque
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from adapter import docker_source, host_source, k8s_source, sources
+from adapter import checks_source, docker_source, host_source, k8s_source, sources
 from adapter.config import Settings, Target
 
 BUCKET_S = 300
@@ -154,6 +154,8 @@ class Collector:
             seen = docker_source.discover(s.docker_url, s.cgroup_root, s.timeout_s)
         if seen is not None and s.host_metrics:
             seen = seen + host_source.read(s.host_disk)
+        if seen is not None and s.checks_dir:
+            seen = seen + checks_source.read(s.checks_dir, now)
         with self.lock:
             self.source_answered = seen is not None
             if seen is None:
