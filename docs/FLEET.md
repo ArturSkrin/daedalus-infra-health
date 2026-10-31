@@ -90,6 +90,10 @@ Compose-файлы:
   - `host/memory`: доля памяти по `MemAvailable`, кэш считается свободным. Плюс PSI хоста идёт в прогноз;
   - от 90% — цель tier 2 не готова (SCHEDULE), от 97% — tier 1 (ACT NOW);
   - на хосте с двумя агентами (eastern-green) включено только у k3s-агента: в `.env` трекера `HOST_METRICS=0`.
+- **Внешние проверки** (`checks_source.py`, `CHECKS_DIR`): любой скрипт пишет JSON `{name, ok, detail, tier, checkedAtUnix, maxAgeS}`, и агент читает его как цель. Результат старше `maxAgeS` считается сбоем: проверка, которая перестала запускаться, не должна вечно показывать последнее «ok».
+  - `checks/daedalus_checks.py` на бэкап-сервере (Ansible-роль `daedalus_checks`, systemd-таймеры);
+  - `ping` раз в 5 минут: `SELECT 1` под ролью без прав на данные. Цель `<база>/database`, tier 1;
+  - `restore` ежедневно в 11:00: свежий дамп разворачивается во временный `postgres` без сети. Сбой, если дамп старше 26 ч или в нём 0 таблиц или 0 строк. Цель `<база>/backup`, tier 2.
 - **Ресурсы.** PSI CPU/RAM/IO, `memory.current`/`memory.max` и OOM-kill из cgroup v2 хоста. Поля те же, что у `integrations/eve-tools/vitals.ts`.
 
 ## Конфигурация агента
@@ -150,7 +154,7 @@ docker compose logs --tail 50 agent docker-proxy
 
 1. Сводный экран по всему парку — сделан.
 2. Диск и память хоста — сделаны.
-3. Базы: Neon (`SELECT 1`) и проверка восстановления бэкапов.
+3. Базы: Neon (`SELECT 1`) и проверка восстановления бэкапов — код готов, ждёт раскатки на `Backup`.
 4. Логи со всех серверов (Alloy → Loki).
 5. Порядок в репозитории: слить `feat/fleet-agent` в `main`, закрепить образы на `sha`.
 6. Большая переделка трекера и новый функционал (обсуждаем после пунктов 1–5).
@@ -181,3 +185,4 @@ docker compose logs --tail 50 agent docker-proxy
   - Полоса хостов удалена.
   - 3 теста в `tests/test_fleet.py`.
 - **2026-10-30**: диск и память хоста (`host/disk`, `host/memory`) в агенте для compose, k3s и в Ansible-шаблоне. 6 тестов (`tests/test_host_metrics.py`).
+- **2026-10-31**: проверки баз: `checks_source.py` (внешние проверки через JSON) и `checks/daedalus_checks.py` (ping и тестовое восстановление). В Ansible-vps — роль `daedalus_checks` и отдельный play в `monitoring.yml`. 8 тестов.
