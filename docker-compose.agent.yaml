@@ -46,6 +46,7 @@ services:
     restart: unless-stopped
     environment:
       CONTAINERS: 1         # GET /containers/*; POST and every other section stay off (the image's defaults)
+      NETWORKS: 1           # GET /networks: Alloy's docker discovery reads them to label containers
     volumes:
       - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
 
