@@ -10,7 +10,8 @@ restorable backup, and will the disk still have room for tomorrow's.
 
 Every database is a directory under postgresDir; nothing is configured per database and no credentials are needed.
 Each check writes <output>/<name>.json, which the Daedalus agent on this host reads as a target
-(adapter/checks_source.py). Config, all optional: /etc/daedalus-checks/config.json
+(adapter/checks_source.py); the script's own memory is <output>/state, not .json, or the agent would read it too.
+Config, all optional: /etc/daedalus-checks/config.json
 
     {"output": "/var/lib/daedalus-checks", "postgresDir": "/var/backups/postgres", "pattern": "*.dump",
      "jobs": ["postgres-backup", "file-backup"], "restoreImage": "postgres:17", "maxDumpAgeH": 26, "disk": "/"}
@@ -32,6 +33,7 @@ HOURLY_MAX_AGE_S = 3 * 3600         # an hourly check silent for three hours: it
 RESTORE_MAX_AGE_S = 8 * 24 * 3600   # weekly, with a day to spare
 FORECAST_MIN_DAYS = 7               # fewer daily samples than this is not a trend
 SHRINK_RATIO = 0.5                  # a dump at half its usual size lost data somewhere
+IGNORED = "daedalus.ignore=true"    # throwaway containers: the agent on this host must not report them as services
 ERROR_LINE = re.compile(r"error|fail|denied|refused|verification|timeout", re.I)
 COUNT_ROWS = ("SELECT count(*), coalesce(sum((xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I',"
               " table_schema, table_name), false, true, '')))[1]::text::bigint), 0) FROM information_schema.tables"
@@ -164,7 +166,8 @@ def job_error(unit: str, started_unix: str) -> str | None:
 
 def readable(image: str, dump: Path) -> tuple[bool, str]:
     """pg_restore --list reads the archive's table of contents: a truncated or corrupt file fails in seconds."""
-    listed = _run("docker", "run", "--rm", "--network", "none", "-v", f"{dump}:/dump:ro", image, "pg_restore", "--list", "/dump")
+    listed = _run("docker", "run", "--rm", "--network", "none", "--label", IGNORED, "-v", f"{dump}:/dump:ro",
+                  image, "pg_restore", "--list", "/dump")
     return listed.returncode == 0, (listed.stderr.strip().splitlines() or [""])[-1][:200]
 
 
@@ -174,7 +177,7 @@ def restore(image: str, name: str, dump: Path) -> tuple[bool, str]:
     started_at = time.monotonic()
     try:
         # no network, no published port, trust auth inside: the container exists only for this run
-        started = _run("docker", "run", "-d", "--rm", "--name", container, "--network", "none",
+        started = _run("docker", "run", "-d", "--rm", "--name", container, "--network", "none", "--label", IGNORED,
                        "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "-v", f"{dump}:/restore.dump:ro", image)
         if started.returncode != 0:
             return False, f"cannot start {image}: {started.stderr.strip()[:200]}"
@@ -202,7 +205,9 @@ def hourly(config: dict, output: Path, now: float) -> None:
         write(output, result(f"job/{unit}", ok, detail, 2, HOURLY_MAX_AGE_S, now))
 
     # a dump is listed once: the verdict is kept until a newer dump replaces it
-    state_path = output / "state.json"
+    state_path, legacy = output / "state", output / "state.json"
+    if legacy.exists() and not state_path.exists():
+        legacy.rename(state_path)
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     image = config.get("restoreImage", "postgres:17")
     for directory in sorted(p for p in Path(config.get("postgresDir", "/var/backups/postgres")).iterdir() if p.is_dir()):
