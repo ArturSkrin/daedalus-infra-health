@@ -176,8 +176,10 @@ def trust_caption(b: Bundle, state: str, info: dict) -> str:
         return f"cluster agent disconnected for {minutes} min" if minutes is not None else "cluster agent disconnected"
     if "dark_services" in reasons:
         if b.dark:
-            longest = max((d.silent_s or 0) for d in b.dark)
-            return f"{join_names([d.name for d in b.dark])} silent for {age_text(longest)}"
+            known = [d.silent_s for d in b.dark if d.silent_s is not None]
+            names = join_names([d.name for d in b.dark])
+            # a host whose agent does not answer has no "last seen" to measure from
+            return f"{names} silent for {age_text(max(known))}" if known else f"{names} not answering"
         return f"{plural(info['dark'], 'service')} went silent"
     if reasons:
         if reasons[0] == "unclassified_events":
@@ -318,12 +320,13 @@ def users_drill(b: Bundle, info: dict) -> dict:
         rows.append({"service": s.name, "tier": s.tier, "errPct": s.rate.err_pct, "reqPerSec": s.rate.rps, "p99Ms": s.rate.p99_ms,
                      "ready": not down, "fresh": s.rate.age_s is not None and s.rate.age_s <= T.FRESH_S,
                      "hitsNext": list(s.called_by), "flag": flag})
-    rows.sort(key=lambda r: (-r["errPct"], -r["reqPerSec"]))
+    # every service, the troubled ones first: a fleet has dozens, and the one that is down must not be row 40
+    rows.sort(key=lambda r: ({"bad": 0, "warn": 1}.get(r["flag"], 2), -r["errPct"], r["service"]))
     return {
         "facts": [fact("Requests failing fleet-wide", shown(info.get("failingShare"), "%"), "weighted by traffic"),
                   fact("Services with errors above 1%", len(info.get("affected", []))),
                   fact("Threshold", f"{T.USERS_DEGRADED_SHARE_PCT:g}% schedule, {T.USERS_BROKEN_SHARE_PCT:g}% act now")],
-        "services": rows[:8],
+        "services": rows,
     }
 
 

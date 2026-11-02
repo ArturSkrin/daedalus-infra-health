@@ -81,6 +81,26 @@ def test_fleet_summary_judges_every_host_on_one_screen(fleet):
     assert "vps-c:agent" in {d["name"] for d in trust["drill"]["dark"]}  # the silent host is named, not hidden
 
 
+def test_the_service_list_shows_every_host_with_the_broken_first(fleet):
+    users = next(i for i in fleet.get("/api/live").json()["indicators"] if i["id"] == "users")
+    rows = users["drill"]["services"]
+    assert rows[0]["service"] == "vps-b:blog/web" and rows[0]["flag"] == "bad"
+
+
+def test_a_silent_agent_is_asked_once_per_cache_ttl_not_on_every_page_load(fleet, monkeypatch):
+    calls = []
+
+    def silent(path, tenant=None):
+        calls.append(path)
+        raise live.LiveUnavailable("the Triage core did not answer " + path)
+
+    monkeypatch.setattr(live, "_get", silent)
+    for _ in range(3):
+        with pytest.raises(live.LiveUnavailable):
+            live.load_live("vps-c")
+    assert calls == ["/v2/agent/status"]
+
+
 def test_one_silent_host_among_healthy_ones_is_scheduled_work_not_blindness(monkeypatch, tmp_path):
     from backend.engine import verdict
     from backend.fleet import merge
@@ -93,8 +113,13 @@ def test_one_silent_host_among_healthy_ones_is_scheduled_work_not_blindness(monk
     for _ in range(3):
         agent.cycle()
     raw = {"tenant": "vps-a", **{path.rsplit("/", 1)[1]: block(agent) for path, block in SHIM.items()}}
-    result = verdict(merge({"vps-a": raw, "vps-c": None}, shim._iso(time.time())))
+    from backend.presentation import build_view
+
+    data = merge({"vps-a": raw, "vps-c": None}, shim._iso(time.time()))
+    result = verdict(data)
     assert (result["verdict"], result["states"]["trust"]) == ("schedule", "partial")
+    trust = next(i for i in build_view(data, result, mode="live")["indicators"] if i["id"] == "trust")
+    assert trust["caption"] == "vps-c:agent not answering"           # not "silent for 0 s": it never said when
 
 
 def test_each_tenant_keeps_its_own_journal(fleet):

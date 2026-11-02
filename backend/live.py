@@ -124,8 +124,16 @@ def load_live(tenant: str | None = None) -> dict:
     with _lock:
         hit = _cache.get(key)
         if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
+            if isinstance(hit[1], LiveUnavailable):
+                raise hit[1]
             return hit[1]
-    data = _fetch(tenant)
+    try:
+        data = _fetch(tenant)
+    except LiveUnavailable as error:
+        # a silent agent costs one timeout per TTL, not one per page load: the failure is cached like an answer
+        with _lock:
+            _cache[key] = (time.monotonic(), error)
+        raise
     with _lock:
         _cache[key] = (time.monotonic(), data)
     return data
