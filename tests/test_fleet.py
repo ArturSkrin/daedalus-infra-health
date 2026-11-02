@@ -122,6 +122,28 @@ def test_one_silent_host_among_healthy_ones_is_scheduled_work_not_blindness(monk
     assert trust["caption"] == "vps-c:agent not answering"           # not "silent for 0 s": it never said when
 
 
+def test_a_second_open_incident_is_named_under_the_reason_not_hidden_in_the_queue(monkeypatch, tmp_path):
+    """Live on Backup: noise took the reason line and the real failure (job/file-backup) was visible only in a drill-in."""
+    from backend.engine import verdict
+    from backend.fleet import merge
+    from backend.presentation import build_view
+
+    monkeypatch.setattr(docker_source, "discover", lambda url, root, timeout: [
+        Container("job/file-backup", 2, False, "last run failed", None), Container("db/VCB", 2, False, "too small", None),
+        Container("shop/web", 1, True, "running", CALM)])
+    settings = Settings(tenant="Backup", cluster="docker-compose", interval_s=15, timeout_s=1, data_dir=str(tmp_path),
+                        vitals_token=None, targets=(), discover="docker")
+    agent = Collector(settings, now=time.time)
+    for _ in range(3):
+        agent.cycle()
+    data = merge({"Backup": {"tenant": "Backup", **{p.rsplit("/", 1)[1]: block(agent) for p, block in SHIM.items()}}},
+                 shim._iso(time.time()))
+    decision = build_view(data, verdict(data), mode="live")["decision"]
+    named = decision["reason"].split(":")[0] + ":" + decision["reason"].split(":")[1]
+    assert decision["verdict"] == "schedule"
+    assert sorted([named, *decision["alsoOpen"]]) == ["Backup:db/VCB", "Backup:job/file-backup"]
+
+
 def test_each_tenant_keeps_its_own_journal(fleet):
     fleet.get("/api/fleet")
     assert fleet.get("/api/live/journal", params={"tenant": "vps-b"}).json()[0]["title"].startswith("Journal started: ACT")

@@ -6,7 +6,7 @@ import type { DrillTarget, View } from '../types'
 
 // The fleet in one word. Rings are the four vitals, outermost first; the word
 // under them is the decision the agent already made. No score, no number.
-export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: DrillTarget) => void }) {
+export function VerdictPanel({ view, onOpen, onQueue }: { view: View; onOpen: (target: DrillTarget) => void; onQueue: () => void }) {
   const { decision, indicators } = view
   const tone = LEVEL[decision.level]
   const urgent = decision.verdict === 'act_now'
@@ -80,6 +80,14 @@ export function VerdictPanel({ view, onOpen }: { view: View; onOpen: (target: Dr
       </button>
 
       <p className="relative max-w-sm text-center text-[13px] leading-snug text-white/80 sm:text-sm">{decision.reason}</p>
+
+      {/* One reason fits under the word; the rest of the open incidents are named, not hidden in the queue. */}
+      {decision.alsoOpen.length > 0 && (
+        <button type="button" onClick={onQueue} className="relative -mt-2 max-w-sm text-center text-xs text-white/55 hover:text-white/80 hover:underline">
+          and {decision.alsoOpen.length} more: {decision.alsoOpen.slice(0, 3).join(', ')}
+          {decision.alsoOpen.length > 3 ? ', …' : ''}
+        </button>
+      )}
 
       {decision.dimNote && <p className="relative -mt-2 text-center text-[11px] text-white/40">{decision.dimNote}</p>}
 

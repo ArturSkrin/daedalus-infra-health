@@ -150,6 +150,8 @@ export interface components {
         Decision: {
             /** Action */
             action: string;
+            /** Alsoopen */
+            alsoOpen: string[];
             /** Dimnote */
             dimNote?: string | null;
             /** Dimmed */

@@ -25,6 +25,13 @@
             "title": "Action",
             "type": "string"
           },
+          "alsoOpen": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alsoopen",
+            "type": "array"
+          },
           "dimNote": {
             "anyOf": [
               {
@@ -87,6 +94,7 @@
           "level",
           "trigger",
           "reason",
+          "alsoOpen",
           "dimmed",
           "rules"
         ],

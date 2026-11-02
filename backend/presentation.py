@@ -284,6 +284,13 @@ def human_reason(b: Bundle, result: dict) -> str:
     return "all normal, nothing happened in the last day"
 
 
+def also_open(b: Bundle, reason: str) -> list[str]:
+    """Services with an open incident that the reason line does not name: one line under the word cannot hold
+    a fleet, but it must not let a second problem go unseen until someone opens the queue."""
+    names = dict.fromkeys(i.service for i in open_incidents(b))
+    return [n for n in names if not reason.startswith((f"{n}:", f"{n} "))]
+
+
 # --------------------------------------------------------------------- rings ---
 
 def ring_value(key: str, state: str, info: dict) -> float:
@@ -537,12 +544,14 @@ def build_view(data: dict, result: dict, mode: str = "demo", journal: list[dict]
     # trust can be blind here only when the visible part of the fleet is already broken (engine: evidence can convict)
     unseen = result["states"]["trust"] in ("partial", "blind")
     dim = "partial" if unseen else "unverified" if result["trigger"] == "calm_unverified" else None
+    reason = human_reason(b, result)
     view = {
         "source": source_block(b, mode),
         "decision": {
             "verdict": result["verdict"], **VERDICTS[result["verdict"]],
             "trigger": result["trigger"],
-            "reason": human_reason(b, result),
+            "reason": reason,
+            "alsoOpen": also_open(b, reason),
             "dimmed": dim is not None,
             "dimNote": DIM_NOTES.get(dim),
             "rules": [{"id": rid, "text": text, "leadsTo": leads, "fired": rid == result["trigger"]} for rid, text, leads in RULES],

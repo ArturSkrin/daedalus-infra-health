@@ -137,7 +137,7 @@ function App() {
           <>
             <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[1fr_1fr] lg:gap-6">
               <div ref={verdictRef}>
-                <VerdictPanel view={view} onOpen={setDrill} />
+                <VerdictPanel view={view} onOpen={setDrill} onQueue={() => queueRef.current?.scrollIntoView({ behavior: 'smooth' })} />
               </div>
               <div ref={indicatorsRef} className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                 {view.indicators.map((indicator) => (
