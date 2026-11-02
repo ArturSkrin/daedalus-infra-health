@@ -1,0 +1,56 @@
+# Logs of the fleet, on the monitoring centre: Loki stores them, Grafana shows them (for now), Alloy sends this host's
+# container logs. Other hosts push to Loki over WireGuard (roles/daedalus_agent in Ansible-vps, logs/alloy-k8s.yaml).
+# Not docker-compose.logs.yaml: that one is the single-application EVE demo overlay.
+# Add it to COMPOSE_FILE next to docker-compose.agent.yaml (Alloy reads containers through its docker-proxy):
+#
+#   COMPOSE_FILE=docker-compose.yaml:docker-compose.agent.yaml:docker-compose.agent-local.yaml:docker-compose.fleet-logs.yaml
+#   LOKI_BIND=10.77.0.1      the hub's WireGuard address; Loki is never published beyond it
+#
+# Grafana listens on loopback only: ssh -L 3000:127.0.0.1:3000 <hub>, then http://localhost:3000.
+# The journal of this host is not read here: on the hub the k3s Alloy (logs/alloy-k8s.yaml) already sends it.
+services:
+  loki:
+    image: grafana/loki:3.7.8
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    restart: unless-stopped
+    volumes:
+      - ./logs/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "${LOKI_BIND:-127.0.0.1}:3100:3100"
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"     # loopback only, reached through SSH; replaced by the tracker's own view later
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./logs/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/loki.yaml:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - loki
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    command: ["run", "--server.http.listen-addr=127.0.0.1:12345", "--storage.path=/var/lib/alloy", "/etc/alloy"]
+    restart: unless-stopped
+    environment:
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      LOG_HOST: ${AGENT_TENANT:?set AGENT_TENANT to this host's name}
+    volumes:
+      - ./logs/push.alloy:/etc/alloy/push.alloy:ro
+      - ./logs/docker.alloy:/etc/alloy/docker.alloy:ro
+      - alloy-data:/var/lib/alloy
+    depends_on:
+      - loki
+      - docker-proxy
+
+volumes:
+  loki-data:
+  grafana-data:
+  alloy-data:

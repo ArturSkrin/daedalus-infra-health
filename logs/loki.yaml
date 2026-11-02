@@ -1,4 +1,4 @@
-# Loki for the fleet: one process, chunks on local disk, 14 days kept. Runs next to the tracker (docker-compose.logs.yaml).
+# Loki for the fleet: one process, chunks on local disk, 14 days kept. Runs next to the tracker (docker-compose.fleet-logs.yaml).
 auth_enabled: false
 
 server:

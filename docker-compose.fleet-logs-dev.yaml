@@ -1,5 +1,5 @@
 # A dev machine without the agent stack: Alloy reads the Docker socket itself, there is no docker-proxy to go through.
-#   docker compose -f docker-compose.logs.yaml -f docker-compose.logs-dev.yaml up -d
+#   docker compose -f docker-compose.fleet-logs.yaml -f docker-compose.fleet-logs-dev.yaml up -d
 # Rootless Docker on dev: files written by the claude user are 0660, so Loki and Grafana run as the container's root
 # (= that user) to read their config. Loki is published on the LAN so its API can be checked from a browser.
 services:
