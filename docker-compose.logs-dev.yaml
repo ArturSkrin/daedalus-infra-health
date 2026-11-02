@@ -1,0 +1,18 @@
+# A dev machine without the agent stack: Alloy reads the Docker socket itself, there is no docker-proxy to go through.
+#   docker compose -f docker-compose.logs.yaml -f docker-compose.logs-dev.yaml up -d
+# Rootless Docker on dev: files written by the claude user are 0660, so Loki and Grafana run as the container's root
+# (= that user) to read their config. Loki is published on the LAN so its API can be checked from a browser.
+services:
+  alloy:
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock:ro
+    depends_on: !reset
+      - loki
+  loki:
+    user: "0"
+    ports: !override
+      - "3100:3100"
+  grafana:
+    user: "0"

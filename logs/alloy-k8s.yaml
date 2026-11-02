@@ -1,0 +1,84 @@
+# Alloy on every k3s node: pod logs from /var/log/pods and the node's journal, pushed to Loki on the hub over wg0.
+# hostNetwork like the agent, so the push leaves from the node's own WireGuard address. Its UI listens on loopback only.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alloy
+spec:
+  selector:
+    matchLabels:
+      app: alloy
+  template:
+    metadata:
+      labels:
+        app: alloy
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.8.1
+          args: ["run", "--server.http.listen-addr=127.0.0.1:12345", "--storage.path=/var/lib/alloy", "/etc/alloy"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: LOG_HOST
+              value: "$(NODE_NAME)"
+            - name: LOKI_URL                  # the hub, 10.77.0.1 by the WireGuard convention
+              value: http://10.77.0.1:3100/loki/api/v1/push
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+            - name: pods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: journal
+              mountPath: /var/log/journal
+              readOnly: true
+            - name: run-journal
+              mountPath: /run/log/journal
+              readOnly: true
+            - name: machine-id
+              mountPath: /etc/machine-id
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/alloy
+          securityContext:
+            runAsUser: 0                      # pod log files are root-only on the node; mounts are read-only
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config
+        - name: pods
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+        - name: journal
+          hostPath:
+            path: /var/log/journal
+            type: DirectoryOrCreate
+        - name: run-journal
+          hostPath:
+            path: /run/log/journal
+            type: DirectoryOrCreate
+        - name: machine-id
+          hostPath:
+            path: /etc/machine-id
+            type: File
+        # read positions survive a pod restart, so nothing is sent twice or skipped
+        - name: data
+          hostPath:
+            path: /var/lib/daedalus-alloy
+            type: DirectoryOrCreate
