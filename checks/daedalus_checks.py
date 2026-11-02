@@ -60,6 +60,9 @@ def judge_dump(dump: str, age_h: float, size: int, previous: list[int], readable
 
 def judge_job(props: dict, error_line: str | None, now: float) -> tuple[bool, str]:
     """props: systemctl show of the job's service. The timer's own state does not matter: the last run does."""
+    state = props.get("LoadState")
+    if state != "loaded":       # a renamed or misspelled job must not look like one that simply has not run yet
+        return False, "no such systemd unit" if state == "not-found" else f"cannot read the unit ({state or 'systemctl failed'})"
     finished = props.get("ExecMainExitTimestampMonotonic", "0") != "0"
     if not finished:
         return True, "has not run since the server started"
@@ -136,18 +139,24 @@ def _run(*args: str, timeout: int = 600) -> subprocess.CompletedProcess:
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
 
 
-def job_props(unit: str) -> dict:
-    shown = _run("systemctl", "show", f"{unit}.service", "--timestamp=unix",
-                 "-p", "Result", "-p", "ExecMainStatus", "-p", "ExecMainStartTimestamp",
-                 "-p", "ExecMainExitTimestamp", "-p", "ExecMainExitTimestampMonotonic")
-    props = dict(line.split("=", 1) for line in shown.stdout.splitlines() if "=" in line)
-    props["ExecMainExitTimestamp_unix"] = props.get("ExecMainExitTimestamp", "").lstrip("@") or "0"
+def parse_props(text: str, now: float, monotonic_now: float) -> dict:
+    """systemd before 251 has no --timestamp=unix (Ubuntu 22.04 ships 249): wall time comes from the monotonic stamps."""
+    props = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
+    for key in ("ExecMainStartTimestamp", "ExecMainExitTimestamp"):
+        usec = int(props.get(f"{key}Monotonic") or 0)
+        props[f"{key}_unix"] = str(int(now - (monotonic_now - usec / 1e6))) if usec else "0"
     return props
 
 
-def job_error(unit: str, started: str) -> str | None:
+def job_props(unit: str, now: float) -> dict:
+    shown = _run("systemctl", "show", f"{unit}.service", "-p", "LoadState", "-p", "Result", "-p", "ExecMainStatus",
+                 "-p", "ExecMainStartTimestampMonotonic", "-p", "ExecMainExitTimestampMonotonic")
+    return parse_props(shown.stdout, now, time.monotonic())     # CLOCK_MONOTONIC, the clock systemd stamps with
+
+
+def job_error(unit: str, started_unix: str) -> str | None:
     """The first line of the last run that looks like the cause, not systemd's own \"Failed with result\"."""
-    since = ["--since", started] if started.startswith("@") else ["-n", "40"]
+    since = ["--since", f"@{started_unix}"] if started_unix != "0" else ["-n", "40"]
     lines = _run("journalctl", "-u", f"{unit}.service", *since, "--no-pager", "-o", "cat").stdout.splitlines()
     causes = [line.strip() for line in lines if ERROR_LINE.search(line) and not line.startswith(f"{unit}.service:")]
     return causes[0][:200] if causes else None
@@ -170,7 +179,8 @@ def restore(image: str, name: str, dump: Path) -> tuple[bool, str]:
         if started.returncode != 0:
             return False, f"cannot start {image}: {started.stderr.strip()[:200]}"
         for _ in range(60):
-            if _run("docker", "exec", container, "pg_isready", "-U", "postgres", "-q").returncode == 0:
+            # over TCP: the image's init phase runs a socket-only server that is ready too, then stops it mid-restore
+            if _run("docker", "exec", container, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-q").returncode == 0:
                 break
             time.sleep(1)
         restored = _run("docker", "exec", container, "pg_restore", "-U", "postgres", "-d", "postgres",
@@ -187,8 +197,8 @@ def restore(image: str, name: str, dump: Path) -> tuple[bool, str]:
 
 def hourly(config: dict, output: Path, now: float) -> None:
     for unit in config.get("jobs", []):
-        props = job_props(unit)
-        ok, detail = judge_job(props, job_error(unit, props.get("ExecMainStartTimestamp", "")), now)
+        props = job_props(unit, now)
+        ok, detail = judge_job(props, job_error(unit, props["ExecMainStartTimestamp_unix"]), now)
         write(output, result(f"job/{unit}", ok, detail, 2, HOURLY_MAX_AGE_S, now))
 
     # a dump is listed once: the verdict is kept until a newer dump replaces it

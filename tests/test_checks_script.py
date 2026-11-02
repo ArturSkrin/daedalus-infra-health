@@ -45,7 +45,7 @@ def test_growth_is_news_not_a_fault():
 
 # ------------------------------------------------------------------- jobs ---
 
-FAILED = {"Result": "exit-code", "ExecMainStatus": "1", "ExecMainExitTimestampMonotonic": "123",
+FAILED = {"LoadState": "loaded", "Result": "exit-code", "ExecMainStatus": "1", "ExecMainExitTimestampMonotonic": "123",
           "ExecMainExitTimestamp_unix": str(int(NOW - 3 * 3600))}
 
 
@@ -56,7 +56,23 @@ def test_a_failed_job_says_why():
 
 def test_a_job_that_succeeded_or_never_ran_is_ok():
     assert checks.judge_job({**FAILED, "Result": "success"}, None, NOW) == (True, "last run 3 h ago: ok")
-    assert checks.judge_job({"ExecMainExitTimestampMonotonic": "0"}, None, NOW)[0]
+    assert checks.judge_job({"LoadState": "loaded", "ExecMainExitTimestampMonotonic": "0"}, None, NOW)[0]
+
+
+def test_a_missing_unit_or_a_failed_systemctl_is_not_green():
+    """On systemd 249 `--timestamp=unix` made systemctl fail, and every job read as \"has not run\": green."""
+    assert checks.judge_job({"LoadState": "not-found"}, None, NOW) == (False, "no such systemd unit")
+    assert checks.judge_job({}, None, NOW) == (False, "cannot read the unit (systemctl failed)")
+
+
+def test_wall_time_comes_from_the_monotonic_stamps():
+    shown = "LoadState=loaded\nResult=exit-code\nExecMainStatus=1\nExecMainStartTimestampMonotonic=1000000000\n" \
+            "ExecMainExitTimestampMonotonic=1060000000\n"
+    props = checks.parse_props(shown, NOW, monotonic_now=1060 + 3 * 3600)          # exited 3 h ago
+    assert props["ExecMainExitTimestamp_unix"] == str(int(NOW - 3 * 3600))
+    assert props["ExecMainStartTimestamp_unix"] == str(int(NOW - 3 * 3600 - 60))
+    assert checks.judge_job(props, None, NOW) == (False, "last run 3 h ago failed (exit 1)")
+    assert checks.parse_props("LoadState=loaded\nExecMainStartTimestampMonotonic=0\n", NOW, 5)["ExecMainStartTimestamp_unix"] == "0"
 
 
 # ------------------------------------------------------------------- disk ---
