@@ -1,6 +1,6 @@
 # metrics_spec.md: five indicators of the main screen
 
-Each indicator is described with the same scheme: what the engineer sees, which decision it changes, the threshold, which API fields it is computed from, the horizon, the trust indicator. Fields come from the Triage catalog ([reference/vitals-metrics-catalog.md](reference/vitals-metrics-catalog.md), 2026-09-14). All per-tenant fields are read from `tenantStats.tenants[<tenant>]` on `GET /v2/agent/status`, unless stated otherwise.
+Each indicator is described with the same scheme: what the engineer sees, which decision it changes, the threshold, which API fields it is computed from, the horizon, the trust indicator. Fields come from the Triage catalog of the hackathon (2026-09-14; removed from the repository, it is in the git history). All per-tenant fields are read from `tenantStats.tenants[<tenant>]` on `GET /v2/agent/status`, unless stated otherwise.
 
 The rules below are implemented once, in `backend/engine.py`. Every number in this document is a named constant in `backend/thresholds.py`, and the "How this indicator decides" text on screen is generated from those constants. Raw API responses are read in one place, `backend/bundle.py`, which turns a missing or malformed field into an explicit "not measured" instead of a zero or a crash. The rules are checked by `tests/`: every scenario, both sides of every threshold, and 35 kinds of incomplete input. State codes in the code map to the words here as listed in `mock_data/README.md`.
 
@@ -103,10 +103,12 @@ We take the maximum, not the sum of blastRadius: the values of neighboring servi
 | --- | --- | --- |
 | — | no service has fresh resource-pressure data and there is no pattern match: "nothing is brewing" would be a guess | none from this indicator; indicator 4 goes Partial |
 | Clear | no matches and no pressure, with fresh resource data to back it | nothing |
-| Pressure | a precursor with `0.5 <= confidence < 0.7`, or `PSI >= 1%` with no other signs | nothing, a mention in the drill-in |
+| Pressure | a precursor with `0.5 <= confidence < 0.7`, or `PSI >= 5%` of any resource with no other signs | nothing, a mention in the drill-in |
 | Brewing | a precursor with `confidence >= 0.7` and `matchedSteps/totalSteps >= 0.5`; or `memPsiPct >= 1%` and `memReqPct >= 90%` in the same service; or `oomKills > 0` in a fresh window; or any resource stall (CPU, memory, disk PSI) `>= 10%` in one service | schedule; **now**, if the service is tier 1 and `lead < 30 min` and the agent has at least 10 past predictions |
 
 `lead` equals the tenant's `predictionAvgLeadMs`. If `predictionHits = 0`, the lead is unknown and the "now" rule does not fire: the indicator gives only "schedule". The same holds while `predictionHits + predictionMisses < 10`: one lucky prediction is 100% precision, and "usually N min of warning" from a handful of cases is not a usual anything. An agent with a short track record can ask for a ticket, not for a person right now.
+
+**Why Pressure starts at 5%.** It was 1%. On the real fleet a whole host (`host/memory` carries the host's PSI) sits at 1–2.5% CPU stall when nothing is wrong, so every k3s host was yellow for good. A tile that is always yellow teaches the engineer to ignore it.
 
 **Why a 10% stall counts on its own.** Memory has a cliff, the OOM kill, so it gets the early rule (1% stall at 90% of the request). CPU and disk have no cliff, but a service stalled a tenth of the time is already failing slowly. `ResourcePressureAnomaly` never opens an incident (catalog), so if this indicator stays silent, nobody says it.
 

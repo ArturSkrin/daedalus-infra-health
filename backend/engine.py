@@ -164,7 +164,7 @@ def forecast(b: Bundle) -> tuple[str, dict]:
             # CPU or disk has no cliff like OOM, but a service stalled a tenth of the time is already failing slowly,
             # and the agent opens no incident for resource pressure. Nobody else would say it.
             info["stalled"].append(s.name)
-        elif sat.worst_stall_pct >= T.PRESSURE_STALL_PCT:
+        elif sat.worst_stall_pct >= T.PRESSURE_WATCH_STALL_PCT:
             info["watch"].append(s.name)
     info["oomStarted"] = any((b.service(n).saturation.oom_kills or 0) > 0 for n in info["pressure"])
 

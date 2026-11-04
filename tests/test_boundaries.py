@@ -104,9 +104,16 @@ def test_unreliable_agent_cannot_move_the_verdict(calm, precision, hits, misses,
 def test_memory_saturation_needs_both_stall_and_request_share(calm):
     golden = app_of(calm, "catalog")["golden"]
     golden.update(memPsiPct=2.4, memReqPct=89)
-    assert verdict(calm)["states"]["forecast"] == "pressure"
+    assert verdict(calm)["states"]["forecast"] == "clear"
     golden.update(memReqPct=90)
     assert verdict(calm)["states"]["forecast"] == "brewing"
+
+
+@pytest.mark.parametrize("stall, state", [(4.9, "clear"), (5.0, "pressure")])
+def test_mild_stall_is_background_not_pressure(calm, stall, state):
+    """A whole host idles at 1-2.5 % CPU stall; only from 5 % is it worth a yellow tile."""
+    app_of(calm, "catalog")["golden"]["cpuPsiPct"] = stall
+    assert verdict(calm)["states"]["forecast"] == state
 
 
 def test_oom_kill_alone_is_brewing(calm):
