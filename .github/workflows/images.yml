@@ -2,7 +2,7 @@ name: Build and push images
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,8 @@ jobs:
       - name: Build and push
         run: |
           IMAGE=ghcr.io/arturskrin/daedalus-infra-health-${{ matrix.part }}
-          docker build -f ${{ matrix.part }}/Dockerfile -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
-          docker push $IMAGE:latest
+          # main is "latest"; a feature branch gets its own tag (feat/fleet-agent -> feat-fleet-agent)
+          TAG=$([ "$GITHUB_REF_NAME" = main ] && echo latest || echo "${GITHUB_REF_NAME//\//-}")
+          docker build -f ${{ matrix.part }}/Dockerfile -t $IMAGE:$TAG -t $IMAGE:${{ github.sha }} .
+          docker push $IMAGE:$TAG
           docker push $IMAGE:${{ github.sha }}

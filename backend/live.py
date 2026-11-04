@@ -5,9 +5,11 @@ mock_data/*.json; live mode assembles the same five blocks from the five
 endpoints in the metrics catalog. bundle.normalize() absorbs whatever the core
 omits, so this module only fetches. Configure with environment variables:
 
-    TRIAGE_BASE_URL   e.g. https://triage.example.com   (required for live mode)
+    TRIAGE_BASE_URL   e.g. https://triage.example.com   (one core or one agent)
     TRIAGE_TOKEN      bearer token, optional
     TRIAGE_TENANT     default tenant when the request names none
+    AGENTS            a fleet instead: "vps-1=http://10.77.0.2:9000,vps-1-k3s=http://10.77.0.2:9001",
+                      one Daedalus agent per tenant; the default view is all of them merged (tenant "fleet")
 """
 from __future__ import annotations
 
@@ -20,6 +22,8 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+
+from backend.fleet import FLEET, merge
 
 log = logging.getLogger("daedalus.live")
 
@@ -40,12 +44,32 @@ class LiveUnavailable(Exception):
     """Carries a message that is safe to show: no host names, no upstream error text."""
 
 
+def agents() -> dict[str, str]:
+    """tenant -> agent base URL, in the order AGENTS lists them."""
+    pairs = (item.partition("=") for item in os.environ.get("AGENTS", "").split(",") if item.strip())
+    return {name.strip(): url.strip().rstrip("/") for name, _, url in pairs}
+
+
 def configured() -> bool:
-    return bool(os.environ.get("TRIAGE_BASE_URL"))
+    return bool(os.environ.get("TRIAGE_BASE_URL") or agents())
+
+
+def tenants() -> list[str | None]:
+    """Every tenant the watcher and /api/fleet look at. None: the single core's own default."""
+    return list(agents()) or [os.environ.get("TRIAGE_TENANT") or None]
+
+
+def _base(tenant: str | None) -> str:
+    fleet = agents()
+    if not fleet:
+        return os.environ.get("TRIAGE_BASE_URL", "").rstrip("/")
+    if tenant not in fleet:
+        raise LiveUnavailable("no agent is configured for this tenant")
+    return fleet[tenant]
 
 
 def _get(path: str, tenant: str | None = None):
-    base = os.environ.get("TRIAGE_BASE_URL", "").rstrip("/")
+    base = _base(tenant)
     url = base + path + (f"?tenant={urllib.parse.quote(tenant)}" if tenant else "")
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     token = os.environ.get("TRIAGE_TOKEN")
@@ -61,7 +85,8 @@ def _get(path: str, tenant: str | None = None):
 
 
 def _fetch(tenant: str | None) -> dict:
-    status = _get("/v2/agent/status")
+    # a fleet has one agent per tenant, so even the status call is addressed by tenant (agents ignore the query)
+    status = _get("/v2/agent/status", tenant if agents() else None)
     tenants = status.get("tenantStats", {}).get("tenants", {}) if isinstance(status, dict) else {}
     if not tenant:
         if len(tenants) != 1:
@@ -78,16 +103,37 @@ def _fetch(tenant: str | None) -> dict:
             "status": status, **blocks}
 
 
+def _or_none(host: str) -> dict | None:
+    try:
+        return load_live(host)
+    except LiveUnavailable:
+        return None
+
+
 def load_live(tenant: str | None = None) -> dict:
     if not configured():
         raise LiveUnavailable("live mode is not configured")
+    hosts = agents()
+    if hosts and tenant in (None, FLEET):
+        # in parallel: a silent host costs one timeout, not one timeout per host in a row
+        with ThreadPoolExecutor(max_workers=min(8, len(hosts))) as pool:
+            raws = dict(zip(hosts, pool.map(_or_none, hosts), strict=True))
+        return merge(raws, datetime.now(UTC).astimezone().isoformat(timespec="seconds"))
     tenant = tenant or os.environ.get("TRIAGE_TENANT") or None
     key = tenant or ""
     with _lock:
         hit = _cache.get(key)
         if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
+            if isinstance(hit[1], LiveUnavailable):
+                raise hit[1]
             return hit[1]
-    data = _fetch(tenant)
+    try:
+        data = _fetch(tenant)
+    except LiveUnavailable as error:
+        # a silent agent costs one timeout per TTL, not one per page load: the failure is cached like an answer
+        with _lock:
+            _cache[key] = (time.monotonic(), error)
+        raise
     with _lock:
         _cache[key] = (time.monotonic(), data)
     return data

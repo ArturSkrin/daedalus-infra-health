@@ -176,8 +176,10 @@ def trust_caption(b: Bundle, state: str, info: dict) -> str:
         return f"cluster agent disconnected for {minutes} min" if minutes is not None else "cluster agent disconnected"
     if "dark_services" in reasons:
         if b.dark:
-            longest = max((d.silent_s or 0) for d in b.dark)
-            return f"{join_names([d.name for d in b.dark])} silent for {age_text(longest)}"
+            known = [d.silent_s for d in b.dark if d.silent_s is not None]
+            names = join_names([d.name for d in b.dark])
+            # a host whose agent does not answer has no "last seen" to measure from
+            return f"{names} silent for {age_text(max(known))}" if known else f"{names} not answering"
         return f"{plural(info['dark'], 'service')} went silent"
     if reasons:
         if reasons[0] == "unclassified_events":
@@ -282,6 +284,13 @@ def human_reason(b: Bundle, result: dict) -> str:
     return "all normal, nothing happened in the last day"
 
 
+def also_open(b: Bundle, reason: str) -> list[str]:
+    """Services with an open incident that the reason line does not name: one line under the word cannot hold
+    a fleet, but it must not let a second problem go unseen until someone opens the queue."""
+    names = dict.fromkeys(i.service for i in open_incidents(b))
+    return [n for n in names if not reason.startswith((f"{n}:", f"{n} "))]
+
+
 # --------------------------------------------------------------------- rings ---
 
 def ring_value(key: str, state: str, info: dict) -> float:
@@ -318,12 +327,13 @@ def users_drill(b: Bundle, info: dict) -> dict:
         rows.append({"service": s.name, "tier": s.tier, "errPct": s.rate.err_pct, "reqPerSec": s.rate.rps, "p99Ms": s.rate.p99_ms,
                      "ready": not down, "fresh": s.rate.age_s is not None and s.rate.age_s <= T.FRESH_S,
                      "hitsNext": list(s.called_by), "flag": flag})
-    rows.sort(key=lambda r: (-r["errPct"], -r["reqPerSec"]))
+    # every service, the troubled ones first: a fleet has dozens, and the one that is down must not be row 40
+    rows.sort(key=lambda r: ({"bad": 0, "warn": 1}.get(r["flag"], 2), -r["errPct"], r["service"]))
     return {
         "facts": [fact("Requests failing fleet-wide", shown(info.get("failingShare"), "%"), "weighted by traffic"),
                   fact("Services with errors above 1%", len(info.get("affected", []))),
                   fact("Threshold", f"{T.USERS_DEGRADED_SHARE_PCT:g}% schedule, {T.USERS_BROKEN_SHARE_PCT:g}% act now")],
-        "services": rows[:8],
+        "services": rows,
     }
 
 
@@ -534,12 +544,14 @@ def build_view(data: dict, result: dict, mode: str = "demo", journal: list[dict]
     # trust can be blind here only when the visible part of the fleet is already broken (engine: evidence can convict)
     unseen = result["states"]["trust"] in ("partial", "blind")
     dim = "partial" if unseen else "unverified" if result["trigger"] == "calm_unverified" else None
+    reason = human_reason(b, result)
     view = {
         "source": source_block(b, mode),
         "decision": {
             "verdict": result["verdict"], **VERDICTS[result["verdict"]],
             "trigger": result["trigger"],
-            "reason": human_reason(b, result),
+            "reason": reason,
+            "alsoOpen": also_open(b, reason),
             "dimmed": dim is not None,
             "dimNote": DIM_NOTES.get(dim),
             "rules": [{"id": rid, "text": text, "leadsTo": leads, "fired": rid == result["trigger"]} for rid, text, leads in RULES],

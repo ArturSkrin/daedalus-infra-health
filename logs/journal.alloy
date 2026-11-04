@@ -1,0 +1,17 @@
+// The host's systemd journal: backup jobs, sshd, k3s, the kernel. service = "journal", unit = the systemd unit.
+// Needs /var/log/journal, /run/log/journal and /etc/machine-id from the host, read-only.
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.source.journal "host" {
+  max_age       = "12h"
+  labels        = { service = "journal" }
+  relabel_rules = loki.relabel.journal.rules
+  forward_to    = [loki.write.central.receiver]
+}

@@ -1,0 +1,36 @@
+// Logs of every container on a Docker host, read through the agent's docker-socket-proxy (GET /containers/* only).
+// service = "<compose project>/<service>" like the tracker's targets, or the container name outside compose.
+// Containers labelled daedalus.ignore=true (throwaway restores) are skipped, as the agent skips them.
+// DOCKER_HOST overrides the proxy (a dev machine without one).
+discovery.docker "containers" {
+  host = coalesce(sys.env("DOCKER_HOST"), "tcp://docker-proxy:2375")
+}
+
+discovery.relabel "containers" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_label_daedalus_ignore"]
+    regex         = "true"
+    action        = "drop"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "service"
+  }
+  // "/" alone (no compose labels) does not match, so the container name above stays
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project", "__meta_docker_container_label_com_docker_compose_service"]
+    separator     = "/"
+    regex         = "(.+/.+)"
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = coalesce(sys.env("DOCKER_HOST"), "tcp://docker-proxy:2375")
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.containers.rules
+  forward_to    = [loki.write.central.receiver]
+}

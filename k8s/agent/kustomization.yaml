@@ -1,0 +1,4 @@
+# The agent for one k3s cluster, deployed by Argo CD (path k8s/agent, namespace daedalus-agent).
+# The image tag is not here: the Argo Application sets it (kustomize.images), to the same commit it deploys from.
+resources:
+  - agent.yaml

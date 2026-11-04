@@ -56,7 +56,7 @@ def tcp_probe(address: str, timeout: float) -> Probe:
 
 
 def fetch_vitals(url: str, timeout: float, token: str | None) -> dict | None:
-    """The in-app endpoint (integrations/eve-tools/vitals.ts). None when it is absent or unreadable."""
+    """An in-app endpoint with real counters and cgroup pressure. None when it is absent or unreadable."""
     request = urllib.request.Request(url, headers={"Accept": "application/json", **({"X-Vitals-Token": token} if token else {})})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310

@@ -18,7 +18,7 @@ jobs:
       - run: pip install -r backend/requirements-dev.txt
       - run: ruff check .
       - run: python -m pytest -q
-      # the dependency-free path judges can run by hand
+      # the same rules on the standard library only, as a table
       - run: python mock_data/evaluate.py
 
   contract:

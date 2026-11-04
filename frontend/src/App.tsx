@@ -30,6 +30,8 @@ function App() {
   const [view, setView] = useState<View | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(false)
+  // ?tenant=<host> shows one host; without it live mode shows the backend's default, the whole fleet
+  const [tenant] = useState<string | null>(() => new URLSearchParams(window.location.search).get('tenant'))
   // ?drill=users|forecast|trust|day|verdict opens one level deep on load, for deep links
   const [drill, setDrill] = useState<DrillTarget | null>(
     () => new URLSearchParams(window.location.search).get('drill') as DrillTarget | null,
@@ -49,7 +51,7 @@ function App() {
     if (selected === null) return
     let cancelled = false
     const load = () =>
-      (selected === LIVE ? loadLive() : loadScenario(selected))
+      (selected === LIVE ? loadLive(tenant ?? undefined) : loadScenario(selected))
         .then((v) => {
           if (cancelled) return
           setView(v)
@@ -70,14 +72,16 @@ function App() {
     params.delete('live')
     params.delete('drill')
     params.delete('scenario')
+    params.delete('tenant')
     params.set(selected === LIVE ? 'live' : 'scenario', selected === LIVE ? '1' : selected)
+    if (selected === LIVE && tenant) params.set('tenant', tenant)
     window.history.replaceState(null, '', `?${params.toString()}`)
 
     return () => {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [selected])
+  }, [selected, tenant])
 
   useFavicon(view?.decision.level)
 
@@ -136,7 +140,7 @@ function App() {
           <>
             <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[1fr_1fr] lg:gap-6">
               <div ref={verdictRef}>
-                <VerdictPanel view={view} onOpen={setDrill} />
+                <VerdictPanel view={view} onOpen={setDrill} onQueue={() => queueRef.current?.scrollIntoView({ behavior: 'smooth' })} />
               </div>
               <div ref={indicatorsRef} className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                 {view.indicators.map((indicator) => (

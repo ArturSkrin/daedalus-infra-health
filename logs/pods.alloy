@@ -1,0 +1,29 @@
+// Logs of every pod on a k3s node, read from the node's /var/log/pods: no Kubernetes API, no RBAC.
+// service = "<namespace>/<container>". The file path (pod uid) is dropped: one stream per container, not per pod.
+local.file_match "pods" {
+  path_targets = [{"__path__" = "/var/log/pods/*/*/*.log"}]
+}
+
+discovery.relabel "pods" {
+  targets = local.file_match.pods.targets
+
+  rule {
+    source_labels = ["__path__"]
+    regex         = "/var/log/pods/([^_]+)_[^/]+/([^/]+)/.*"
+    replacement   = "$1/$2"
+    target_label  = "service"
+  }
+}
+
+loki.source.file "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [loki.process.pods.receiver]
+}
+
+loki.process "pods" {
+  stage.cri {}
+  stage.label_drop {
+    values = ["filename"]
+  }
+  forward_to = [loki.write.central.receiver]
+}

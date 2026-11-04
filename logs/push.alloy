@@ -1,0 +1,11 @@
+// Where every log line goes: Loki on the monitoring centre, over WireGuard. One label for the whole host.
+// LOKI_URL  http://10.77.0.1:3100/loki/api/v1/push (or http://loki:3100/... next to Loki)
+// LOG_HOST  the host's name, as in the tracker
+loki.write "central" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+  external_labels = {
+    host = sys.env("LOG_HOST"),
+  }
+}

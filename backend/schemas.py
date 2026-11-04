@@ -135,6 +135,7 @@ class Decision(BaseModel):
     level: Level
     trigger: str
     reason: str
+    alsoOpen: list[str]     # other services with an open incident, not named in reason
     dimmed: bool
     dimNote: str | None = None
     rules: list[Rule]
@@ -186,6 +187,14 @@ class ScenarioListItem(BaseModel):
     expected: Verdict
     actual: Verdict
     passed: bool
+
+
+class FleetItem(BaseModel):
+    tenant: str
+    verdict: Verdict
+    word: str
+    level: Level
+    reason: str
 
 
 class Health(BaseModel):

@@ -1,0 +1,11 @@
+# The log collector for one k3s node, deployed by Argo CD (path logs, namespace daedalus-logs).
+# Only what is listed here goes to the cluster; loki.yaml and docker.alloy in this folder are for Docker hosts.
+namespace: daedalus-logs
+resources:
+  - alloy-k8s.yaml
+configMapGenerator:
+  - name: alloy-config
+    files:
+      - push.alloy
+      - pods.alloy
+      - journal.alloy
