@@ -58,8 +58,9 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          # the tag comes from the Argo Application (kustomize.images): the commit sha of daedalus_version in Ansible-vps
-          image: ghcr.io/arturskrin/daedalus-infra-health-backend
+          # the Argo Application replaces the tag (kustomize.images) with the commit sha of daedalus_version in Ansible-vps;
+          # this one only matters to an Application that does not set it yet
+          image: ghcr.io/arturskrin/daedalus-infra-health-backend:feat-fleet-agent
           imagePullPolicy: IfNotPresent
           command: ["python", "-m", "adapter.serve"]
           env:
