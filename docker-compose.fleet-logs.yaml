@@ -1,10 +1,10 @@
 # Logs of the fleet, on the monitoring centre: Loki stores them, Grafana shows them (for now), Alloy sends this host's
 # container logs. Other hosts push to Loki over WireGuard (roles/daedalus_agent in Ansible-vps, logs/alloy-k8s.yaml).
-# Not docker-compose.logs.yaml: that one is the single-application EVE demo overlay.
 # Add it to COMPOSE_FILE next to docker-compose.agent.yaml (Alloy reads containers through its docker-proxy):
 #
 #   COMPOSE_FILE=docker-compose.yaml:docker-compose.agent.yaml:docker-compose.agent-local.yaml:docker-compose.fleet-logs.yaml
 #   LOKI_BIND=10.77.0.1      the hub's WireGuard address; Loki is never published beyond it
+#   LOG_HOST=Rezerv          the hub's inventory name, the same host label its k3s Alloy uses (default AGENT_TENANT)
 #
 # Grafana listens on loopback only: ssh -L 3000:127.0.0.1:3000 <hub>, then http://localhost:3000.
 # The journal of this host is not read here: on the hub the k3s Alloy (logs/alloy-k8s.yaml) already sends it.
@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
     environment:
       LOKI_URL: http://loki:3100/loki/api/v1/push
-      LOG_HOST: ${AGENT_TENANT:?set AGENT_TENANT to this host's name}
+      LOG_HOST: ${LOG_HOST:-${AGENT_TENANT}}
     volumes:
       - ./logs/push.alloy:/etc/alloy/push.alloy:ro
       - ./logs/docker.alloy:/etc/alloy/docker.alloy:ro

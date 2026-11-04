@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 
 # EVE Online Tools as deployed by its docker-compose.yaml: nginx -> app -> db, and the
 # app depends on the public EVE ESI API. Host names are the compose service names, so
-# the collector must share a Docker network with them (see docker-compose.eve.yaml).
+# the collector must share a Docker network with them. The hackathon demo; the fleet uses ADAPTER_DISCOVER,
+# and tests/test_adapter.py still runs the shim against this preset.
 #
 # The app listens on whatever APP_PORT says in EVE's own .env, which is not in its repository: the Dockerfile
 # says 5000, a real deployment turned out to use 3000. A wrong port is a refused connection, and a refused

@@ -58,9 +58,9 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: agent
-          # shortcut: a branch tag pulled on every start; pin sha-<commit> once this is merged to main
-          image: ghcr.io/arturskrin/daedalus-infra-health-backend:feat-fleet-agent
-          imagePullPolicy: Always
+          # the tag comes from the Argo Application (kustomize.images): the commit sha of daedalus_version in Ansible-vps
+          image: ghcr.io/arturskrin/daedalus-infra-health-backend
+          imagePullPolicy: IfNotPresent
           command: ["python", "-m", "adapter.serve"]
           env:
             - name: NODE_NAME

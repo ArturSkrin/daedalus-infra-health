@@ -50,7 +50,7 @@
 |---|---|---|
 | agent | `adapter/` (`docker_source.py`, `collector.py`, `shim.py`) | Находит все контейнеры хоста через Docker API, читает их cgroup, открывает и закрывает инциденты, хранит историю за 24 ч. Отдаёт API в формате Triage (`/v2/agent/*`), плюс `/healthz` и `/debug/targets`. |
 | agent (k3s) | `adapter/k8s_source.py`, `adapter/serve.py`, `k8s/agent/` | Тот же агент внутри кластера: читает Deployment/StatefulSet/DaemonSet и поды через Kubernetes API (только get/list). Деплоится Argo CD. hostNetwork, слушает только адрес `wg0`, порт 9001. |
-| docker-proxy | образ `tecnativa/docker-socket-proxy` | Единственный, кто видит `docker.sock`. Пропускает только `GET /containers/*`. |
+| docker-proxy | образ `tecnativa/docker-socket-proxy` | Единственный, кто видит `docker.sock`. Пропускает только `GET /containers/*` и `GET /networks` (для Alloy). |
 | backend | `backend/` | Забирает данные агентов (`live.py`) и считает вердикт: `bundle → engine → presentation`. Агенты задаются в `AGENTS` (`tenant=url,…`). Экран по умолчанию — сводка `fleet` (`fleet.py`): все агенты склеены в один tenant, сервисы называются `хост:сервис`. Молчащий агент считается тёмным сервисом `хост:agent`. `/api/fleet` отдаёт одну строку на хост. Журнал ведётся для сводки и для каждого хоста. |
 | frontend | `frontend/` | React. Сам ничего не считает. Если `/api/health` отвечает `live: true`, включается live-режим и показывается сводка по всему парку. Один хост открывается по ссылке `?live=1&tenant=…`. |
 
@@ -206,3 +206,9 @@ docker compose logs --tail 50 agent docker-proxy
   - Firewall не менялся: Loki опубликован Docker, а такие порты идут через forward, мимо цепочки input таблицы `host_firewall`.
   - Проверено на dev: логи контейнеров доходят в Loki с `host` и `service` (`docker-compose.fleet-logs-dev.yaml`). Журнал и поды на dev не проверить: нет k3s, а раннер запрещает монтировать журнал хоста.
 - **2026-11-02**: первая раскатка логов. Docker-discovery Alloy получал 403 от docker-proxy: для меток ему нужен `GET /networks`, а прокси пускал только `/containers`. На dev этого не видно, там Alloy ходит в сокет напрямую. Теперь у прокси `NETWORKS: 1` (только чтение, POST выключен) в `docker-compose.agent.yaml` и в шаблоне Ansible.
+- **2026-11-04**: логи доходят с хаба (Docker и k3s), `CCB` и `CLC-Firm`; `Backup` до Loki достаёт, но в Loki его ещё не было. Причина первой тишины: на хабе не был подключён `docker-compose.fleet-logs.yaml` в `.env`.
+- **2026-11-04**: пункт 5, порядок в репозитории.
+  - Версия закреплена: на серверах крутится один коммит, его sha записан в `playbooks/daedalus_version.yml` в Ansible-vps. Из него берутся манифесты Argo, конфиги Alloy, скрипт проверок и образ агента (CI помечает каждый образ sha коммита). Раньше всё шло по ветке, и любой push незаметно менял сервера.
+  - `k8s/agent/` стал kustomize-папкой: тег образа ставит Argo-приложение (`kustomize.images`), `imagePullPolicy: IfNotPresent`.
+  - Метка `host` в логах везде — имя из инвентаря: k3s-Alloy получает его патчем в Argo-приложении, Alloy на хабе — из `LOG_HOST` в `.env`.
+  - Убрана витрина хакатона: GitHub Pages и статический экспорт, EVE-демо (оверлеи, `integrations/`, `observability/`, прокси `/grafana/` в nginx), заглушки `mock-tools`, fake-triage, скриншоты `design/`, документы Triage, k8s-манифесты трекера. README переписан под прод. Движок, сценарии и `mock_data` остались: на них тесты.

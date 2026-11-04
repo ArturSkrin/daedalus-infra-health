@@ -13,10 +13,9 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 
-# nginx resolvers ignore DNS search domains, so a cluster has to pass the full service name (see k8s/app.yaml)
+# nginx resolvers ignore DNS search domains: in a cluster BACKEND_HOST has to be the full service name
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 ENV BACKEND_HOST=backend
-ENV GRAFANA_HOST=grafana
 
 COPY frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
 

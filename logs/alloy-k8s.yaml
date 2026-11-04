@@ -26,7 +26,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: LOG_HOST
+            - name: LOG_HOST                  # the Argo Application replaces it with the inventory name
               value: "$(NODE_NAME)"
             - name: LOKI_URL                  # the hub, 10.77.0.1 by the WireGuard convention
               value: http://10.77.0.1:3100/loki/api/v1/push
