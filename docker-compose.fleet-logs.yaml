@@ -5,10 +5,17 @@
 #   COMPOSE_FILE=docker-compose.yaml:docker-compose.agent.yaml:docker-compose.agent-local.yaml:docker-compose.fleet-logs.yaml
 #   LOKI_BIND=10.77.0.1      the hub's WireGuard address; Loki is never published beyond it
 #   LOG_HOST=Rezerv          the hub's inventory name, the same host label its k3s Alloy uses (default AGENT_TENANT)
+#   LOG_HOSTS=eastern-green=Rezerv,ccb-k3s=CCB,...   tracker tenant -> Loki host label, for the logs on /ops
 #
 # Grafana listens on loopback only: ssh -L 3000:127.0.0.1:3000 <hub>, then http://localhost:3000.
 # The journal of this host is not read here: on the hub the k3s Alloy (logs/alloy-k8s.yaml) already sends it.
 services:
+  # the admin screen (/ops) reads a service's recent lines through the backend; Loki stays inside this network
+  backend:
+    environment:
+      LOKI_URL: http://loki:3100
+      LOG_HOSTS: ${LOG_HOSTS:-}
+
   loki:
     image: grafana/loki:3.7.8
     command: ["-config.file=/etc/loki/loki.yaml"]

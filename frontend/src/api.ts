@@ -1,4 +1,4 @@
-import type { ScenarioListItem, View } from './types'
+import type { AckIn, Logs, Ops, ScenarioListItem, View } from './types'
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
@@ -22,3 +22,23 @@ export async function liveAvailable(): Promise<boolean> {
 }
 
 export const loadLive = (tenant?: string) => api<View>(`live${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''}`)
+
+export const loadOps = () => api<Ops>('ops')
+
+export const loadLogs = (service: string) => api<Logs>(`logs?service=${encodeURIComponent(service)}`)
+
+async function send(method: string, path: string, body?: unknown): Promise<void> {
+  const response = await fetch(`${import.meta.env.BASE_URL}api/${path}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null)
+    throw new Error(typeof detail?.detail === 'string' ? detail.detail : `${path}: ${response.status}`)
+  }
+}
+
+export const addAck = (ack: AckIn) => send('POST', 'acks', ack)
+
+export const liftAck = (service: string) => send('DELETE', `acks/${encodeURIComponent(service)}`)

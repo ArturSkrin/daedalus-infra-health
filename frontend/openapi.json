@@ -681,6 +681,381 @@
         "title": "Link",
         "type": "object"
       },
+      "LogLine": {
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "stream": {
+            "title": "Stream",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "stream",
+          "line"
+        ],
+        "title": "LogLine",
+        "type": "object"
+      },
+      "Logs": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LogLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "selector": {
+            "title": "Selector",
+            "type": "string"
+          }
+        },
+        "required": [
+          "selector",
+          "lines"
+        ],
+        "title": "Logs",
+        "type": "object"
+      },
+      "Ops": {
+        "properties": {
+          "acks": {
+            "items": {
+              "$ref": "#/components/schemas/Ack"
+            },
+            "title": "Acks",
+            "type": "array"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/OpsAgent"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "incidents": {
+            "items": {
+              "$ref": "#/components/schemas/OpsIncident"
+            },
+            "title": "Incidents",
+            "type": "array"
+          },
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/OpsService"
+            },
+            "title": "Services",
+            "type": "array"
+          }
+        },
+        "required": [
+          "services",
+          "incidents",
+          "agents",
+          "acks"
+        ],
+        "title": "Ops",
+        "type": "object"
+      },
+      "OpsAgent": {
+        "properties": {
+          "cluster": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cluster"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "dark": {
+            "title": "Dark",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "lastMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastmessage"
+          },
+          "services": {
+            "title": "Services",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "host",
+          "connected",
+          "services",
+          "dark"
+        ],
+        "title": "OpsAgent",
+        "type": "object"
+      },
+      "OpsIncident": {
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted"
+          },
+          "firstSeen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firstseen"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reopens": {
+            "title": "Reopens",
+            "type": "integer"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedat"
+          },
+          "resolvedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedby"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "host",
+          "service",
+          "severity",
+          "status",
+          "title",
+          "reopens"
+        ],
+        "title": "OpsIncident",
+        "type": "object"
+      },
+      "OpsService": {
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted"
+          },
+          "cluster": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cluster"
+          },
+          "cpuStallPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpustallpct"
+          },
+          "dark": {
+            "default": false,
+            "title": "Dark",
+            "type": "boolean"
+          },
+          "flapping": {
+            "default": false,
+            "title": "Flapping",
+            "type": "boolean"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "incident": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident"
+          },
+          "ioStallPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iostallpct"
+          },
+          "memOfLimitPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memoflimitpct"
+          },
+          "memStallPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memstallpct"
+          },
+          "oomKills": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oomkills"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          }
+        },
+        "required": [
+          "host",
+          "service",
+          "ready"
+        ],
+        "title": "OpsService",
+        "type": "object"
+      },
       "Outcome": {
         "properties": {
           "reason": {
@@ -1494,6 +1869,75 @@
           }
         },
         "summary": "Live Journal"
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "description": "Recent lines of one fleet service (<host>:<service>) from Loki, newest first.",
+        "operationId": "service_logs_api_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "title": "Service",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Logs"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Service Logs"
+      }
+    },
+    "/api/ops": {
+      "get": {
+        "description": "The admin screen: every service, incident and agent of the fleet as rows, with no verdict on top.",
+        "operationId": "ops_view_api_ops_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ops"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ops View"
       }
     },
     "/api/scenarios": {
