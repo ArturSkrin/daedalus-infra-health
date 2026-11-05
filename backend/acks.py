@@ -13,6 +13,7 @@ import json
 import os
 import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 KINDS = ("expected", "noise")       # known and accepted / not a problem at all, the rule fired for nothing
@@ -52,6 +53,13 @@ def _save() -> None:
 def listing() -> list[dict]:
     with _lock:
         return [{"service": name, **ack} for name, ack in sorted(_loaded().items())]
+
+
+def public(ack: dict) -> dict:
+    """An ack as the API shows it: times as ISO strings, the bookkeeping left out."""
+    def iso(unix: float) -> str:
+        return datetime.fromtimestamp(unix, UTC).astimezone().isoformat(timespec="seconds")
+    return {key: ack[key] for key in ("service", "kind", "reason", "severity")} | {"since": iso(ack["since"]), "until": iso(ack["until"])}
 
 
 def add(service: str, kind: str, days: int, reason: str, severity: str, now: float | None = None) -> dict:

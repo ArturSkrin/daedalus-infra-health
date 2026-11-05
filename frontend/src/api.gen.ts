@@ -119,6 +119,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Service Logs
+         * @description Recent lines of one fleet service (<host>:<service>) from Loki, newest first.
+         */
+        get: operations["service_logs_api_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ops View
+         * @description The admin screen: every service, incident and agent of the fleet as rows, with no verdict on top.
+         */
+        get: operations["ops_view_api_ops_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scenarios": {
         parameters: {
             query?: never;
@@ -403,6 +443,114 @@ export interface components {
             label: string;
             /** Url */
             url: string;
+        };
+        /** LogLine */
+        LogLine: {
+            /** At */
+            at: string;
+            /** Line */
+            line: string;
+            /** Stream */
+            stream: string;
+        };
+        /** Logs */
+        Logs: {
+            /** Lines */
+            lines: components["schemas"]["LogLine"][];
+            /** Selector */
+            selector: string;
+        };
+        /** Ops */
+        Ops: {
+            /** Acks */
+            acks: components["schemas"]["Ack"][];
+            /** Agents */
+            agents: components["schemas"]["OpsAgent"][];
+            /** Incidents */
+            incidents: components["schemas"]["OpsIncident"][];
+            /** Services */
+            services: components["schemas"]["OpsService"][];
+        };
+        /** OpsAgent */
+        OpsAgent: {
+            /** Cluster */
+            cluster?: string | null;
+            /** Connected */
+            connected: boolean;
+            /** Dark */
+            dark: number;
+            /** Error */
+            error?: string | null;
+            /** Host */
+            host: string;
+            /** Lastmessage */
+            lastMessage?: string | null;
+            /** Services */
+            services: number;
+        };
+        /** OpsIncident */
+        OpsIncident: {
+            /** Accepted */
+            accepted?: string | null;
+            /** Firstseen */
+            firstSeen?: string | null;
+            /** Host */
+            host: string;
+            /** Id */
+            id: string;
+            /** Reopens */
+            reopens: number;
+            /** Resolvedat */
+            resolvedAt?: string | null;
+            /** Resolvedby */
+            resolvedBy?: string | null;
+            /** Service */
+            service: string;
+            /** Severity */
+            severity: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+        };
+        /** OpsService */
+        OpsService: {
+            /** Accepted */
+            accepted?: string | null;
+            /** Cluster */
+            cluster?: string | null;
+            /** Cpustallpct */
+            cpuStallPct?: number | null;
+            /**
+             * Dark
+             * @default false
+             */
+            dark: boolean;
+            /**
+             * Flapping
+             * @default false
+             */
+            flapping: boolean;
+            /** Host */
+            host: string;
+            /** Incident */
+            incident?: string | null;
+            /** Iostallpct */
+            ioStallPct?: number | null;
+            /** Memoflimitpct */
+            memOfLimitPct?: number | null;
+            /** Memstallpct */
+            memStallPct?: number | null;
+            /** Oomkills */
+            oomKills?: number | null;
+            /** Ready */
+            ready: boolean;
+            /** Service */
+            service: string;
+            /** Severity */
+            severity?: string | null;
+            /** Tier */
+            tier?: number | null;
         };
         /** Outcome */
         Outcome: {
@@ -783,6 +931,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    service_logs_api_logs_get: {
+        parameters: {
+            query: {
+                service: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Logs"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ops_view_api_ops_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ops"];
                 };
             };
         };

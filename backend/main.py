@@ -4,17 +4,16 @@ import logging
 import os
 import threading
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import acks, journal, live
+from backend import acks, journal, live, logs, ops
 from backend.engine import verdict
 from backend.fleet import FLEET
 from backend.presentation import build_view
 from backend.repository import ScenarioNotFound, list_scenarios, load_scenario
-from backend.schemas import Ack, AckIn, Event, FleetItem, Health, ScenarioListItem, View
+from backend.schemas import Ack, AckIn, Event, FleetItem, Health, Logs, Ops, ScenarioListItem, View
 
 log = logging.getLogger("daedalus")
 JOURNAL_POLL_S = int(os.environ.get("JOURNAL_POLL_S", "20"))
@@ -128,15 +127,9 @@ def fleet() -> list[dict]:
     return items
 
 
-def _ack_out(ack: dict) -> dict:
-    def iso(unix: float) -> str:
-        return datetime.fromtimestamp(unix, UTC).astimezone().isoformat(timespec="seconds")
-    return {**ack, "since": iso(ack["since"]), "until": iso(ack["until"])}
-
-
 @app.get("/api/acks", response_model=list[Ack])
 def list_acks() -> list[dict]:
-    return [_ack_out(a) for a in acks.listing()]
+    return [acks.public(a) for a in acks.listing()]
 
 
 @app.post("/api/acks", response_model=Ack)
@@ -150,7 +143,7 @@ def add_ack(body: AckIn) -> dict:
     except live.LiveUnavailable:
         pass
     try:
-        return _ack_out(acks.add(body.service, body.kind, body.days, body.reason, severity))
+        return acks.public(acks.add(body.service, body.kind, body.days, body.reason, severity))
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from None
 
@@ -159,6 +152,30 @@ def add_ack(body: AckIn) -> dict:
 def remove_ack(service: str) -> None:
     if not acks.remove(service):
         raise HTTPException(status_code=404, detail="No ack for this service")
+
+
+@app.get("/api/ops", response_model=Ops)
+def ops_view() -> dict:
+    """The admin screen: every service, incident and agent of the fleet as rows, with no verdict on top."""
+    if not live.configured():
+        raise HTTPException(status_code=503, detail="Live data unavailable: live mode is not configured")
+    return ops.snapshot()
+
+
+@app.get("/api/logs", response_model=Logs)
+def service_logs(service: str, limit: int = 200) -> dict:
+    """Recent lines of one fleet service (<host>:<service>) from Loki, newest first."""
+    host, _, name = service.partition(":")
+    if not host or not name:
+        raise HTTPException(status_code=422, detail="service must be <host>:<service>")
+    try:
+        cluster = ((live.load_live(host).get("status") or {}).get("clusterAgentStats") or {}).get(host, {}).get("cluster")
+    except live.LiveUnavailable:
+        cluster = None
+    try:
+        return logs.recent(host, name, cluster, limit=max(1, min(limit, 1000)))
+    except logs.LogsUnavailable as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
 
 
 @app.get("/api/live/journal", response_model=list[Event], response_model_exclude_none=True)

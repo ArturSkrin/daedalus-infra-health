@@ -212,6 +212,39 @@ def test_acks_survive_a_restart_of_the_backend(monkeypatch, tmp_path):
     assert [a["service"] for a in acks.listing()] == ["b:web"]
 
 
+# --- the admin screen -------------------------------------------------------------
+
+def test_ops_lists_every_service_incident_and_agent_with_the_broken_first(fleet):
+    fleet.post("/api/acks", json={"service": "vps-b:blog/web", "reason": "known"})
+    data = fleet.get("/api/ops").json()
+    first = data["services"][0]
+    assert (first["host"], first["service"], first["ready"], first["accepted"]) == ("vps-b", "blog/web", False, "known")
+    assert {(s["host"], s["service"]) for s in data["services"]} == {("vps-a", "shop/web"), ("vps-b", "blog/web")}
+    assert [(i["host"], i["status"]) for i in data["incidents"]] == [("vps-b", "accepted")]
+    agents = {a["host"]: a for a in data["agents"]}
+    assert agents["vps-a"]["connected"] and not agents["vps-c"]["connected"]
+    assert [a["service"] for a in data["acks"]] == ["vps-b:blog/web"]
+
+
+def test_logs_try_the_service_then_its_unit_and_name_the_selector_that_answered(fleet, monkeypatch):
+    from backend import logs
+
+    asked = []
+    monkeypatch.setenv("LOG_HOSTS", "vps-b=Backup")
+    monkeypatch.setattr(logs, "_query", lambda selector, limit: asked.append(selector) or (
+        [{"at": "t", "stream": "file-backup.service", "line": "Host key verification failed"}] if "unit" in selector else []))
+    answer = fleet.get("/api/logs", params={"service": "vps-b:job/file-backup"}).json()
+    assert asked == ['{host="Backup", service="job/file-backup"}', '{host="Backup", unit="file-backup.service"}']
+    assert answer["selector"] == asked[1] and answer["lines"][0]["line"] == "Host key verification failed"
+    assert fleet.get("/api/logs", params={"service": "no-host"}).status_code == 422
+
+
+def test_logs_without_loki_say_so(fleet, monkeypatch):
+    monkeypatch.delenv("LOKI_URL", raising=False)
+    response = fleet.get("/api/logs", params={"service": "vps-a:shop/web"})
+    assert response.status_code == 503 and "LOKI_URL" in response.json()["detail"]
+
+
 def test_without_live_sources_the_fleet_is_empty(monkeypatch):
     monkeypatch.delenv("AGENTS", raising=False)
     monkeypatch.delenv("TRIAGE_BASE_URL", raising=False)

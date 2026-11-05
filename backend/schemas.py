@@ -205,6 +205,66 @@ class View(BaseModel):
     validation: Validation | None = None
 
 
+class OpsService(BaseModel):
+    host: str
+    service: str
+    cluster: str | None = None
+    ready: bool
+    dark: bool = False              # was seen, says nothing now
+    tier: int | None = None
+    cpuStallPct: float | None = None
+    memStallPct: float | None = None
+    ioStallPct: float | None = None
+    memOfLimitPct: float | None = None
+    oomKills: float | None = None
+    incident: str | None = None
+    severity: str | None = None
+    flapping: bool = False
+    accepted: str | None = None     # the reason, when a person accepted it
+
+
+class OpsIncident(BaseModel):
+    id: str
+    host: str
+    service: str
+    severity: str
+    status: str
+    title: str
+    firstSeen: str | None = None
+    resolvedAt: str | None = None
+    resolvedBy: str | None = None
+    reopens: int
+    accepted: str | None = None
+
+
+class OpsAgent(BaseModel):
+    host: str
+    connected: bool
+    cluster: str | None = None
+    lastMessage: str | None = None
+    services: int
+    dark: int
+    error: str | None = None
+
+
+class Ops(BaseModel):
+    services: list[OpsService]
+    incidents: list[OpsIncident]
+    agents: list[OpsAgent]
+    acks: list[Ack]
+
+
+class LogLine(BaseModel):
+    at: str
+    stream: str
+    line: str
+
+
+class Logs(BaseModel):
+    selector: str
+    lines: list[LogLine]
+
+
 class ScenarioListItem(BaseModel):
     id: str
     title: str
