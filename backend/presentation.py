@@ -497,6 +497,15 @@ def incident_queue(b: Bundle) -> list[dict]:
     return queue
 
 
+def accepted_list(b: Bundle) -> list[dict]:
+    """Services a human accepted: off the verdict, but never off the screen."""
+    titles = {i.service: i.title for i in b.incidents if i.accepted}
+    marks = {i.service: i.accepted for i in b.incidents if i.accepted} | {s.name: s.accepted for s in b.services.values() if s.accepted}
+    return [{"service": name, "kind": ack.kind, "reason": ack.reason, "title": titles.get(name),
+             "until": ack.until.isoformat(timespec="seconds") if ack.until else None}
+            for name, ack in sorted(marks.items())]
+
+
 def scenario_timeline(b: Bundle, result: dict, reason: str) -> list[dict]:
     """A demo scenario is one frozen moment, so its journal is read off the data instead: when incidents opened
     and closed, when the error curve spiked, and what the word is now. Newest first, like the live journal."""
@@ -558,6 +567,7 @@ def build_view(data: dict, result: dict, mode: str = "demo", journal: list[dict]
         },
         "indicators": indicator_cards(b, result),
         "queue": incident_queue(b),
+        "accepted": accepted_list(b),
     }
     if journal is not None:
         view["journal"], view["journalSource"] = journal, "live"

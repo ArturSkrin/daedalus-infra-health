@@ -4,6 +4,44 @@
  */
 
 export interface paths {
+    "/api/acks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Acks */
+        get: operations["list_acks_api_acks_get"];
+        put?: never;
+        /**
+         * Add Ack
+         * @description Accept one service for a while. Its severity now is the line: getting worse than that ends the ack.
+         */
+        post: operations["add_ack_api_acks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/acks/{service}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Ack */
+        delete: operations["remove_ack_api_acks__service__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/fleet": {
         parameters: {
             query?: never;
@@ -139,6 +177,58 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptedItem */
+        AcceptedItem: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "expected" | "noise";
+            /** Reason */
+            reason: string;
+            /** Service */
+            service: string;
+            /** Title */
+            title?: string | null;
+            /** Until */
+            until?: string | null;
+        };
+        /** Ack */
+        Ack: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "expected" | "noise";
+            /** Reason */
+            reason: string;
+            /** Service */
+            service: string;
+            /** Severity */
+            severity: string;
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
+        };
+        /** AckIn */
+        AckIn: {
+            /**
+             * Days
+             * @default 7
+             */
+            days: number;
+            /**
+             * Kind
+             * @default expected
+             * @enum {string}
+             */
+            kind: "expected" | "noise";
+            /** Reason */
+            reason: string;
+            /** Service */
+            service: string;
+        };
         /** DarkRow */
         DarkRow: {
             /** Name */
@@ -212,7 +302,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "started" | "verdict" | "indicator" | "incident" | "timeline";
+            kind: "started" | "verdict" | "indicator" | "incident" | "ack" | "timeline";
             /**
              * Level
              * @enum {string}
@@ -485,6 +575,8 @@ export interface components {
         };
         /** View */
         View: {
+            /** Accepted */
+            accepted: components["schemas"]["AcceptedItem"][];
             decision: components["schemas"]["Decision"];
             /** Indicators */
             indicators: components["schemas"]["Indicator"][];
@@ -510,6 +602,88 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_acks_api_acks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ack"][];
+                };
+            };
+        };
+    };
+    add_ack_api_acks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AckIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ack"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_ack_api_acks__service__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                service: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     fleet_api_fleet_get: {
         parameters: {
             query?: never;

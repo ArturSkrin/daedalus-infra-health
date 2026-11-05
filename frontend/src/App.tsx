@@ -150,7 +150,12 @@ function App() {
             </div>
 
             <div ref={queueRef}>
-              <QueuePanel queue={view.queue} day={view.indicators.find((i) => i.id === 'day')} blind={view.decision.verdict === 'blind'} />
+              <QueuePanel
+                queue={view.queue}
+                accepted={view.accepted}
+                day={view.indicators.find((i) => i.id === 'day')}
+                blind={view.decision.verdict === 'blind'}
+              />
             </div>
             <div ref={watchRef}>
               <WatchFaces view={view} />

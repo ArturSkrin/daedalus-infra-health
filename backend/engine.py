@@ -97,6 +97,8 @@ def users(b: Bundle) -> tuple[str, dict]:
     tier1_hurt: list[str] = []
 
     for s in b.services.values():
+        if s.accepted:
+            continue            # a human accepted it: shown, but it no longer decides what users feel
         on_user_path = s.tier == T.USER_PATH_TIER
         # readiness does not depend on traffic data: a user-path service that is not ready is broken
         if on_user_path and s.ready is False:

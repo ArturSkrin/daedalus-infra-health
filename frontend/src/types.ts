@@ -12,6 +12,7 @@ export type Fact = Schemas['Fact']
 export type Link = Schemas['Link']
 export type Event = Schemas['Event']
 export type QueueItem = Schemas['QueueItem']
+export type AcceptedItem = Schemas['AcceptedItem']
 export type ScenarioListItem = Schemas['ScenarioListItem']
 
 export type Level = Indicator['level']

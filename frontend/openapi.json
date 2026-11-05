@@ -1,6 +1,135 @@
 {
   "components": {
     "schemas": {
+      "AcceptedItem": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "expected",
+              "noise"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "required": [
+          "service",
+          "kind",
+          "reason"
+        ],
+        "title": "AcceptedItem",
+        "type": "object"
+      },
+      "Ack": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "expected",
+              "noise"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "since": {
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "kind",
+          "reason",
+          "severity",
+          "since",
+          "until"
+        ],
+        "title": "Ack",
+        "type": "object"
+      },
+      "AckIn": {
+        "properties": {
+          "days": {
+            "default": 7,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "kind": {
+            "default": "expected",
+            "enum": [
+              "expected",
+              "noise"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "service": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Service",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "reason"
+        ],
+        "title": "AckIn",
+        "type": "object"
+      },
       "DarkRow": {
         "properties": {
           "name": {
@@ -278,6 +407,7 @@
               "verdict",
               "indicator",
               "incident",
+              "ack",
               "timeline"
             ],
             "title": "Kind",
@@ -1043,6 +1173,13 @@
       },
       "View": {
         "properties": {
+          "accepted": {
+            "items": {
+              "$ref": "#/components/schemas/AcceptedItem"
+            },
+            "title": "Accepted",
+            "type": "array"
+          },
           "decision": {
             "$ref": "#/components/schemas/Decision"
           },
@@ -1104,6 +1241,7 @@
           "decision",
           "indicators",
           "queue",
+          "accepted",
           "journal",
           "journalSource"
         ],
@@ -1118,6 +1256,97 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/acks": {
+      "get": {
+        "operationId": "list_acks_api_acks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Ack"
+                  },
+                  "title": "Response List Acks Api Acks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Acks"
+      },
+      "post": {
+        "description": "Accept one service for a while. Its severity now is the line: getting worse than that ends the ack.",
+        "operationId": "add_ack_api_acks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AckIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ack"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Ack"
+      }
+    },
+    "/api/acks/{service}": {
+      "delete": {
+        "operationId": "remove_ack_api_acks__service__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service",
+            "required": true,
+            "schema": {
+              "title": "Service",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Ack"
+      }
+    },
     "/api/fleet": {
       "get": {
         "description": "One line per tenant: the word and why. An agent that does not answer is BLIND, never left out.",

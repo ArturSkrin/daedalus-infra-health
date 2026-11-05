@@ -71,6 +71,19 @@ class Saturation:
 
 
 @dataclass(frozen=True)
+class Accepted:
+    kind: str
+    reason: str
+    until: datetime | None
+
+
+def _accepted(value, tz) -> Accepted | None:
+    value = as_dict(value)
+    kind, reason = text(value.get("kind")), text(value.get("reason"))
+    return Accepted(kind, reason, as_dt(value.get("until"), tz)) if kind and reason else None
+
+
+@dataclass(frozen=True)
 class Service:
     name: str
     tier: int | None = None
@@ -80,6 +93,7 @@ class Service:
     ready: bool | None = None
     rate: Rate | None = None
     saturation: Saturation | None = None
+    accepted: Accepted | None = None     # a human said "known, leave it" (backend/acks.py)
 
 
 @dataclass(frozen=True)
@@ -96,6 +110,7 @@ class Incident:
     plan: tuple[str, ...]
     related: tuple[str, ...]
     blast_radius: float
+    accepted: Accepted | None = None
 
     @property
     def is_open(self) -> bool:
@@ -216,6 +231,7 @@ def _services(raw: dict, now: datetime, bundle: Bundle) -> None:
         entry = merged.setdefault(name, {})
         entry["reporting"] = True
         entry["ready"] = app.get("ready") if isinstance(app.get("ready"), bool) else None
+        entry["accepted"] = _accepted(app.get("accepted"), now.tzinfo)
 
         rps, err = num(golden.get("reqPerSec")), num(golden.get("errPct"))
         if rps is not None and err is not None:
@@ -250,6 +266,7 @@ def _incidents(raw: dict, now: datetime, bundle: Bundle) -> None:
             plan=tuple(s for s in as_list(item.get("investigationPlan")) if isinstance(s, str)),
             related=tuple(s for s in as_list(item.get("relatedEvents")) if isinstance(s, str)),
             blast_radius=num(item.get("blastRadius")) or 0.0,
+            accepted=_accepted(item.get("accepted"), now.tzinfo),
         ))
 
     metrics = as_dict(block.get("incidentMetrics"))
