@@ -94,6 +94,7 @@ class Service:
     rate: Rate | None = None
     saturation: Saturation | None = None
     accepted: Accepted | None = None     # a human said "known, leave it" (backend/acks.py)
+    flapping: bool = False               # down and up again, over and over (adapter/collector.py)
 
 
 @dataclass(frozen=True)
@@ -232,6 +233,7 @@ def _services(raw: dict, now: datetime, bundle: Bundle) -> None:
         entry["reporting"] = True
         entry["ready"] = app.get("ready") if isinstance(app.get("ready"), bool) else None
         entry["accepted"] = _accepted(app.get("accepted"), now.tzinfo)
+        entry["flapping"] = app.get("flapping") is True
 
         rps, err = num(golden.get("reqPerSec")), num(golden.get("errPct"))
         if rps is not None and err is not None:

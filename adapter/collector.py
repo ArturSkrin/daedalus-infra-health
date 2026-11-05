@@ -26,6 +26,12 @@ MIN_ERRORS_TO_REPORT = 3        # below this, in under MIN_REQUESTS requests, an
 MIN_REQUESTS_TO_REPORT = 50
 CYCLES_TO_OPEN = 2              # consecutive failed cycles before an incident opens
 CYCLES_TO_CLOSE = 2
+# Flapping, the way the Triage core damps it: a failure that comes back within REOPEN_WINDOW_S reopens the same
+# incident; FLAP_REOPENS reopens in that window make it "flapping", which stops it from paging (warning, not
+# critical) until it either calms down or stays down for FLAP_BYPASS_S, when it is simply down again.
+REOPEN_WINDOW_S = 6 * 3600
+FLAP_REOPENS = 5
+FLAP_BYPASS_S = 15 * 60
 EXTERNAL_EVERY_S = 60
 INCIDENTS_KEPT_S = 24 * 3600
 # shortcut: a removed compose project reads as down for a day before it is forgotten; add an explicit "forget" when that annoys
@@ -59,6 +65,8 @@ class TargetState:
     oom_baseline: float | None = None
     failing_cycles: int = 0
     healthy_cycles: int = 0
+    down_since: float | None = None
+    flapping: bool = False
     last_external_check: float = 0.0
 
 
@@ -283,22 +291,40 @@ class Collector:
         self._track_incident(target, state, now)
 
     def _track_incident(self, target: Target, state: TargetState, now: float) -> None:
-        open_incident = next((i for i in self.incidents if i["service"] == target.name and i["status"] == "open"), None)
+        mine = [i for i in self.incidents if i["service"] == target.name]
+        open_incident = next((i for i in mine if i["status"] == "open"), None)
         if state.ready is False:
             state.failing_cycles, state.healthy_cycles = state.failing_cycles + 1, 0
+            state.down_since = state.down_since or now
             if not open_incident and state.failing_cycles >= CYCLES_TO_OPEN:
-                self.sequence += 1
-                self.incidents.append({
-                    "id": f"shim-{self.sequence}", "service": target.name, "status": "open",
-                    "severity": "critical" if target.tier == 1 else "warning",
-                    "firstSeenUnix": now - (CYCLES_TO_OPEN - 1) * self.settings.interval_s, "resolvedUnix": None, "resolvedBy": None,
-                    "title": f"{target.name} is not answering ({state.detail})",
-                })
+                title = f"{target.name} is not answering ({state.detail})"
+                recent = [i for i in mine if i["resolvedUnix"] and now - i["resolvedUnix"] < REOPEN_WINDOW_S]
+                if recent:
+                    # the same failure back again: one incident with its history, not a chain of near-duplicates
+                    open_incident = max(recent, key=lambda i: i["resolvedUnix"])
+                    open_incident.update(status="open", resolvedUnix=None, resolvedBy=None, title=title,
+                                         reopenedUnix=[*open_incident.get("reopenedUnix", []), now])
+                else:
+                    self.sequence += 1
+                    open_incident = {
+                        "id": f"shim-{self.sequence}", "service": target.name, "status": "open",
+                        "firstSeenUnix": now - (CYCLES_TO_OPEN - 1) * self.settings.interval_s, "resolvedUnix": None,
+                        "resolvedBy": None, "title": title, "reopenedUnix": [],
+                    }
+                    self.incidents.append(open_incident)
         else:
-            state.healthy_cycles, state.failing_cycles = state.healthy_cycles + 1, 0
+            state.healthy_cycles, state.failing_cycles, state.down_since = state.healthy_cycles + 1, 0, None
             if open_incident and state.healthy_cycles >= CYCLES_TO_CLOSE:
                 # nobody touched it: in Triage terms this is an auto-resolved incident
                 open_incident.update(status="resolved", resolvedUnix=now, resolvedBy="agent")
+        for incident in (i for i in self.incidents if i["service"] == target.name):
+            reopens = [t for t in incident.get("reopenedUnix", []) if now - t < REOPEN_WINDOW_S]
+            incident["reopenedUnix"] = reopens
+            down_for = now - state.down_since if state.down_since else 0.0
+            incident["flapping"] = len(reopens) >= FLAP_REOPENS and down_for < FLAP_BYPASS_S
+            # a flapping service asks for a ticket, not for a person right now
+            incident["severity"] = "critical" if target.tier == 1 and not incident["flapping"] else "warning"
+        state.flapping = bool(open_incident and open_incident["flapping"])
 
     # ------------------------------------------------------------------ reads ---
 
