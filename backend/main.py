@@ -135,13 +135,14 @@ def list_acks() -> list[dict]:
 @app.post("/api/acks", response_model=Ack)
 def add_ack(body: AckIn) -> dict:
     """Accept one service for a while. Its severity now is the line: getting worse than that ends the ack."""
-    severity = "warning"
-    try:
-        opened = [i for i in (live.load_live(FLEET).get("incidents") or {}).get("incidents") or []
-                  if i.get("service") == body.service and i.get("status") == "open"]
-        severity = "critical" if any(i.get("severity") == "critical" for i in opened) else severity
-    except live.LiveUnavailable:
-        pass
+    severity = body.severity or "warning"
+    if not body.severity:
+        try:
+            opened = [i for i in (live.load_live(FLEET).get("incidents") or {}).get("incidents") or []
+                      if i.get("service") == body.service and i.get("status") == "open"]
+            severity = "critical" if any(i.get("severity") == "critical" for i in opened) else severity
+        except live.LiveUnavailable:
+            pass
     try:
         return acks.public(acks.add(body.service, body.kind, body.days, body.reason, severity))
     except ValueError as error:
@@ -155,8 +156,11 @@ def remove_ack(service: str) -> None:
 
 
 @app.get("/api/ops", response_model=Ops)
-def ops_view() -> dict:
-    """The admin screen: every service, incident and agent of the fleet as rows, with no verdict on top."""
+def ops_view(scenario: str | None = None) -> dict:
+    """The admin screen: every service, incident and agent of the fleet as rows, with no verdict on top.
+    ?scenario= shows a demo scenario instead, so the screen can be looked at without agents."""
+    if scenario:
+        return ops.snapshot(_scenario_or_404(scenario))
     if not live.configured():
         raise HTTPException(status_code=503, detail="Live data unavailable: live mode is not configured")
     return ops.snapshot()

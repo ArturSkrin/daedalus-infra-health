@@ -1,16 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { addAck, liftAck, loadLogs, loadOps } from './api'
-import type { Logs, Ops as OpsData, OpsIncident, OpsService } from './types'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { addAck, liftAck, loadLive, loadLogs, loadOps, loadScenario } from './api'
+import type { Logs, Ops as OpsData, OpsIncident, OpsService, View } from './types'
 
-// The admin screen: the fleet as rows, for the person who runs it. No verdict, no rings: what the agents report,
-// what is open, what was accepted, and the log lines behind it. 1-4 switch tabs, / filters, Esc clears.
+// The admin screen: the fleet as panels, for the person who runs it. Same data as the overview, without the
+// wording on top: every service with its numbers, what is open, what was accepted, the log lines behind it.
+// ?scenario=<id> shows a demo scenario, to look at the screen without agents.
 
 const REFRESH_MS = 20_000
-const TABS = ['services', 'incidents', 'agents', 'logs'] as const
+const TABS = ['overview', 'services', 'incidents', 'agents', 'logs'] as const
 type Tab = (typeof TABS)[number]
+type Tone = 'good' | 'warn' | 'bad' | 'muted'
+
+const C = {
+  accent: 'text-[#c792ea]',
+  cyan: 'text-[#7fdbff]',
+  good: 'text-[#7ee787]',
+  warn: 'text-[#f0b429]',
+  bad: 'text-[#ff6b6b]',
+  dim: 'text-[#6e6a86]',
+  text: 'text-[#d8d4ea]',
+}
+const TONE: Record<Tone, string> = { good: C.good, warn: C.warn, bad: C.bad, muted: C.dim }
+const DOT: Record<Tone, string> = { good: 'bg-[#7ee787]', warn: 'bg-[#f0b429]', bad: 'bg-[#ff6b6b]', muted: 'bg-[#6e6a86]' }
+
+const scenarioParam = new URLSearchParams(window.location.search).get('scenario') ?? undefined
 
 const pct = (v?: number | null) => (v === null || v === undefined ? '—' : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`)
-const when = (iso?: string | null) => (iso ? iso.slice(5, 16).replace('T', ' ') : '—')
+const clock = (iso?: string | null) => (iso ? iso.slice(5, 16).replace('T', ' ') : '—')
 
 function ago(iso?: string | null): string {
   if (!iso) return '—'
@@ -18,119 +34,466 @@ function ago(iso?: string | null): string {
   return s < 90 ? `${Math.round(s)}s` : s < 5400 ? `${Math.round(s / 60)}m` : s < 172800 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`
 }
 
-function Dot({ tone }: { tone: 'good' | 'warn' | 'bad' | 'muted' }) {
-  const color = { good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad', muted: 'bg-muted' }[tone]
-  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} />
+// a series as one line of block characters, squeezed to `width` columns by taking the worst of each group
+function spark(values: number[], width = 48): string {
+  const bars = '▁▂▃▄▅▆▇█'
+  const step = Math.max(1, Math.ceil(values.length / width))
+  const groups = Array.from({ length: Math.ceil(values.length / step) }, (_, i) => Math.max(...values.slice(i * step, (i + 1) * step)))
+  const top = Math.max(...groups, 0)
+  return groups.map((v) => (top > 0 ? bars[Math.min(7, Math.floor((v / top) * 7.99))] : bars[0])).join('')
 }
 
-function serviceTone(s: OpsService): 'good' | 'warn' | 'bad' | 'muted' {
-  if (s.dark) return 'muted'
-  if (s.accepted) return 'muted'
+function serviceTone(s: OpsService): Tone {
+  if (s.dark || s.accepted) return 'muted'
   if (!s.ready) return s.flapping ? 'warn' : 'bad'
   return s.incident ? 'warn' : 'good'
 }
 
-const th = 'px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-white/40'
-const td = 'px-2 py-1 align-top'
+function stateWord(s: OpsService): string {
+  if (s.dark) return 'silent'
+  if (s.accepted) return 'accepted'
+  if (!s.ready) return s.flapping ? 'flapping' : 'down'
+  return s.incident ? 'warning' : 'healthy'
+}
 
-function Services({ rows, onLogs }: { rows: OpsService[]; onLogs: (service: string) => void }) {
+// ----------------------------------------------------------------- building blocks ---
+
+function Dot({ tone }: { tone: Tone }) {
+  return <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${DOT[tone]}`} />
+}
+
+function Panel({ title, count, tag, hint, children, className = '' }: {
+  title: string
+  count?: number | string
+  tag?: string
+  hint?: ReactNode
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-border">
-          {['', 'host', 'service', 'tier', 'cpu', 'mem', 'io', 'mem/limit', 'oom', 'incident', 'flags'].map((h) => (
-            <th key={h} className={th}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((s) => (
-          <tr
-            key={`${s.host}:${s.service}`}
-            onClick={() => onLogs(`${s.host}:${s.service}`)}
-            className="cursor-pointer border-b border-border/50 hover:bg-white/5"
-            title="open its logs"
-          >
-            <td className={td}>
-              <Dot tone={serviceTone(s)} />
-            </td>
-            <td className={`${td} text-white/50`}>{s.host}</td>
-            <td className={`${td} text-white/90`}>{s.service}</td>
-            <td className={`${td} text-white/50`}>{s.tier ?? '—'}</td>
-            <td className={td}>{pct(s.cpuStallPct)}</td>
-            <td className={td}>{pct(s.memStallPct)}</td>
-            <td className={td}>{pct(s.ioStallPct)}</td>
-            <td className={td}>{pct(s.memOfLimitPct)}</td>
-            <td className={td}>{s.oomKills ? <span className="text-bad">{s.oomKills}</span> : '0'}</td>
-            <td className={`${td} max-w-md text-white/60`}>{s.dark ? 'silent' : s.incident ?? ''}</td>
-            <td className={`${td} whitespace-nowrap`}>
-              {s.flapping && <span className="mr-1 rounded bg-warn/15 px-1 text-warn">flapping</span>}
-              {s.accepted && <span className="rounded bg-white/10 px-1 text-white/60" title={s.accepted}>accepted</span>}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <section className={`flex min-h-0 flex-col rounded-sm border border-[#2a2840] bg-[#0e0d18] ${className}`}>
+      <header className="flex items-center justify-between gap-3 bg-[#1b1930] px-2.5 py-1">
+        <span className="truncate">
+          <span className="text-[#e6defc]">{title}</span>
+          {count !== undefined && <span className={C.dim}>({count})</span>}
+          {tag && <span className={`ml-1.5 ${C.cyan}`}>[{tag}]</span>}
+        </span>
+        {hint && <span className={`shrink-0 ${C.accent} opacity-75`}>{hint}</span>}
+      </header>
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">{children}</div>
+    </section>
   )
 }
 
-function AckForm({ service, onDone }: { service: string; onDone: () => void }) {
+function Bar({ value, tone }: { value?: number | null; tone: Tone }) {
+  const width = value === null || value === undefined ? 0 : Math.min(100, Math.max(2, value))
+  return (
+    <span className="inline-block h-1.5 w-20 rounded-sm bg-white/5 align-middle">
+      <span className={`block h-full rounded-sm ${DOT[tone]}`} style={{ width: `${width}%` }} />
+    </span>
+  )
+}
+
+const th = `px-2 py-1 text-left font-normal ${C.dim}`
+const td = 'px-2 py-[3px] align-top'
+
+// ----------------------------------------------------------------------- overview ---
+
+const LEVEL_TONE: Record<string, Tone> = { good: 'good', warn: 'warn', bad: 'bad', muted: 'muted' }
+
+function Overview({ data, view }: { data: OpsData; view: View | null }) {
+  const open = data.incidents.filter((i) => i.status === 'open')
+  const down = data.services.filter((s) => !s.ready && !s.accepted && !s.dark)
+  const day = view?.indicators.find((i) => i.id === 'day')
+  const series = day?.drill?.sparkline ?? []
+  return (
+    <div className="grid h-full min-h-0 grid-cols-1 gap-2 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
+      <Panel title="fleet" tag={view?.source.tenant ?? 'fleet'} hint={view ? `data ${view.source.age} old` : undefined}>
+        {view ? (
+          <div className="px-3 py-3">
+            <div className={`text-2xl font-bold tracking-wider ${TONE[LEVEL_TONE[view.decision.level]]}`}>{view.decision.word}</div>
+            <p className={`mt-1 ${C.text}`}>{view.decision.reason}</p>
+            {view.decision.alsoOpen.length > 0 && <p className={`mt-1 ${C.dim}`}>also open: {view.decision.alsoOpen.join(', ')}</p>}
+            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+              {[
+                ['services', data.services.length, 'muted'],
+                ['down', down.length, down.length ? 'bad' : 'good'],
+                ['open', open.length, open.length ? 'warn' : 'good'],
+                ['accepted', data.acks.length, 'muted'],
+              ].map(([label, n, tone]) => (
+                <div key={label as string} className="rounded-sm bg-white/[0.03] py-1.5">
+                  <div className={`text-lg ${TONE[tone as Tone]}`}>{n}</div>
+                  <div className={C.dim}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className={`px-3 py-3 ${C.dim}`}>loading the verdict…</p>
+        )}
+      </Panel>
+
+      <Panel title="vitals" count={4}>
+        <table className="w-full">
+          <tbody>
+            {view?.indicators.map((i) => (
+              <tr key={i.id} className="border-b border-[#2a2840]/50">
+                <td className={`${td} whitespace-nowrap ${C.dim}`}>{i.title.toLowerCase()}</td>
+                <td className={`${td} whitespace-nowrap ${TONE[LEVEL_TONE[i.level]]}`}>{i.label}</td>
+                <td className={`${td} ${C.text}`}>{i.caption}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {series.length > 0 && (
+          <div className="px-2 py-2">
+            <div className={C.dim}>errors, last 24 h</div>
+            <div className={`overflow-hidden whitespace-nowrap text-base leading-none ${C.warn}`}>{spark(series)}</div>
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="agents" count={data.agents.length} hint={`${data.agents.filter((a) => !a.connected).length} silent`}>
+        <table className="w-full">
+          <tbody>
+            {data.agents.map((a) => (
+              <tr key={a.host} className="border-b border-[#2a2840]/50">
+                <td className={td}>
+                  <Dot tone={a.connected ? 'good' : 'bad'} />
+                </td>
+                <td className={`${td} ${C.cyan}`}>{a.host}</td>
+                <td className={`${td} ${C.dim}`}>{a.cluster ?? '—'}</td>
+                <td className={`${td} text-right`}>{a.services}</td>
+                <td className={`${td} text-right ${C.dim}`}>{a.lastMessage ? `${ago(a.lastMessage)} ago` : a.error}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
+
+      <Panel title="needs a human" count={open.length} className="lg:col-span-2">
+        {open.length === 0 && <p className={`px-3 py-2 ${C.good}`}>✓ nothing open</p>}
+        {open.map((i) => (
+          <div key={i.id} className="flex gap-2 border-b border-[#2a2840]/50 px-2.5 py-1.5">
+            <span className={`w-14 shrink-0 ${i.severity === 'critical' ? C.bad : C.warn}`}>[{i.severity === 'critical' ? 'CRIT' : 'WARN'}]</span>
+            <span className="min-w-0 flex-1">
+              <span className={C.cyan}>{i.host}</span>
+              <span className={C.dim}>:</span>
+              <span className="text-white/90">{i.service}</span>
+              <span className={`block ${C.text} opacity-80`}>{i.title}</span>
+            </span>
+            <span className={`shrink-0 ${C.dim}`}>
+              open {ago(i.firstSeen)}
+              {i.reopens > 0 && ` · back ${i.reopens}×`}
+            </span>
+          </div>
+        ))}
+        {data.acks.length > 0 && (
+          <div className="px-2.5 py-2">
+            <div className={C.dim}>accepted, not deciding the verdict</div>
+            {data.acks.map((a) => (
+              <div key={a.service} className={C.text}>
+                <span className={C.dim}>{a.kind} until {a.until.slice(0, 10)} · </span>
+                {a.service} <span className={C.dim}>— {a.reason}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="journal" count={view?.journal.length}>
+        {view?.journal.slice(0, 30).map((e, n) => (
+          <div key={n} className="flex gap-2 border-b border-[#2a2840]/40 px-2.5 py-1">
+            <span className={`shrink-0 ${C.dim}`}>{clock(e.at)}</span>
+            <span className="min-w-0">
+              <span className={TONE[LEVEL_TONE[e.level]]}>{e.title}</span>
+              <span className={`block truncate ${C.dim}`}>{e.detail}</span>
+            </span>
+          </div>
+        ))}
+      </Panel>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------------- services ---
+
+const FILTERS = ['all', 'healthy', 'down', 'flapping', 'accepted', 'silent'] as const
+type Filter = (typeof FILTERS)[number]
+
+function matches(s: OpsService, f: Filter): boolean {
+  if (f === 'all') return true
+  if (f === 'healthy') return s.ready && !s.dark
+  if (f === 'down') return !s.ready && !s.dark && !s.accepted
+  if (f === 'flapping') return s.flapping
+  if (f === 'accepted') return !!s.accepted
+  return !!s.dark
+}
+
+function AckForm({ service, severity, onDone }: { service: string; severity?: string; onDone: () => void }) {
   const [kind, setKind] = useState<'expected' | 'noise'>('expected')
   const [days, setDays] = useState(7)
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const submit = () =>
-    addAck({ service, kind, days, reason })
+    addAck({ service, kind, days, reason, severity: severity as 'info' | 'warning' | 'critical' | undefined })
       .then(onDone)
       .catch((e: Error) => setError(e.message))
   return (
-    <div className="flex flex-wrap items-center gap-2 bg-white/5 px-2 py-2">
-      <select value={kind} onChange={(e) => setKind(e.target.value as 'expected' | 'noise')} className="bg-panel-2 px-1 py-0.5">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-sm border border-[#2a2840] bg-[#15132a] px-2 py-1.5">
+      <select value={kind} onChange={(e) => setKind(e.target.value as 'expected' | 'noise')} className="bg-[#0e0d18] px-1">
         <option value="expected">expected</option>
         <option value="noise">noise</option>
       </select>
-      <input
-        type="number"
-        min={1}
-        max={30}
-        value={days}
-        onChange={(e) => setDays(Number(e.target.value))}
-        className="w-14 bg-panel-2 px-1 py-0.5"
-      />
-      <span className="text-white/40">days</span>
+      <input type="number" min={1} max={30} value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-12 bg-[#0e0d18] px-1" />
+      <span className={C.dim}>days</span>
       <input
         autoFocus
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && reason.trim() && submit()}
-        placeholder="why: fixing it on Saturday"
-        className="min-w-64 flex-1 bg-panel-2 px-1 py-0.5"
+        placeholder="why"
+        className="min-w-40 flex-1 bg-[#0e0d18] px-1"
       />
-      <button type="button" disabled={!reason.trim()} onClick={submit} className="rounded bg-good/20 px-2 py-0.5 text-good disabled:opacity-40">
+      <button type="button" disabled={!reason.trim()} onClick={submit} className={`rounded-sm bg-[#7ee787]/15 px-2 ${C.good} disabled:opacity-40`}>
         accept
       </button>
-      {error && <span className="text-bad">{error}</span>}
+      {error && <span className={C.bad}>{error}</span>}
     </div>
   )
 }
 
+function LogLines({ service, lines = 40, tall = false }: { service: string; lines?: number; tall?: boolean }) {
+  const [answer, setAnswer] = useState<{ service: string; logs?: Logs; error?: string; at: number } | null>(null)
+  const [asked, setAsked] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    loadLogs(service)
+      .then((logs) => !cancelled && setAnswer({ service, logs, at: Date.now() }))
+      .catch((e: Error) => !cancelled && setAnswer({ service, error: e.message, at: Date.now() }))
+    return () => {
+      cancelled = true
+    }
+  }, [service, asked])
+  const mine = answer?.service === service ? answer : null
+  const busy = !mine || mine.at < asked
+  return (
+    <div>
+      <div className={`flex items-center gap-2 ${C.dim}`}>
+        <button type="button" onClick={() => setAsked(Date.now())} className="rounded-sm bg-white/5 px-1.5 hover:bg-white/10">
+          {busy ? 'loading…' : 'refresh'}
+        </button>
+        <span className="truncate">{mine?.logs ? `${mine.logs.selector} · last 6 h` : ''}</span>
+      </div>
+      {mine?.error && <p className={`${C.bad} mt-1`}>{mine.error}</p>}
+      {mine?.logs && mine.logs.lines.length === 0 && <p className={`${C.dim} mt-1`}>no lines in the last 6 hours</p>}
+      <pre className={`scrollbar-thin mt-1 overflow-auto whitespace-pre-wrap break-all leading-snug ${tall ? 'max-h-[calc(100vh-9rem)]' : 'max-h-80'}`}>
+        {mine?.logs?.lines.slice(0, lines).map((l, n) => (
+          <div key={n}>
+            <span className={C.dim}>{clock(l.at)} </span>
+            <span className={/error|fatal|fail|panic|exception|refused|denied/i.test(l.line) ? C.bad : C.text}>{l.line}</span>
+          </div>
+        ))}
+      </pre>
+    </div>
+  )
+}
+
+function Detail({ s, data, onChanged, onLogs }: { s: OpsService; data: OpsData; onChanged: () => void; onLogs: () => void }) {
+  const name = `${s.host}:${s.service}`
+  const history = data.incidents.filter((i) => i.host === s.host && i.service === s.service)
+  const open = history.find((i) => i.status === 'open')
+  const accepted = data.acks.find((a) => a.service === name)
+  const [acking, setAcking] = useState(false)
+  const tone = serviceTone(s)
+  const stall = (label: string, v?: number | null) => (
+    <div className="flex items-center gap-2">
+      <span className={`w-20 ${C.dim}`}>{label}</span>
+      <Bar value={v} tone={(v ?? 0) >= 10 ? 'bad' : (v ?? 0) >= 5 ? 'warn' : 'good'} />
+      <span>{pct(v)}</span>
+    </div>
+  )
+  return (
+    <div className="space-y-3 px-3 py-2.5">
+      <div>
+        <div className="flex items-center gap-2">
+          <Dot tone={tone} />
+          <span className="text-base text-white">{s.service}</span>
+          <span className={TONE[tone]}>{stateWord(s)}</span>
+        </div>
+        <div className={C.dim}>
+          <span className={C.cyan}>{s.host}</span> · {s.cluster ?? '—'} · tier {s.tier ?? '—'}
+          {s.tier === 1 && ' (user path)'}
+        </div>
+      </div>
+
+      <div className="space-y-0.5">
+        {stall('cpu stall', s.cpuStallPct)}
+        {stall('mem stall', s.memStallPct)}
+        {stall('io stall', s.ioStallPct)}
+        <div className="flex items-center gap-2">
+          <span className={`w-20 ${C.dim}`}>mem/limit</span>
+          <Bar value={s.memOfLimitPct} tone={(s.memOfLimitPct ?? 0) >= 90 ? 'bad' : 'good'} />
+          <span>{pct(s.memOfLimitPct)}</span>
+          <span className={`ml-3 ${C.dim}`}>oom</span>
+          <span className={s.oomKills ? C.bad : ''}>{s.oomKills ?? 0}</span>
+        </div>
+      </div>
+
+      {(s.incident || accepted) && (
+        <div className="rounded-sm border border-[#2a2840] px-2 py-1.5">
+          {s.incident && <p className={s.severity === 'critical' ? C.bad : C.warn}>{s.incident}</p>}
+          {open && (
+            <p className={C.dim}>
+              open {ago(open.firstSeen)} · since {clock(open.firstSeen)}
+              {open.reopens > 0 && ` · back ${open.reopens}× in 6 h`}
+            </p>
+          )}
+          {accepted && (
+            <p className={C.text}>
+              <span className={C.dim}>accepted as {accepted.kind} until {accepted.until.slice(0, 10)}: </span>
+              {accepted.reason}
+            </p>
+          )}
+          <div className="mt-1.5 flex gap-1.5">
+            {open && !acking && (
+              <button type="button" onClick={() => setAcking(true)} className="rounded-sm bg-white/10 px-2">
+                <span className={C.accent}>a</span> ack
+              </button>
+            )}
+            {accepted && (
+              <button type="button" onClick={() => liftAck(name).then(onChanged)} className={`rounded-sm bg-[#f0b429]/15 px-2 ${C.warn}`}>
+                lift
+              </button>
+            )}
+          </div>
+          {acking && (
+            <div className="mt-1.5">
+              <AckForm
+                service={name}
+                severity={open?.severity}
+                onDone={() => {
+                  setAcking(false)
+                  onChanged()
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div>
+          <div className={C.dim}>last day</div>
+          {history.map((i) => (
+            <div key={i.id} className={C.text}>
+              <span className={C.dim}>{clock(i.firstSeen)} </span>
+              {i.status}
+              {i.resolvedAt && <span className={C.dim}> → {clock(i.resolvedAt)} by {i.resolvedBy}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <div className={`mb-1 flex justify-between ${C.dim}`}>
+          <span>logs</span>
+          <button type="button" onClick={onLogs} className="hover:text-white">
+            <span className={C.accent}>l</span> full screen →
+          </button>
+        </div>
+        <LogLines service={name} lines={30} />
+      </div>
+    </div>
+  )
+}
+
+function Services({ data, rows, selected, onSelect, onChanged, onLogs }: {
+  data: OpsData
+  rows: OpsService[]
+  selected: OpsService | null
+  onSelect: (s: OpsService) => void
+  onChanged: () => void
+  onLogs: () => void
+}) {
+  const [filter, setFilter] = useState<Filter>('all')
+  const shown = rows.filter((s) => matches(s, filter))
+  return (
+    <div className="grid h-full min-h-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <Panel title="services" count={data.services.length} tag="fleet" hint="click a row · j/k move · l logs">
+        <div className="flex flex-wrap gap-3 border-b border-[#2a2840] px-2.5 py-1.5">
+          {FILTERS.map((f) => {
+            const n = data.services.filter((s) => matches(s, f)).length
+            const tone: Tone = f === 'healthy' ? 'good' : f === 'down' ? 'bad' : f === 'flapping' ? 'warn' : 'muted'
+            return (
+              <button key={f} type="button" onClick={() => setFilter(f)} className={`flex items-center gap-1 ${filter === f ? 'text-white underline underline-offset-4' : C.dim}`}>
+                {f !== 'all' && <Dot tone={tone} />}
+                {f} <span className={filter === f ? 'text-white' : ''}>{n}</span>
+              </button>
+            )
+          })}
+        </div>
+        <table className="w-full">
+          <thead className="sticky top-0 bg-[#0e0d18]">
+            <tr>
+              {['', 'service', 'host', 'tier', 'cpu', 'mem', 'io', 'mem/lim', 'state'].map((h) => (
+                <th key={h} className={th}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((s) => {
+              const key = `${s.host}:${s.service}`
+              const active = selected && `${selected.host}:${selected.service}` === key
+              const tone = serviceTone(s)
+              return (
+                <tr
+                  key={key}
+                  onClick={() => onSelect(s)}
+                  className={`cursor-pointer border-b border-[#2a2840]/40 ${active ? 'bg-[#c792ea]/15' : 'hover:bg-white/[0.04]'}`}
+                >
+                  <td className={td}>
+                    <Dot tone={tone} />
+                  </td>
+                  <td className={`${td} text-white/90`}>{s.service}</td>
+                  <td className={`${td} ${C.cyan}`}>{s.host}</td>
+                  <td className={`${td} ${C.dim}`}>{s.tier ?? '—'}</td>
+                  <td className={`${td} ${(s.cpuStallPct ?? 0) >= 5 ? C.warn : ''}`}>{pct(s.cpuStallPct)}</td>
+                  <td className={`${td} ${(s.memStallPct ?? 0) >= 5 ? C.warn : ''}`}>{pct(s.memStallPct)}</td>
+                  <td className={`${td} ${(s.ioStallPct ?? 0) >= 5 ? C.warn : ''}`}>{pct(s.ioStallPct)}</td>
+                  <td className={`${td} ${(s.memOfLimitPct ?? 0) >= 90 ? C.bad : ''}`}>{pct(s.memOfLimitPct)}</td>
+                  <td className={`${td} ${TONE[tone]}`}>{stateWord(s)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </Panel>
+      <Panel title="detail" tag={selected ? selected.host : undefined}>
+        {selected ? (
+          <Detail key={`${selected.host}:${selected.service}`} s={selected} data={data} onChanged={onChanged} onLogs={onLogs} />
+        ) : (
+          <p className={`px-3 py-2 ${C.dim}`}>pick a service on the left</p>
+        )}
+      </Panel>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------- incidents ---
+
 function Incidents({ rows, onChanged }: { rows: OpsIncident[]; onChanged: () => void }) {
   const [acking, setAcking] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const lift = (service: string) =>
-    liftAck(service)
-      .then(onChanged)
-      .catch((e: Error) => setError(e.message))
+  const open = rows.filter((i) => i.status === 'open').length
   return (
-    <>
-      {error && <p className="px-2 py-1 text-bad">{error}</p>}
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-border">
-            {['', 'status', 'sev', 'service', 'title', 'since', 'for', 'back', 'closed / accepted', ''].map((h, i) => (
-              <th key={i} className={th}>
+    <Panel title="incidents" count={rows.length} tag="last 24 h" hint={`${open} open · a ack · lift ends an ack`} className="h-full">
+      <table className="w-full">
+        <thead className="sticky top-0 bg-[#0e0d18]">
+          <tr>
+            {['sev', 'status', 'service', 'title', 'since', 'for', 'back', 'closed / accepted', ''].map((h, n) => (
+              <th key={n} className={th}>
                 {h}
               </th>
             ))}
@@ -139,30 +502,30 @@ function Incidents({ rows, onChanged }: { rows: OpsIncident[]; onChanged: () => 
         <tbody>
           {rows.map((i) => {
             const service = `${i.host}:${i.service}`
-            const tone = i.status === 'open' ? (i.severity === 'critical' ? 'bad' : 'warn') : 'muted'
+            const sev = i.severity === 'critical' ? C.bad : i.severity === 'warning' ? C.warn : C.cyan
+            const status = i.status === 'open' ? C.bad : i.status === 'accepted' ? C.dim : C.good
             return [
-              <tr key={i.id} className="border-b border-border/50">
-                <td className={td}>
-                  <Dot tone={tone} />
+              <tr key={i.id} className="border-b border-[#2a2840]/40">
+                <td className={`${td} ${i.status === 'open' ? sev : C.dim}`}>{i.severity === 'critical' ? 'CRIT' : i.severity === 'warning' ? 'WARN' : 'INFO'}</td>
+                <td className={`${td} ${status}`}>{i.status}</td>
+                <td className={`${td} whitespace-nowrap`}>
+                  <span className={C.cyan}>{i.host}</span>
+                  <span className={C.dim}>:</span>
+                  {i.service}
                 </td>
-                <td className={td}>{i.status}</td>
-                <td className={td}>{i.severity}</td>
-                <td className={`${td} whitespace-nowrap text-white/90`}>{service}</td>
-                <td className={`${td} max-w-md text-white/60`}>{i.title}</td>
-                <td className={`${td} whitespace-nowrap text-white/50`}>{when(i.firstSeen)}</td>
+                <td className={`${td} ${C.text}`}>{i.title}</td>
+                <td className={`${td} whitespace-nowrap ${C.dim}`}>{clock(i.firstSeen)}</td>
                 <td className={td}>{i.status === 'resolved' ? '—' : ago(i.firstSeen)}</td>
-                <td className={td}>{i.reopens || ''}</td>
-                <td className={`${td} text-white/50`}>
-                  {i.status === 'resolved' ? `${when(i.resolvedAt)} by ${i.resolvedBy ?? '—'}` : i.accepted ?? ''}
-                </td>
+                <td className={`${td} ${i.reopens >= 5 ? C.warn : ''}`}>{i.reopens || ''}</td>
+                <td className={`${td} ${C.dim}`}>{i.status === 'resolved' ? `${clock(i.resolvedAt)} by ${i.resolvedBy ?? '—'}` : i.accepted ?? ''}</td>
                 <td className={`${td} whitespace-nowrap`}>
                   {i.status === 'open' && (
-                    <button type="button" onClick={() => setAcking(acking === i.id ? null : i.id)} className="rounded bg-white/10 px-2 text-white/70">
+                    <button type="button" onClick={() => setAcking(acking === i.id ? null : i.id)} className="rounded-sm bg-white/10 px-2">
                       ack
                     </button>
                   )}
                   {i.status === 'accepted' && (
-                    <button type="button" onClick={() => lift(service)} className="rounded bg-warn/15 px-2 text-warn">
+                    <button type="button" onClick={() => liftAck(service).then(onChanged)} className={`rounded-sm bg-[#f0b429]/15 px-2 ${C.warn}`}>
                       lift
                     </button>
                   )}
@@ -170,9 +533,10 @@ function Incidents({ rows, onChanged }: { rows: OpsIncident[]; onChanged: () => 
               </tr>,
               acking === i.id && (
                 <tr key={`${i.id}-ack`}>
-                  <td colSpan={10}>
+                  <td colSpan={9} className="px-2 py-1">
                     <AckForm
                       service={service}
+                      severity={i.severity}
                       onDone={() => {
                         setAcking(null)
                         onChanged()
@@ -185,191 +549,216 @@ function Incidents({ rows, onChanged }: { rows: OpsIncident[]; onChanged: () => 
           })}
         </tbody>
       </table>
-    </>
+    </Panel>
   )
 }
+
+// ------------------------------------------------------------------------- agents ---
 
 function Agents({ data }: { data: OpsData }) {
   return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="border-b border-border">
-          {['', 'agent', 'kind', 'last cycle', 'services', 'silent', 'problem'].map((h) => (
-            <th key={h} className={th}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.agents.map((a) => (
-          <tr key={a.host} className="border-b border-border/50">
-            <td className={td}>
-              <Dot tone={a.connected ? 'good' : 'bad'} />
-            </td>
-            <td className={`${td} text-white/90`}>{a.host}</td>
-            <td className={`${td} text-white/50`}>{a.cluster ?? '—'}</td>
-            <td className={td}>{a.lastMessage ? `${ago(a.lastMessage)} ago` : '—'}</td>
-            <td className={td}>{a.services}</td>
-            <td className={td}>{a.dark || ''}</td>
-            <td className={`${td} text-bad`}>{a.error ?? ''}</td>
+    <Panel title="agents" count={data.agents.length} hint="one per host and per k3s cluster" className="h-full">
+      <table className="w-full">
+        <thead className="sticky top-0 bg-[#0e0d18]">
+          <tr>
+            {['', 'agent', 'kind', 'last cycle', 'services', 'silent', 'problem'].map((h) => (
+              <th key={h} className={th}>
+                {h}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.agents.map((a) => (
+            <tr key={a.host} className="border-b border-[#2a2840]/40">
+              <td className={td}>
+                <Dot tone={a.connected ? 'good' : 'bad'} />
+              </td>
+              <td className={`${td} ${C.cyan}`}>{a.host}</td>
+              <td className={`${td} ${C.dim}`}>{a.cluster ?? '—'}</td>
+              <td className={td}>{a.lastMessage ? `${ago(a.lastMessage)} ago` : '—'}</td>
+              <td className={td}>{a.services}</td>
+              <td className={`${td} ${a.dark ? C.warn : ''}`}>{a.dark || ''}</td>
+              <td className={`${td} ${C.bad}`}>{a.error ?? ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
   )
 }
 
-function LogView({ services, service, onPick }: { services: string[]; service: string | null; onPick: (s: string) => void }) {
-  // the answer remembers which service it is for: while it is for another one, a request is on its way
-  const [answer, setAnswer] = useState<{ service: string; logs?: Logs; error?: string; at: number } | null>(null)
-  const [asked, setAsked] = useState(0)
-  useEffect(() => {
-    if (!service) return
-    let cancelled = false
-    loadLogs(service)
-      .then((logs) => !cancelled && setAnswer({ service, logs, at: Date.now() }))
-      .catch((e: Error) => !cancelled && setAnswer({ service, error: e.message, at: Date.now() }))
-    return () => {
-      cancelled = true
-    }
-  }, [service, asked])
-  const busy = !!service && (answer?.service !== service || answer.at < asked)
-  const load = () => setAsked(Date.now())
-  const logs = answer?.service === service ? answer.logs : null
-  const error = answer?.service === service ? answer.error : null
-  return (
-    <div className="text-xs">
-      <div className="flex flex-wrap items-center gap-2 px-2 py-2">
-        <select value={service ?? ''} onChange={(e) => onPick(e.target.value)} className="min-w-72 bg-panel-2 px-1 py-0.5">
-          <option value="" disabled>
-            pick a service
-          </option>
-          {services.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-        <button type="button" onClick={load} disabled={!service || busy} className="rounded bg-white/10 px-2 py-0.5 disabled:opacity-40">
-          {busy ? 'loading…' : 'refresh'}
-        </button>
-        {logs && <span className="text-white/35">{logs.selector} · last 6 h · newest first</span>}
-      </div>
-      {error && <p className="px-2 text-bad">{error}</p>}
-      {logs && logs.lines.length === 0 && <p className="px-2 text-white/40">No lines in the last 6 hours.</p>}
-      <pre className="scrollbar-thin max-h-[70vh] overflow-auto whitespace-pre-wrap break-all px-2 leading-relaxed">
-        {logs?.lines.map((l, n) => (
-          <div key={n}>
-            <span className="text-white/30">{when(l.at)} </span>
-            <span className={/error|fatal|fail|panic|exception/i.test(l.line) ? 'text-bad' : 'text-white/75'}>{l.line}</span>
-          </div>
-        ))}
-      </pre>
-    </div>
-  )
-}
+// --------------------------------------------------------------------------- page ---
 
 export default function Ops() {
   const [data, setData] = useState<OpsData | null>(null)
+  const [view, setView] = useState<View | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('services')
-  const [filter, setFilter] = useState('')
+  const [tab, setTab] = useState<Tab>('overview')
+  const [search, setSearch] = useState('')
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [logService, setLogService] = useState<string | null>(null)
   const [loadedAt, setLoadedAt] = useState<number | null>(null)
-  const filterRef = useRef<HTMLInputElement>(null)
+  const [, setTick] = useState(0)
+  const searchRef = useRef<HTMLInputElement>(null)
 
-  const refresh = useCallback(
-    () =>
-      loadOps()
-        .then((d) => {
-          setData(d)
-          setError(null)
-          setLoadedAt(Date.now())
-        })
-        .catch((e: Error) => setError(e.message)),
-    [],
-  )
+  const refresh = useCallback(() => {
+    loadOps(scenarioParam)
+      .then((d) => {
+        setData(d)
+        setError(null)
+        setLoadedAt(Date.now())
+      })
+      .catch((e: Error) => setError(e.message))
+    ;(scenarioParam ? loadScenario(scenarioParam) : loadLive()).then(setView).catch(() => setView(null))
+  }, [])
 
   useEffect(() => {
     document.title = 'Daedalus ops'
     refresh()
     const timer = window.setInterval(refresh, REFRESH_MS)
-    return () => window.clearInterval(timer)
+    const ticker = window.setInterval(() => setTick((t) => t + 1), 5000)
+    return () => {
+      window.clearInterval(timer)
+      window.clearInterval(ticker)
+    }
   }, [refresh])
+
+  const services = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    return (data?.services ?? []).filter((s) => !needle || [s.host, s.service, s.incident].some((f) => f?.toLowerCase().includes(needle)))
+  }, [data, search])
+  const incidents = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    return (data?.incidents ?? []).filter((i) => !needle || [i.host, i.service, i.title].some((f) => f.toLowerCase().includes(needle)))
+  }, [data, search])
+  const selected = services.find((s) => `${s.host}:${s.service}` === selectedKey) ?? services[0] ?? null
+  const serviceNames = useMemo(() => (data?.services ?? []).map((s) => `${s.host}:${s.service}`).sort(), [data])
+
+  const openLogs = useCallback((service: string | null) => {
+    if (service) setLogService(service)
+    setTab('logs')
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement
       if (e.key === 'Escape') {
-        setFilter('')
-        filterRef.current?.blur()
-      } else if (!typing && e.key === '/') {
+        setSearch('')
+        searchRef.current?.blur()
+        return
+      }
+      if (typing) return
+      if (e.key === '/') {
         e.preventDefault()
-        filterRef.current?.focus()
-      } else if (!typing && ['1', '2', '3', '4'].includes(e.key)) {
+        searchRef.current?.focus()
+      } else if (/^[1-5]$/.test(e.key)) {
         setTab(TABS[Number(e.key) - 1])
+      } else if (tab === 'services' && (e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault()
+        const index = services.findIndex((s) => s === selected)
+        const next = services[Math.max(0, Math.min(services.length - 1, index + (e.key === 'j' || e.key === 'ArrowDown' ? 1 : -1)))]
+        if (next) setSelectedKey(`${next.host}:${next.service}`)
+      } else if (tab === 'services' && e.key === 'l' && selected) {
+        openLogs(`${selected.host}:${selected.service}`)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [tab, services, selected, openLogs])
 
-  const match = useCallback((...fields: (string | null | undefined)[]) => {
-    const needle = filter.trim().toLowerCase()
-    return !needle || fields.some((f) => f?.toLowerCase().includes(needle))
-  }, [filter])
-
-  const services = useMemo(() => (data?.services ?? []).filter((s) => match(s.host, s.service, s.incident)), [data, match])
-  const incidents = useMemo(() => (data?.incidents ?? []).filter((i) => match(i.host, i.service, i.title)), [data, match])
-  const serviceNames = useMemo(() => (data?.services ?? []).map((s) => `${s.host}:${s.service}`).sort(), [data])
-
-  const openLogs = (service: string) => {
-    setLogService(service)
-    setTab('logs')
-  }
-
-  const counts: Record<Tab, string> = {
-    services: data ? `${data.services.filter((s) => !s.ready && !s.accepted).length} down / ${data.services.length}` : '',
-    incidents: data ? `${data.incidents.filter((i) => i.status === 'open').length} open` : '',
-    agents: data ? `${data.agents.filter((a) => !a.connected).length} silent / ${data.agents.length}` : '',
-    logs: '',
-  }
+  const keys: [string, string][] = [
+    ['1', 'overview'],
+    ['2', 'services'],
+    ['3', 'incidents'],
+    ['4', 'agents'],
+    ['5', 'logs'],
+    ['/', 'filter'],
+    ['esc', 'clear'],
+  ]
+  const open = data?.incidents.filter((i) => i.status === 'open').length ?? 0
 
   return (
-    <div className="min-h-screen bg-bg font-mono text-white/80">
-      <header className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2 text-xs">
-        <span className="font-semibold text-white">daedalus ops</span>
-        <nav className="flex gap-1">
-          {TABS.map((t, n) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`rounded px-2 py-0.5 ${tab === t ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/80'}`}
-            >
-              <span className="text-white/30">{n + 1}</span> {t}
-              {counts[t] && <span className="ml-1 text-white/35">{counts[t]}</span>}
-            </button>
-          ))}
-        </nav>
+    <div className={`flex h-screen flex-col bg-[#09080f] font-mono text-[12px] ${C.text}`}>
+      <header className="flex items-center gap-3 border-b border-[#2a2840] px-3 py-1.5">
+        <span className={`font-semibold ${C.accent}`}>◉ daedalus</span>
+        <span className={C.dim}>ops</span>
+        {scenarioParam ? (
+          <span className={`rounded-sm bg-[#f0b429]/15 px-1.5 ${C.warn}`}>demo · {scenarioParam}</span>
+        ) : (
+          <span className={`flex items-center gap-1 ${C.good}`}>
+            <Dot tone={error ? 'bad' : 'good'} /> live
+          </span>
+        )}
+        <span className={C.dim}>
+          {data ? `${data.agents.length} agents · ${data.services.length} services · ${open} open` : ''}
+        </span>
         <input
-          ref={filterRef}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          ref={searchRef}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="/ filter"
-          className="w-48 bg-panel-2 px-2 py-0.5"
+          className="ml-2 w-56 rounded-sm border border-[#2a2840] bg-[#0e0d18] px-2"
         />
-        <span className="ml-auto text-white/35">{loadedAt ? `updated ${ago(new Date(loadedAt).toISOString())} ago` : 'loading…'}</span>
-        <a href="./" className="text-white/50 hover:text-white">
-          overview →
+        <span className={`ml-auto ${C.dim}`}>{loadedAt ? `updated ${ago(new Date(loadedAt).toISOString())} ago` : 'loading…'}</span>
+        <a href="./" className={`${C.dim} hover:text-white`}>
+          overview screen →
         </a>
       </header>
-      {error && <p className="px-3 py-2 text-xs text-bad">Could not load: {error}</p>}
-      <main className="overflow-x-auto px-1 py-1">
-        {data && tab === 'services' && <Services rows={services} onLogs={openLogs} />}
+
+      {error && <p className={`px-3 py-1 ${C.bad}`}>could not load: {error}</p>}
+
+      <main className="min-h-0 flex-1 p-2">
+        {data && tab === 'overview' && <Overview data={data} view={view} />}
+        {data && tab === 'services' && (
+          <Services
+            data={data}
+            rows={services}
+            selected={selected}
+            onSelect={(s) => setSelectedKey(`${s.host}:${s.service}`)}
+            onChanged={refresh}
+            onLogs={() => openLogs(selected ? `${selected.host}:${selected.service}` : null)}
+          />
+        )}
         {data && tab === 'incidents' && <Incidents rows={incidents} onChanged={refresh} />}
         {data && tab === 'agents' && <Agents data={data} />}
-        {tab === 'logs' && <LogView services={serviceNames} service={logService} onPick={setLogService} />}
+        {tab === 'logs' && (
+          <Panel title="logs" tag={logService ?? undefined} hint="newest first · last 6 h" className="h-full">
+            <div className="px-2.5 py-2">
+              <select
+                value={logService ?? ''}
+                onChange={(e) => setLogService(e.target.value)}
+                className="mb-2 min-w-80 rounded-sm border border-[#2a2840] bg-[#0e0d18] px-1"
+              >
+                <option value="" disabled>
+                  pick a service
+                </option>
+                {serviceNames.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+              {logService && <LogLines service={logService} lines={500} tall />}
+            </div>
+          </Panel>
+        )}
       </main>
+
+      <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#2a2840] px-3 py-1">
+        {keys.map(([key, label]) => {
+          const active = TABS[Number(key) - 1] === tab
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => /^[1-5]$/.test(key) && setTab(TABS[Number(key) - 1])}
+              className="flex items-center gap-1"
+            >
+              <span className={`rounded-sm px-1 ${active ? 'bg-[#c792ea] text-[#09080f]' : `bg-[#c792ea]/20 ${C.accent}`}`}>&lt;{key}&gt;</span>
+              <span className={active ? 'text-white' : C.dim}>{label}</span>
+            </button>
+          )
+        })}
+      </footer>
     </div>
   )
 }

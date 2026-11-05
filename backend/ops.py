@@ -26,13 +26,19 @@ def _agent_row(host: str, raw: dict | None, error: str | None) -> dict:
             "dark": int(block.get("servicesDark") or 0), "error": None if stats.get("connected") else "its source does not answer"}
 
 
-def snapshot() -> dict:
-    hosts, agents, services, incidents = live.agents() or {None: ""}, [], [], []
-    for host in hosts:
+def _live_hosts():
+    for host in live.agents() or {None: ""}:
         try:
-            raw, error = live.load_live(host), None
+            yield host, live.load_live(host), None
         except live.LiveUnavailable as failure:
-            raw, error = None, str(failure)
+            yield host, None, str(failure)
+
+
+def snapshot(scenario: dict | None = None) -> dict:
+    """The live fleet, or one demo scenario as a fleet of one host (to look at the screen without agents)."""
+    agents, services, incidents = [], [], []
+    hosts = [(scenario["tenant"], scenario, None)] if scenario else _live_hosts()
+    for host, raw, error in hosts:
         name = host or (raw or {}).get("tenant") or "live"
         agents.append(_agent_row(name, raw, error))
         if raw is None:

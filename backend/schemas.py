@@ -124,6 +124,8 @@ class AckIn(BaseModel):
     kind: Literal["expected", "noise"] = "expected"
     days: int = Field(default=7, ge=1, le=30)
     reason: str = Field(min_length=1, max_length=200)
+    # what is being accepted; worse than this ends the ack. Omitted: read from the fleet's open incident
+    severity: Literal["info", "warning", "critical"] | None = None
 
 
 class Ack(BaseModel):

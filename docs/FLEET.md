@@ -222,3 +222,6 @@ docker compose logs --tail 50 agent docker-proxy
   - Backend: `GET /api/ops` (`backend/ops.py`, те же данные агентов через тот же кэш), `GET /api/logs?service=<host>:<service>` (`backend/logs.py`, читает Loki по `LOKI_URL`).
   - Имена хостов в трекере (агенты) и в Loki (инвентарь) сводит `LOG_HOSTS` в `.env` хаба. Селекторы пробуются по очереди: сам сервис; для `job/<unit>` — юнит systemd; для k3s — весь namespace (Loki знает контейнеры, а не Deployment). Сработавший селектор показан над строками.
   - Без авторизации, как и весь трекер: только через SSH-туннель. 3 теста.
+- **2026-11-05**: `/ops` перерисован в стиле TUI Triage: панели с заголовками-счётчиками, полоса клавиш внизу, вкладка overview (вердикт, vitals, агенты, «needs a human», журнал), в services — фильтр-сводка и панель деталей справа (цифры, инцидент, ack/lift, логи), `j`/`k` и `l`.
+  - Демо-режим для проверки без агентов: `/ops?scenario=s07_outage` (`/api/ops?scenario=`). На dev: `docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d --build`, `TRACKER_PORT=8088` в `.env` (8080 занят).
+  - Найдено в процессе: ack без серьёзности записывался как warning и тут же снимался на critical-инциденте. Теперь экран передаёт `severity` инцидента в `POST /api/acks`. Ошибки API показываются словами backend, а не кодом статуса.
