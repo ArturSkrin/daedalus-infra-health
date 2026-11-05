@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 Level = Literal["good", "warn", "bad", "muted"]
 Verdict = Literal["all_clear", "schedule", "act_now", "blind"]
@@ -111,6 +111,30 @@ class QueueItem(BaseModel):
     related: list[str]
 
 
+class AcceptedItem(BaseModel):
+    service: str
+    kind: Literal["expected", "noise"]
+    reason: str
+    title: str | None = None        # the incident it covers, when one is open
+    until: str | None = None
+
+
+class AckIn(BaseModel):
+    service: str = Field(min_length=1, max_length=200)      # fleet name, <host>:<service>
+    kind: Literal["expected", "noise"] = "expected"
+    days: int = Field(default=7, ge=1, le=30)
+    reason: str = Field(min_length=1, max_length=200)
+
+
+class Ack(BaseModel):
+    service: str
+    kind: Literal["expected", "noise"]
+    reason: str
+    severity: str
+    since: str
+    until: str
+
+
 class Rule(BaseModel):
     id: str
     text: str
@@ -143,7 +167,7 @@ class Decision(BaseModel):
 
 class Event(BaseModel):
     at: str
-    kind: Literal["started", "verdict", "indicator", "incident", "timeline"]
+    kind: Literal["started", "verdict", "indicator", "incident", "ack", "timeline"]
     indicator: str | None = None
     level: Level
     title: str
@@ -174,6 +198,7 @@ class View(BaseModel):
     decision: Decision
     indicators: list[Indicator]
     queue: list[QueueItem]
+    accepted: list[AcceptedItem]
     journal: list[Event]
     journalSource: Literal["live", "scenario"]
     scenario: Scenario | None = None

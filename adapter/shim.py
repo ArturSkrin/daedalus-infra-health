@@ -73,7 +73,7 @@ def applications(collector: Collector) -> list[dict]:
                     # with no memory limit on the container there is no "request" to be close to, and we say nothing
                     golden["memReqPct"] = round(100 * current / limit, 1)
             apps.append({"name": target.name, "tenant": collector.settings.tenant, "ready": state.ready is not False,
-                         "observedAt": _iso(state.last_seen), "golden": golden})
+                         "observedAt": _iso(state.last_seen), "golden": golden, **({"flapping": True} if state.flapping else {})})
     return apps
 
 
@@ -87,7 +87,9 @@ def incidents(collector: Collector) -> dict:
     blast = _blast_radius(collector)
     with collector.lock:
         items = [{
-            "id": i["id"], "service": i["service"], "severity": i["severity"], "status": i["status"], "title": i["title"],
+            "id": i["id"], "service": i["service"], "severity": i["severity"], "status": i["status"],
+            "title": i["title"] + (f" (flapping: back {len(i['reopenedUnix'])} times in 6 h)" if i.get("flapping") else ""),
+            "reopens": len(i.get("reopenedUnix", [])),
             "firstSeen": _iso(i["firstSeenUnix"]), "resolvedAt": _iso(i["resolvedUnix"]) if i["resolvedUnix"] else None,
             "resolvedBy": i["resolvedBy"], "blastRadius": blast.get(i["service"], 0),
             "rca": "Reported by the compose shim: the service stopped answering its probe. No agent analysed this.",

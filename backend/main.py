@@ -4,16 +4,17 @@ import logging
 import os
 import threading
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import journal, live
+from backend import acks, journal, live
 from backend.engine import verdict
 from backend.fleet import FLEET
 from backend.presentation import build_view
 from backend.repository import ScenarioNotFound, list_scenarios, load_scenario
-from backend.schemas import Event, FleetItem, Health, ScenarioListItem, View
+from backend.schemas import Ack, AckIn, Event, FleetItem, Health, ScenarioListItem, View
 
 log = logging.getLogger("daedalus")
 JOURNAL_POLL_S = int(os.environ.get("JOURNAL_POLL_S", "20"))
@@ -22,6 +23,7 @@ JOURNAL_POLL_S = int(os.environ.get("JOURNAL_POLL_S", "20"))
 def observe_live(tenant: str | None = None) -> dict:
     """Fetch, decide, word, and write to the journal whatever changed. One path for the endpoint and the watcher."""
     data = live.load_live(tenant)
+    data = acks.apply(data, prefix="" if data["tenant"] == FLEET else f"{data['tenant']}:")
     result = verdict(data)
     view = build_view(data, result, mode="live", journal=[])
     journal.observe(data["tenant"], view, at=data["now"])
@@ -124,6 +126,39 @@ def fleet() -> list[dict]:
         items.append({"tenant": view["source"]["tenant"], "verdict": decision["verdict"], "word": decision["word"],
                       "level": decision["level"], "reason": decision["reason"]})
     return items
+
+
+def _ack_out(ack: dict) -> dict:
+    def iso(unix: float) -> str:
+        return datetime.fromtimestamp(unix, UTC).astimezone().isoformat(timespec="seconds")
+    return {**ack, "since": iso(ack["since"]), "until": iso(ack["until"])}
+
+
+@app.get("/api/acks", response_model=list[Ack])
+def list_acks() -> list[dict]:
+    return [_ack_out(a) for a in acks.listing()]
+
+
+@app.post("/api/acks", response_model=Ack)
+def add_ack(body: AckIn) -> dict:
+    """Accept one service for a while. Its severity now is the line: getting worse than that ends the ack."""
+    severity = "warning"
+    try:
+        opened = [i for i in (live.load_live(FLEET).get("incidents") or {}).get("incidents") or []
+                  if i.get("service") == body.service and i.get("status") == "open"]
+        severity = "critical" if any(i.get("severity") == "critical" for i in opened) else severity
+    except live.LiveUnavailable:
+        pass
+    try:
+        return _ack_out(acks.add(body.service, body.kind, body.days, body.reason, severity))
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+
+
+@app.delete("/api/acks/{service:path}", status_code=204)
+def remove_ack(service: str) -> None:
+    if not acks.remove(service):
+        raise HTTPException(status_code=404, detail="No ack for this service")
 
 
 @app.get("/api/live/journal", response_model=list[Event], response_model_exclude_none=True)

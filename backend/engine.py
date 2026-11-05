@@ -97,10 +97,13 @@ def users(b: Bundle) -> tuple[str, dict]:
     tier1_hurt: list[str] = []
 
     for s in b.services.values():
+        if s.accepted:
+            continue            # a human accepted it: shown, but it no longer decides what users feel
         on_user_path = s.tier == T.USER_PATH_TIER
-        # readiness does not depend on traffic data: a user-path service that is not ready is broken
+        # readiness does not depend on traffic data: a user-path service that is not ready is broken,
+        # unless it keeps coming back: a flapping one is hurt, worth a ticket, not a person right now
         if on_user_path and s.ready is False:
-            tier1_broken.append(s.name)
+            (tier1_hurt if s.flapping else tier1_broken).append(s.name)
         if not s.rate or not _fresh(s.rate.age_s):
             continue
         failing += s.rate.rps * s.rate.err_pct / 100
@@ -109,7 +112,7 @@ def users(b: Bundle) -> tuple[str, dict]:
             affected.append(s.name)
         if on_user_path and s.rate.err_pct >= T.SERVICE_BROKEN_ERR_PCT and s.name not in tier1_broken:
             tier1_broken.append(s.name)
-        elif on_user_path and s.rate.err_pct >= T.SERVICE_AFFECTED_ERR_PCT and s.name not in tier1_broken:
+        elif on_user_path and s.rate.err_pct >= T.SERVICE_AFFECTED_ERR_PCT and s.name not in tier1_broken + tier1_hurt:
             tier1_hurt.append(s.name)
 
     if traffic == 0 and not tier1_broken:

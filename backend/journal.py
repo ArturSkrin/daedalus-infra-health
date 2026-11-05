@@ -80,6 +80,7 @@ def snapshot_of(view: dict) -> dict:
         "indicators": {i["id"]: {"state": i["state"], "label": i["label"], "level": i["level"], "caption": i["caption"]}
                        for i in view["indicators"]},
         "queue": {q["id"]: {"service": q["service"], "severity": q["severity"], "title": q["title"]} for q in view["queue"]},
+        "accepted": {a["service"]: {"kind": a["kind"], "reason": a["reason"], "until": a["until"]} for a in view.get("accepted", [])},
     }
 
 
@@ -105,10 +106,19 @@ def diff(previous: dict | None, current: dict, at: str) -> list[dict]:
         if incident_id not in previous["queue"]:
             events.append(_event(at, "incident", "users", SEVERITY_LEVEL.get(item["severity"], "warn"),
                                  f"Incident opened: {item['service']}", item["title"], incident=incident_id))
+    accepted_before = previous.get("accepted", {})      # snapshots older than acks have none
     for incident_id, item in previous["queue"].items():
-        if incident_id not in current["queue"]:
+        if incident_id not in current["queue"] and item["service"] not in current["accepted"]:
             title = f"Incident closed: {item['service']}"
             events.append(_event(at, "incident", "users", "good", title, item["title"], incident=incident_id))
+    for service, ack in current["accepted"].items():
+        if service not in accepted_before:
+            until = f" until {ack['until'][:10]}" if ack["until"] else ""
+            events.append(_event(at, "ack", None, "muted", f"Accepted as {ack['kind']}: {service}", f"{ack['reason']}{until}"))
+    for service in accepted_before:
+        if service not in current["accepted"]:
+            events.append(_event(at, "ack", None, "warn", f"No longer accepted: {service}",
+                                 "the window ended, it got worse, it was fine for a day, or a person lifted it"))
     return events
 
 

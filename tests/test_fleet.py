@@ -10,7 +10,7 @@ from adapter import docker_source, shim
 from adapter.collector import Collector
 from adapter.config import Settings
 from adapter.docker_source import Container
-from backend import journal, live
+from backend import acks, journal, live
 from backend.main import app
 
 SHIM = {"/v2/agent/status": shim.status, "/v2/agent/incidents": shim.incidents, "/v2/agent/applications": shim.applications,
@@ -44,6 +44,7 @@ def fleet(monkeypatch, tmp_path):
     monkeypatch.setattr(live, "_get", get)
     live._cache.clear()
     journal.reset()
+    acks.reset()
     return TestClient(app)
 
 
@@ -148,6 +149,67 @@ def test_each_tenant_keeps_its_own_journal(fleet):
     fleet.get("/api/fleet")
     assert fleet.get("/api/live/journal", params={"tenant": "vps-b"}).json()[0]["title"].startswith("Journal started: ACT")
     assert fleet.get("/api/live/journal", params={"tenant": "vps-a"}).json()[0]["kind"] == "started"
+
+
+# --- acks: a human says "known, leave it" -----------------------------------------
+
+def test_an_accepted_service_leaves_the_verdict_but_not_the_screen(fleet):
+    assert fleet.get("/api/live").json()["decision"]["verdict"] == "act_now"
+    ack = fleet.post("/api/acks", json={"service": "vps-b:blog/web", "days": 7, "reason": "fixing it on Saturday"}).json()
+    assert (ack["kind"], ack["severity"]) == ("expected", "critical")
+    view = fleet.get("/api/live").json()
+    assert view["decision"]["verdict"] != "act_now"
+    assert "vps-b:blog/web" not in {q["service"] for q in view["queue"]}
+    assert [(a["service"], a["reason"]) for a in view["accepted"]] == [("vps-b:blog/web", "fixing it on Saturday")]
+    assert view["journal"][0]["title"] == "Accepted as expected: vps-b:blog/web"
+    # the host's own view names the service without the host, and the same ack holds there
+    assert fleet.get("/api/live", params={"tenant": "vps-b"}).json()["accepted"][0]["service"] == "blog/web"
+
+    assert fleet.delete("/api/acks/vps-b:blog/web").status_code == 204
+    view = fleet.get("/api/live").json()
+    assert view["decision"]["verdict"] == "act_now" and view["accepted"] == []
+    assert any(e["title"] == "No longer accepted: vps-b:blog/web" for e in view["journal"])
+
+
+def test_an_ack_needs_a_reason_and_a_window_of_at_most_30_days(fleet):
+    assert fleet.post("/api/acks", json={"service": "vps-b:blog/web", "reason": ""}).status_code == 422
+    assert fleet.post("/api/acks", json={"service": "vps-b:blog/web", "days": 31, "reason": "later"}).status_code == 422
+    assert fleet.delete("/api/acks/vps-b:nothing").status_code == 404
+
+
+def _raw(severity="warning", ready=False, status="open") -> dict:
+    return {"tenant": "fleet", "incidents": {"incidents": [{"id": "b:1", "service": "b:web", "severity": severity, "status": status}],
+                                             "incidentMetrics": {"criticalOpen": int(severity == "critical"),
+                                                                 "warningOpen": int(severity == "warning")}},
+            "applications": [{"name": "b:web", "ready": ready}]}
+
+
+def test_an_ack_ends_with_its_window_when_it_gets_worse_and_after_a_day_of_health(monkeypatch, tmp_path):
+    monkeypatch.setenv("TRACKER_DATA_DIR", str(tmp_path))
+    acks.reset()
+    acks.add("b:web", "expected", 1, "known", "warning", now=0)
+    marked = acks.apply(_raw(), now=60)
+    assert marked["incidents"]["incidents"][0]["status"] == "accepted"
+    assert marked["incidents"]["incidentMetrics"]["warningOpen"] == 0
+    assert acks.apply(_raw(), now=86_400)["incidents"]["incidents"][0]["status"] == "open"     # the window ran out
+
+    acks.add("b:web", "expected", 7, "known", "warning", now=0)
+    assert acks.apply(_raw("critical"), now=60)["incidents"]["incidents"][0]["status"] == "open"  # worse than accepted
+    assert acks.listing() == []
+
+    acks.add("b:web", "noise", 7, "flaky probe", "warning", now=0)
+    acks.apply(_raw(ready=True, status="resolved"), now=3600)
+    assert len(acks.listing()) == 1                         # fine for an hour proves nothing yet
+    acks.apply(_raw(ready=True, status="resolved"), now=25 * 3600)
+    assert acks.listing() == []                             # fine for a day: the problem is gone
+
+
+def test_acks_survive_a_restart_of_the_backend(monkeypatch, tmp_path):
+    monkeypatch.setenv("TRACKER_DATA_DIR", str(tmp_path))
+    acks.reset()
+    acks.add("b:web", "expected", 7, "known", "warning")
+    acks.reset()
+    assert [a["service"] for a in acks.listing()] == ["b:web"]
 
 
 def test_without_live_sources_the_fleet_is_empty(monkeypatch):

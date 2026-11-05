@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Indicator, QueueItem } from '../types'
+import type { AcceptedItem, Indicator, QueueItem } from '../types'
 
 const SEVERITY_COLOR: Record<string, string> = {
   critical: '#ef4444',
@@ -49,7 +49,17 @@ function QueueRow({ item }: { item: QueueItem }) {
 
 // The queue holds only what needs a human. When it is empty the panel says
 // what the agent handled instead, so a quiet day still tells a story.
-export function QueuePanel({ queue, day, blind }: { queue: QueueItem[]; day?: Indicator; blind: boolean }) {
+export function QueuePanel({
+  queue,
+  accepted,
+  day,
+  blind,
+}: {
+  queue: QueueItem[]
+  accepted: AcceptedItem[]
+  day?: Indicator
+  blind: boolean
+}) {
   const handled = day?.drill?.handled ?? []
   return (
     <section className="glass rounded-3xl p-5">
@@ -68,6 +78,24 @@ export function QueuePanel({ queue, day, blind }: { queue: QueueItem[]; day?: In
         <p className="text-sm text-white/45">
           {blind ? 'Unknown. An empty queue means nothing while the fleet is not visible.' : 'Nothing is waiting for you.'}
         </p>
+      )}
+
+      {accepted.length > 0 && (
+        <div className="mt-4 border-t border-white/5 pt-3">
+          <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/35">Accepted, not deciding the verdict</h3>
+          <ul className="flex flex-col gap-1">
+            {accepted.map((a) => (
+              <li key={a.service} className="text-xs text-white/50">
+                <span className="text-white/70">{a.service}</span> · {a.kind}
+                {a.until && <span className="text-white/30"> until {a.until.slice(0, 10)}</span>}
+                <span className="block text-[11px] text-white/35">
+                  {a.reason}
+                  {a.title && ` · ${a.title}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {handled.length > 0 && (

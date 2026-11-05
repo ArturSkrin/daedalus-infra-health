@@ -9,7 +9,7 @@ from dataclasses import replace
 import pytest
 
 from adapter import docker_source, shim
-from adapter.collector import CYCLES_TO_OPEN, FORGET_AFTER_S, Collector
+from adapter.collector import CYCLES_TO_CLOSE, CYCLES_TO_OPEN, FLAP_BYPASS_S, FLAP_REOPENS, FORGET_AFTER_S, REOPEN_WINDOW_S, Collector
 from adapter.config import Settings
 from adapter.docker_source import Container
 from backend.engine import verdict
@@ -174,6 +174,54 @@ def test_memory_pressure_in_a_container_cgroup_is_brewing(host):
                            up("shop/db")]
     run(2)
     assert decide()["states"]["forecast"] == "brewing"
+
+
+def _blink(world, run, times: int) -> None:
+    """shop/web goes down long enough to open an incident, then back up long enough to close it, `times` times."""
+    for _ in range(times):
+        world["containers"] = [Container("shop/web", 1, False, "restarting", None), up("shop/api"), up("shop/db")]
+        run(CYCLES_TO_OPEN)
+        world["containers"] = [up("shop/web", tier=1), up("shop/api"), up("shop/db")]
+        run(CYCLES_TO_CLOSE)
+
+
+def _down(world) -> None:
+    world["containers"] = [Container("shop/web", 1, False, "restarting", None), up("shop/api"), up("shop/db")]
+
+
+def test_a_failure_back_within_six_hours_reopens_the_same_incident(host):
+    world, collector, run, _, _ = host
+    run(2)
+    _blink(world, run, 2)
+    (incident,) = shim.incidents(collector)["incidents"]
+    assert (incident["reopens"], incident["status"]) == (1, "resolved")
+
+
+def test_a_flapping_service_asks_for_a_ticket_until_it_stays_down(host):
+    world, collector, run, decide, clock = host
+    run(2)
+    _blink(world, run, FLAP_REOPENS)
+    _down(world)
+    run(CYCLES_TO_OPEN)
+    (incident,) = shim.incidents(collector)["incidents"]
+    assert (incident["reopens"], incident["severity"]) == (FLAP_REOPENS, "warning")
+    assert "flapping" in incident["title"]
+    assert decide()["verdict"] == "schedule"                        # it keeps coming back: a ticket, not a page
+    clock[0] += FLAP_BYPASS_S
+    run(1)
+    assert decide()["verdict"] == "act_now"                         # down for 15 minutes straight: simply down
+
+
+def test_flapping_is_forgotten_after_six_quiet_hours(host):
+    world, collector, run, decide, clock = host
+    run(2)
+    _blink(world, run, FLAP_REOPENS + 1)
+    clock[0] += REOPEN_WINDOW_S
+    run(1)
+    _down(world)
+    run(CYCLES_TO_OPEN)
+    assert decide()["verdict"] == "act_now"
+    assert [i["reopens"] for i in shim.incidents(collector)["incidents"] if i["status"] == "open"] == [0]
 
 
 def test_discovered_containers_survive_an_agent_restart(host):
