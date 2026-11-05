@@ -2,7 +2,11 @@ import type { AckIn, Logs, Ops, ScenarioListItem, View } from './types'
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
-  if (!response.ok) throw new Error(`${url}: ${response.status}`)
+  if (!response.ok) {
+    // the backend's own words when it gives any ("logs are not configured…"), the bare status otherwise
+    const detail = await response.json().catch(() => null)
+    throw new Error(typeof detail?.detail === 'string' ? detail.detail : `${url}: ${response.status}`)
+  }
   if (!(response.headers.get('content-type') ?? '').includes('json')) throw new Error(`${url}: not JSON`)
   return response.json() as Promise<T>
 }
@@ -23,7 +27,7 @@ export async function liveAvailable(): Promise<boolean> {
 
 export const loadLive = (tenant?: string) => api<View>(`live${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''}`)
 
-export const loadOps = () => api<Ops>('ops')
+export const loadOps = (scenario?: string) => api<Ops>(`ops${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ''}`)
 
 export const loadLogs = (service: string) => api<Logs>(`logs?service=${encodeURIComponent(service)}`)
 

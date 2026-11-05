@@ -149,6 +149,7 @@ export interface paths {
         /**
          * Ops View
          * @description The admin screen: every service, incident and agent of the fleet as rows, with no verdict on top.
+         *     ?scenario= shows a demo scenario instead, so the screen can be looked at without agents.
          */
         get: operations["ops_view_api_ops_get"];
         put?: never;
@@ -268,6 +269,8 @@ export interface components {
             reason: string;
             /** Service */
             service: string;
+            /** Severity */
+            severity?: ("info" | "warning" | "critical") | null;
         };
         /** DarkRow */
         DarkRow: {
@@ -969,7 +972,9 @@ export interface operations {
     };
     ops_view_api_ops_get: {
         parameters: {
-            query?: never;
+            query?: {
+                scenario?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -983,6 +988,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ops"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

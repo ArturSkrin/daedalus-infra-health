@@ -1,0 +1,8 @@
+# The dev VM only: files written there are mode 0660 and owned by another user, so the backend's own non-root user
+# cannot read its code. Never on a server.
+#
+#   docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d --build
+#   then http://<dev VM>:8080/ops?scenario=s07_outage to look at the admin screen without agents
+services:
+  backend:
+    user: "0"
