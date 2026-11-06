@@ -44,14 +44,16 @@ services:
 
   alloy:
     image: grafana/alloy:v1.20.1
-    command: ["run", "--server.http.listen-addr=127.0.0.1:12345", "--storage.path=/var/lib/alloy", "/etc/alloy"]
+    # its own folder: Alloy loads every file of the folder it is given, and the image's /etc/alloy holds an example
+    # config.alloy that ships traces to Tempo and metrics to localhost:9009 (thousands of errors an hour, here once)
+    command: ["run", "--server.http.listen-addr=127.0.0.1:12345", "--storage.path=/var/lib/alloy", "/etc/alloy/fleet"]
     restart: unless-stopped
     environment:
       LOKI_URL: http://loki:3100/loki/api/v1/push
       LOG_HOST: ${LOG_HOST:-${AGENT_TENANT}}
     volumes:
-      - ./logs/push.alloy:/etc/alloy/push.alloy:ro
-      - ./logs/docker.alloy:/etc/alloy/docker.alloy:ro
+      - ./logs/push.alloy:/etc/alloy/fleet/push.alloy:ro
+      - ./logs/docker.alloy:/etc/alloy/fleet/docker.alloy:ro
       - alloy-data:/var/lib/alloy
     depends_on:
       - loki
