@@ -17,7 +17,7 @@ metadata:
   name: daedalus-agent
 rules:
   - apiGroups: [""]
-    resources: [pods]
+    resources: [pods, services]          # services: which workload a DNS name in an env value points at
     verbs: [get, list]
   - apiGroups: [apps]
     resources: [deployments, statefulsets, daemonsets]

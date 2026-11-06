@@ -757,6 +757,14 @@
             "title": "Agents",
             "type": "array"
           },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OpsBucket"
+            },
+            "title": "History",
+            "type": "array"
+          },
           "incidents": {
             "items": {
               "$ref": "#/components/schemas/OpsIncident"
@@ -840,6 +848,29 @@
           "dark"
         ],
         "title": "OpsAgent",
+        "type": "object"
+      },
+      "OpsBucket": {
+        "properties": {
+          "errors": {
+            "title": "Errors",
+            "type": "number"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "number"
+          },
+          "t": {
+            "title": "T",
+            "type": "string"
+          }
+        },
+        "required": [
+          "t",
+          "requests",
+          "errors"
+        ],
+        "title": "OpsBucket",
         "type": "object"
       },
       "OpsIncident": {
@@ -941,6 +972,14 @@
               }
             ],
             "title": "Accepted"
+          },
+          "calls": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Calls",
+            "type": "array"
           },
           "cluster": {
             "anyOf": [
