@@ -697,6 +697,40 @@
         "title": "Link",
         "type": "object"
       },
+      "LogActivity": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "lines": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "start": {
+            "title": "Start",
+            "type": "integer"
+          },
+          "stepS": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stepS",
+          "start",
+          "lines",
+          "errors"
+        ],
+        "title": "LogActivity",
+        "type": "object"
+      },
       "LogLine": {
         "properties": {
           "at": {
@@ -720,6 +754,48 @@
         "title": "LogLine",
         "type": "object"
       },
+      "LogStats": {
+        "properties": {
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LogActivity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "noisiest": {
+            "items": {
+              "$ref": "#/components/schemas/NoisyStream"
+            },
+            "title": "Noisiest",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "available",
+          "noisiest"
+        ],
+        "title": "LogStats",
+        "type": "object"
+      },
       "Logs": {
         "properties": {
           "lines": {
@@ -739,6 +815,29 @@
           "lines"
         ],
         "title": "Logs",
+        "type": "object"
+      },
+      "NoisyStream": {
+        "properties": {
+          "errors": {
+            "title": "Errors",
+            "type": "number"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "service": {
+            "title": "Service",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "service",
+          "errors"
+        ],
+        "title": "NoisyStream",
         "type": "object"
       },
       "Ops": {
@@ -1928,14 +2027,15 @@
     },
     "/api/logs": {
       "get": {
-        "description": "Recent lines of one fleet service (<host>:<service>) from Loki, newest first.",
+        "description": "Recent lines of one fleet service (<host>:<service>) from Loki, newest first. loki_host and loki_service\nname a Loki stream by its own labels instead, as /api/logstats lists them.",
         "operationId": "service_logs_api_logs_get",
         "parameters": [
           {
             "in": "query",
             "name": "service",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "Service",
               "type": "string"
             }
@@ -1948,6 +2048,26 @@
               "default": 200,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "loki_host",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Loki Host",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "loki_service",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Loki Service",
+              "type": "string"
             }
           }
         ],
@@ -1974,6 +2094,53 @@
           }
         },
         "summary": "Service Logs"
+      }
+    },
+    "/api/logstats": {
+      "get": {
+        "description": "The fleet's log activity over the last 12 h and the streams writing the most errors now. Cached for a minute.\n?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki.",
+        "operationId": "log_stats_api_logstats_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scenario",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scenario"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Log Stats"
       }
     },
     "/api/ops": {

@@ -1,132 +1,146 @@
-import type { Ops, OpsService, View } from './types'
+import type { LogStats, Ops, OpsService, View } from './types'
 
-// The first tab of /ops, drawn the way the Triage TUI draws a tenant: a score ring with the day around it,
-// four coloured goal cards, what is about to break, signals over the day, and the fleet as a map of squares.
-// Every number comes from the same view model and ops snapshot the rest of the tracker reads.
+// The first tab of /ops, in the tracker's own liquid glass. The ring is a clock face of the last 12 hours, one
+// tick per 5 minutes, each at its own place on the dial: how much the fleet wrote to its logs, and how much of
+// that read like an error. Everything on it opens something: a service, its logs, or the drill-in behind a vital.
 
 const RING = { users: '#22d3ee', forecast: '#e879f9', trust: '#a78bfa', day: '#fbbf24' } as const
-const CARD: Record<string, string> = {
-  users: 'from-[#0e7490]/70 to-[#155e75]/40',
-  forecast: 'from-[#a21caf]/60 to-[#86198f]/30',
-  trust: 'from-[#6d28d9]/60 to-[#5b21b6]/30',
-  day: 'from-[#b45309]/60 to-[#92400e]/30',
-}
-const LEVEL: Record<string, string> = { good: '#7ee787', warn: '#f0b429', bad: '#ff6b6b', muted: '#8b87a6' }
+const LEVEL: Record<string, string> = { good: '#4ade80', warn: '#fbbf24', bad: '#ef4444', muted: '#7c8296' }
 
-function Frame({ title, right, children, className = '' }: { title: string; right?: string; children: React.ReactNode; className?: string }) {
+export function Glass({ title, right, children, className = '', onTitle }: {
+  title: string
+  right?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+  onTitle?: () => void
+}) {
   return (
-    <section className={`relative rounded-md border border-[#2f2a52] bg-[#0f0d1c]/90 px-3 pb-3 pt-4 ${className}`}>
-      <span className="absolute -top-2.5 left-3 bg-[#09080f] px-1.5 text-[#e879f9]">{title}</span>
-      {right && <span className="absolute -top-2.5 right-3 bg-[#09080f] px-1.5 text-[#8b87a6]">{right}</span>}
+    <section className={`glass rounded-3xl p-4 ${className}`}>
+      <header className="mb-3 flex items-baseline justify-between gap-3">
+        <button type="button" onClick={onTitle} disabled={!onTitle} className="text-sm font-semibold uppercase tracking-wide text-white/60 enabled:hover:text-white">
+          {title}
+          {onTitle && <span className="ml-1 text-white/30">→</span>}
+        </button>
+        {right && <span className="text-xs text-white/35">{right}</span>}
+      </header>
       {children}
     </section>
   )
 }
 
-// colour of a slice of the day by its error share: the thresholds of "Users now" (0.5 % degraded, 5 % broken)
+// a slice of the logs by the share of it that reads like an error; the same 0.5 % and 5 % lines as "Users now"
 const errorColor = (share: number) => (share >= 5 ? '#ef4444' : share >= 0.5 ? '#fb923c' : share > 0 ? '#facc15' : '#22d3ee')
 
-function ScoreRing({ view, history }: { view: View; history: Ops['history'] }) {
-  const size = 300
+function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | null; healthy: number; total: number }) {
+  const size = 320
   const c = size / 2
-  const rings = view.indicators.map((i, n) => ({ id: i.id, value: i.ring, r: 92 - n * 15 }))
-  const score = Math.round((100 * view.indicators.reduce((sum, i) => sum + i.ring, 0)) / Math.max(1, view.indicators.length))
-  // the day around the score, 96 slices of 15 minutes: bar length is traffic, colour is the share of it that failed
-  const slices = 96
-  const step = Math.max(1, Math.ceil(history.length / slices))
-  const bars = Array.from({ length: Math.ceil(history.length / step) }, (_, i) => {
-    const chunk = history.slice(i * step, (i + 1) * step)
-    const requests = chunk.reduce((n, b) => n + b.requests, 0)
-    const errors = chunk.reduce((n, b) => n + b.errors, 0)
-    return { requests, share: requests ? (100 * errors) / requests : 0 }
-  })
-  const peak = Math.max(...bars.map((b) => b.requests), 0)
-  const level = LEVEL[view.decision.level]
+  const activity = stats?.activity
+  const lines = activity?.lines ?? []
+  const peak = Math.max(...lines, 0)
+  // a 12-hour dial: the angle of a point is its own wall-clock time, so 12 is at the top and 6 at the bottom
+  const angleOf = (unix: number) => {
+    const d = new Date(unix * 1000)
+    return (((d.getHours() % 12) * 60 + d.getMinutes()) / 720) * 2 * Math.PI - Math.PI / 2
+  }
+  const now = Date.parse(view.source.now) / 1000        // the moment the backend judged, so the hand matches the data
+  const hand = angleOf(now)
+  const rings = view.indicators.map((i, n) => ({ id: i.id, value: i.ring, r: 88 - n * 14 }))
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-72 w-72">
-        {Array.from({ length: slices }, (_, t) => {
-          const bar = bars[t - (slices - bars.length)]         // the newest slice sits just left of twelve o'clock
-          const angle = (t / slices) * 2 * Math.PI - Math.PI / 2
-          const r1 = 104
-          const r2 = r1 + 3 + (bar && peak > 0 ? (bar.requests / peak) * 38 : 0)
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-80 w-80">
+        {Array.from({ length: 12 }, (_, h) => {
+          const a = (h / 12) * 2 * Math.PI - Math.PI / 2
+          return (
+            <text key={h} x={c + 150 * Math.cos(a)} y={c + 150 * Math.sin(a) + 4} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.35)">
+              {h === 0 ? 12 : h}
+            </text>
+          )
+        })}
+        {lines.map((count, i) => {
+          const at = (activity?.start ?? 0) + i * (activity?.stepS ?? 300)
+          const a = angleOf(at)
+          const share = count ? (100 * (activity?.errors[i] ?? 0)) / count : 0
+          const r1 = 100
+          const r2 = r1 + 2 + (peak ? (count / peak) * 36 : 0)
           return (
             <line
-              key={t}
-              x1={c + r1 * Math.cos(angle)}
-              y1={c + r1 * Math.sin(angle)}
-              x2={c + r2 * Math.cos(angle)}
-              y2={c + r2 * Math.sin(angle)}
-              stroke={bar ? errorColor(bar.share) : '#2f2a52'}
-              strokeOpacity={bar ? 0.95 : 0.6}
-              strokeWidth={3.2}
+              key={at}
+              x1={c + r1 * Math.cos(a)}
+              y1={c + r1 * Math.sin(a)}
+              x2={c + r2 * Math.cos(a)}
+              y2={c + r2 * Math.sin(a)}
+              stroke={errorColor(share)}
+              strokeWidth={2.4}
               strokeLinecap="round"
+              opacity={0.35 + 0.65 * (1 - (now - at) / 43200)}
             >
-              {bar && <title>{`${Math.round(bar.requests)} requests, ${bar.share.toFixed(2)}% failed`}</title>}
+              <title>{`${new Date(at * 1000).toTimeString().slice(0, 5)}: ${Math.round(count)} log lines, ${share.toFixed(1)}% errors`}</title>
             </line>
           )
         })}
-        <line x1={c} y1={c - 102} x2={c} y2={c - 150} stroke="#f5f3ff" strokeOpacity={0.7} strokeWidth={1.5} />
+        {!lines.length &&
+          Array.from({ length: 144 }, (_, i) => {
+            const a = (i / 144) * 2 * Math.PI
+            return <line key={i} x1={c + 100 * Math.cos(a)} y1={c + 100 * Math.sin(a)} x2={c + 104 * Math.cos(a)} y2={c + 104 * Math.sin(a)} stroke="rgba(255,255,255,0.12)" strokeWidth={2} />
+          })}
+        <line x1={c + 60 * Math.cos(hand)} y1={c + 60 * Math.sin(hand)} x2={c + 142 * Math.cos(hand)} y2={c + 142 * Math.sin(hand)} stroke="#fff" strokeOpacity={0.8} strokeWidth={1.5} />
         {rings.map(({ id, value, r }) => {
           const length = 2 * Math.PI * r
           return (
             <g key={id} transform={`rotate(-90 ${c} ${c})`}>
-              <circle cx={c} cy={c} r={r} fill="none" stroke={RING[id]} strokeOpacity={0.15} strokeWidth={10} />
-              <circle
-                cx={c}
-                cy={c}
-                r={r}
-                fill="none"
-                stroke={RING[id]}
-                strokeWidth={10}
-                strokeLinecap="round"
-                strokeDasharray={`${Math.max(0.01, value) * length} ${length}`}
-              />
+              <circle cx={c} cy={c} r={r} fill="none" stroke={RING[id]} strokeOpacity={0.14} strokeWidth={9} />
+              <circle cx={c} cy={c} r={r} fill="none" stroke={RING[id]} strokeWidth={9} strokeLinecap="round" strokeDasharray={`${Math.max(0.01, value) * length} ${length}`} />
             </g>
           )
         })}
-        <text x={c} y={c + 4} textAnchor="middle" fill="#f5f3ff" fontSize="34" fontWeight="700">
-          {score}%
+        <text x={c} y={c - 2} textAnchor="middle" fill="#fff" fontSize="30" fontWeight="700">
+          {healthy}/{total}
         </text>
-        <text x={c} y={c + 24} textAnchor="middle" fill="#8b87a6" fontSize="10">
-          fleet score
+        <text x={c} y={c + 18} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="10">
+          services healthy
         </text>
       </svg>
-      <div className="mt-1 text-lg font-bold tracking-[0.2em]" style={{ color: level }}>
+      <div className="text-2xl font-black tracking-[0.18em]" style={{ color: LEVEL[view.decision.level], textShadow: `0 0 24px ${LEVEL[view.decision.level]}66` }}>
         {view.decision.word}
       </div>
-      <p className="mt-1 max-w-sm text-center text-[#b9b4d6]">{view.decision.reason}</p>
-      <div className="mt-2 flex gap-3 text-[10px] text-[#6e6a86]">
-        <span>around: last 24 h, height = traffic</span>
+      <p className="mt-1 max-w-md text-center text-sm text-white/65">{view.decision.reason}</p>
+      <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-white/40">
+        <span>dial: log lines, last 12 h</span>
         {[['#22d3ee', 'no errors'], ['#facc15', '< 0.5%'], ['#fb923c', '< 5%'], ['#ef4444', '≥ 5%']].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: color }} />
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
             {label}
           </span>
         ))}
+        {stats && !stats.available && <span className="text-warn">{stats.reason}</span>}
       </div>
     </div>
   )
 }
 
-function Goals({ view }: { view: View }) {
+function Vitals({ view }: { view: View }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-2.5">
       {view.indicators.map((i) => (
-        <div key={i.id} className={`rounded-md bg-gradient-to-br ${CARD[i.id]} px-3 py-2.5`}>
-          <div className="flex items-center gap-1.5 text-[11px] text-white/80">
-            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: RING[i.id as keyof typeof RING] }} />
+        <a
+          key={i.id}
+          href={`./?live=1&drill=${i.id}`}
+          className="group rounded-2xl border border-white/10 p-3 transition hover:border-white/30 active:scale-[0.98]"
+          style={{ background: `linear-gradient(135deg, ${RING[i.id as keyof typeof RING]}33, ${RING[i.id as keyof typeof RING]}0d)` }}
+          title="open the drill-in behind this vital"
+        >
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-white/55">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: RING[i.id as keyof typeof RING] }} />
             {i.title}
           </div>
-          {/* the card keeps its goal colour; the word turns red or amber when that goal is not met */}
-          <div className="mt-1 text-2xl font-bold" style={{ color: i.level === 'bad' ? '#fca5a5' : i.level === 'warn' ? '#fde68a' : '#ffffff' }}>
+          <div className="mt-1 text-2xl font-bold" style={{ color: i.level === 'good' ? '#fff' : LEVEL[i.level] }}>
             {i.label}
           </div>
-          <div className="mt-0.5 line-clamp-2 min-h-[2.5em] text-[11px] text-white/70">{i.caption}</div>
-          <div className="mt-2 h-1 rounded-full bg-black/30">
+          <div className="mt-0.5 line-clamp-2 min-h-[2.4em] text-xs text-white/60">{i.caption}</div>
+          <div className="mt-2 h-1 rounded-full bg-white/10">
             <div className="h-full rounded-full" style={{ width: `${Math.round(i.ring * 100)}%`, backgroundColor: RING[i.id as keyof typeof RING] }} />
           </div>
-        </div>
+        </a>
       ))}
     </div>
   )
@@ -139,194 +153,88 @@ function risk(s: OpsService): number {
   return Math.max(stall * 5, (s.memOfLimitPct ?? 0) >= 80 ? s.memOfLimitPct ?? 0 : 0, s.incident ? 50 : 0)
 }
 
-function AboutToBreak({ data }: { data: Ops }) {
+function AboutToBreak({ data, onPick }: { data: Ops; onPick: (s: OpsService) => void }) {
   const ranked = data.services
     .map((s) => ({ s, r: Math.min(100, Math.round(risk(s))) }))
     .filter((x) => x.r >= 20)
     .sort((a, b) => b.r - a.r)
     .slice(0, 6)
-  if (ranked.length === 0) return <p className="text-[#7ee787]">✓ nothing is close to breaking</p>
+  if (ranked.length === 0) return <p className="text-sm text-good">✓ nothing is close to breaking</p>
   return (
     <div className="flex flex-wrap gap-3">
       {ranked.map(({ s, r }) => {
         const color = r >= 90 ? '#ef4444' : r >= 60 ? '#f97316' : '#f59e0b'
-        const word = !s.ready ? (s.flapping ? 'flap' : 'down') : `${r}%`
         return (
-          <div key={`${s.host}:${s.service}`} className="flex w-20 flex-col items-center" title={`${s.host}:${s.service}${s.incident ? ` — ${s.incident}` : ''}`}>
-            <div
+          <button key={`${s.host}:${s.service}`} type="button" onClick={() => onPick(s)} className="flex w-20 flex-col items-center transition active:scale-95" title={s.incident ?? ''}>
+            <span
               className="flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white"
-              style={{ background: `radial-gradient(circle at 35% 30%, ${color}, ${color}99 60%, ${color}55)`, boxShadow: `0 0 18px ${color}66` }}
+              style={{ background: `radial-gradient(circle at 35% 30%, #ffffff88, ${color} 45%, ${color}66)`, boxShadow: `0 0 22px ${color}77` }}
             >
-              {word}
-            </div>
-            <span className="mt-1 w-full truncate text-center text-[10px] text-[#b9b4d6]">{s.service}</span>
-            <span className="w-full truncate text-center text-[10px] text-[#7fdbff]">{s.host}</span>
-          </div>
+              {!s.ready ? (s.flapping ? 'flap' : 'down') : `${r}%`}
+            </span>
+            <span className="mt-1 w-full truncate text-center text-[11px] text-white/75">{s.service}</span>
+            <span className="w-full truncate text-center text-[10px] text-white/40">{s.host}</span>
+          </button>
         )
       })}
     </div>
   )
 }
 
-function buckets(times: (string | null | undefined)[], hours = 24): number[] {
-  const out = Array<number>(hours).fill(0)
-  const now = Date.now()
-  for (const t of times) {
-    if (!t) continue
-    const age = (now - Date.parse(t)) / 3_600_000
-    if (age >= 0 && age < hours) out[hours - 1 - Math.floor(age)] += 1
-  }
-  return out
-}
-
-function squeeze(values: number[], width: number): number[] {
-  const step = Math.max(1, Math.ceil(values.length / width))
-  return Array.from({ length: Math.ceil(values.length / step) }, (_, i) => Math.max(...values.slice(i * step, (i + 1) * step)))
-}
-
-function Signals({ data, view }: { data: Ops; view: View | null }) {
-  const errors = view?.indicators.find((i) => i.id === 'day')?.drill?.sparkline ?? []
-  const rows = [
-    { label: 'request errors', color: '#ff6b6b', values: squeeze(errors, 48), total: `${errors.length ? Math.max(...errors).toFixed(2) : 0}% peak` },
-    { label: 'incidents opened', color: '#fb923c', values: buckets(data.incidents.map((i) => i.firstSeen)), total: String(data.incidents.length) },
-    { label: 'state changes', color: '#a78bfa', values: buckets((view?.journal ?? []).map((e) => e.at)), total: String(view?.journal.length ?? 0) },
-    { label: 'resolved by agent', color: '#22d3ee', values: buckets(data.incidents.map((i) => (i.resolvedBy === 'agent' ? i.resolvedAt : null))),
-      total: String(data.incidents.filter((i) => i.resolvedBy === 'agent').length) },
-  ]
+function Noisy({ stats, onStream }: { stats: LogStats | null; onStream: (host: string, service: string) => void }) {
+  if (!stats) return <p className="text-sm text-white/40">loading…</p>
+  if (!stats.available) return <p className="text-sm text-white/40">{stats.reason}</p>
+  if (!stats.noisiest.length) return <p className="text-sm text-good">✓ no error lines in the last hour</p>
+  const top = Math.max(...stats.noisiest.map((n) => n.errors))
   return (
-    <div className="space-y-2">
-      {rows.map((row) => {
-        const top = Math.max(...row.values, 0)
-        return (
-          <div key={row.label} className="grid grid-cols-[9rem_6rem_1fr] items-end gap-2">
-            <span style={{ color: row.color }}>{row.label}</span>
-            <span className="text-right text-[#d8d4ea]">{row.total}</span>
-            <div className="flex h-6 items-end gap-[2px]">
-              {row.values.map((v, n) => (
-                <div
-                  key={n}
-                  className="flex-1 rounded-t-[1px]"
-                  style={{ height: top > 0 && v > 0 ? `${Math.max(12, (v / top) * 100)}%` : '2px', backgroundColor: row.color, opacity: v > 0 ? 0.9 : 0.18 }}
-                />
-              ))}
-            </div>
+    <div className="space-y-1.5">
+      {stats.noisiest.map((n) => (
+        <button key={`${n.host}:${n.service}`} type="button" onClick={() => onStream(n.host, n.service)} className="group block w-full text-left">
+          <div className="flex justify-between gap-2 text-sm">
+            <span className="truncate text-white/80 group-hover:text-white">
+              <span className="text-white/40">{n.host} · </span>
+              {n.service}
+            </span>
+            <span className="shrink-0 tabular-nums text-bad">{Math.round(n.errors)}</span>
           </div>
-        )
-      })}
-      <div className="grid grid-cols-[9rem_6rem_1fr] gap-2 text-[10px] text-[#6e6a86]">
-        <span />
-        <span />
-        <span className="flex justify-between">
-          <span>24 h ago</span>
-          <span>now</span>
-        </span>
-      </div>
+          <div className="mt-0.5 h-1 rounded-full bg-white/5">
+            <div className="h-full rounded-full bg-bad/70" style={{ width: `${(100 * n.errors) / top}%` }} />
+          </div>
+        </button>
+      ))}
     </div>
   )
-}
-
-const SQUARE: Record<string, string> = { good: '#22c55e', warn: '#f59e0b', bad: '#ef4444', muted: '#4b4766' }
-
-function tone(s: OpsService): string {
-  if (s.dark || s.accepted) return 'muted'
-  if (!s.ready) return s.flapping ? 'warn' : 'bad'
-  return s.incident ? 'warn' : 'good'
 }
 
 function FleetMap({ data, onPick }: { data: Ops; onPick: (s: OpsService) => void }) {
-  const hosts = data.agents.map((a) => ({ agent: a, services: data.services.filter((s) => s.host === a.host) }))
+  const color = (s: OpsService) =>
+    s.dark || s.accepted ? '#4b5068' : !s.ready ? (s.flapping ? '#f59e0b' : '#ef4444') : s.incident ? '#f59e0b' : '#22c55e'
   return (
     <div className="flex flex-wrap gap-2">
-      {hosts.map(({ agent, services }) => {
-        const down = services.filter((s) => tone(s) === 'bad').length
+      {data.agents.map((a) => {
+        const services = data.services.filter((s) => s.host === a.host)
+        const down = services.filter((s) => !s.ready && !s.dark && !s.accepted).length
         return (
-          <div key={agent.host} className="min-w-40 flex-1 rounded-sm border border-[#2f2a52] bg-[#14112a] p-2" style={{ flexGrow: Math.max(1, services.length) }}>
-            <div className="mb-1.5 flex justify-between gap-2 text-[11px]">
-              <span className="truncate text-[#7fdbff]">{agent.host}</span>
-              <span className={down ? 'text-[#ff6b6b]' : agent.connected ? 'text-[#7ee787]' : 'text-[#ff6b6b]'}>
-                {agent.connected ? (down ? `${down} down` : `${services.length} ok`) : 'silent'}
-              </span>
+          <div key={a.host} className="min-w-36 flex-1 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5" style={{ flexGrow: Math.max(1, services.length) }}>
+            <div className="mb-1.5 flex justify-between gap-2 text-xs">
+              <span className="truncate text-white/75">{a.host}</span>
+              <span className={!a.connected || down ? 'text-bad' : 'text-good'}>{!a.connected ? 'silent' : down ? `${down} down` : `${services.length} ok`}</span>
             </div>
-            <div className="flex flex-wrap gap-[3px]">
+            <div className="flex flex-wrap gap-1">
               {services.map((s) => (
                 <button
                   key={s.service}
                   type="button"
                   title={`${s.service} — ${s.incident ?? (s.ready ? 'healthy' : 'down')}`}
                   onClick={() => onPick(s)}
-                  className="h-3.5 w-3.5 rounded-[2px] hover:outline hover:outline-1 hover:outline-white"
-                  style={{ backgroundColor: SQUARE[tone(s)] }}
+                  className="h-3.5 w-3.5 rounded-[4px] transition hover:scale-125"
+                  style={{ backgroundColor: color(s), boxShadow: `0 0 6px ${color(s)}66` }}
                 />
               ))}
-              {!agent.connected && <span className="text-[10px] text-[#6e6a86]">{agent.error}</span>}
             </div>
           </div>
         )
       })}
-    </div>
-  )
-}
-
-export function OpsOverview({ data, view, onPick, onGraph }: {
-  data: Ops
-  view: View | null
-  onPick: (s: OpsService) => void
-  onGraph: () => void
-}) {
-  const open = data.incidents.filter((i) => i.status === 'open')
-  return (
-    <div className="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12">
-      <Frame title={`${view?.source.tenant ?? 'fleet'} score`} right={view ? `data ${view.source.age} old` : undefined} className="xl:col-span-4">
-        {view ? <ScoreRing view={view} history={data.history ?? []} /> : <p className="text-[#6e6a86]">loading…</p>}
-      </Frame>
-
-      <div className="flex flex-col gap-4 xl:col-span-4">
-        <Frame title="vitals" right={view ? `${view.indicators.filter((i) => i.level === 'good').length} of 4 fine` : undefined}>
-          {view && <Goals view={view} />}
-        </Frame>
-        <Frame title="what is about to break" right="ranked">
-          <AboutToBreak data={data} />
-        </Frame>
-      </div>
-
-      <Frame title={open.length ? `${open.length} open` : 'nothing open'} right={`${data.acks.length} accepted`} className="xl:col-span-4">
-        {open.length === 0 && <p className="text-[#7ee787]">✓ nothing needs you now.</p>}
-        <div className="space-y-2">
-          {open.map((i) => (
-            <div key={i.id} className={`border-l-2 pl-2 ${i.severity === 'critical' ? 'border-[#ef4444]' : 'border-[#f59e0b]'}`}>
-              <div className="flex justify-between gap-2">
-                <span>
-                  <span className={i.severity === 'critical' ? 'text-[#ff6b6b]' : 'text-[#f0b429]'}>[{i.severity === 'critical' ? 'CRIT' : 'WARN'}]</span>{' '}
-                  <span className="text-white">{i.service}</span>
-                </span>
-                <span className="shrink-0 text-[#7fdbff]">open {ago(i.firstSeen)}</span>
-              </div>
-              <div className="text-[#b9b4d6]">{i.title}</div>
-              <div className="text-[10px] text-[#6e6a86]">
-                {i.host}
-                {i.reopens > 0 && ` · back ${i.reopens}× in 6 h`}
-              </div>
-            </div>
-          ))}
-          {data.acks.map((a) => (
-            <div key={a.service} className="border-l-2 border-[#4b4766] pl-2 text-[#8b87a6]">
-              <span className="text-[#b9b4d6]">{a.service}</span> · accepted until {a.until.slice(0, 10)}
-              <div className="text-[10px]">{a.reason}</div>
-            </div>
-          ))}
-        </div>
-      </Frame>
-
-      <Frame title="signals" right="last 24 h" className="xl:col-span-7">
-        <Signals data={data} view={view} />
-      </Frame>
-
-      <Frame title="fleet map" right={`${data.services.length} services · click a square`} className="xl:col-span-5">
-        <FleetMap data={data} onPick={onPick} />
-        <button type="button" onClick={onGraph} className="mt-2 text-[#c792ea] hover:text-white">
-          who calls whom: the service graph →
-        </button>
-      </Frame>
     </div>
   )
 }
@@ -335,4 +243,75 @@ function ago(iso?: string | null): string {
   if (!iso) return '—'
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000)
   return s < 90 ? `${Math.round(s)}s` : s < 5400 ? `${Math.round(s / 60)}m` : s < 172800 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`
+}
+
+export function OpsOverview({ data, view, stats, onPick, onGraph, onStream, onIncidents }: {
+  data: Ops
+  view: View | null
+  stats: LogStats | null
+  onPick: (s: OpsService) => void
+  onGraph: () => void
+  onStream: (host: string, service: string) => void
+  onIncidents: () => void
+}) {
+  const open = data.incidents.filter((i) => i.status === 'open')
+  const counted = data.services.filter((s) => !s.dark)
+  const healthy = counted.filter((s) => s.ready && !s.incident).length
+  const byKey = new Map(data.services.map((s) => [`${s.host}:${s.service}`, s]))
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <Glass title="fleet" right={view ? `data ${view.source.age} old` : undefined} className="xl:col-span-5 xl:row-span-2">
+        {view ? <Clock view={view} stats={stats} healthy={healthy} total={counted.length} /> : <p className="text-white/40">loading…</p>}
+      </Glass>
+
+      <Glass title="vitals" right={view ? `${view.indicators.filter((i) => i.level === 'good').length} of 4 fine · click for the why` : undefined} className="xl:col-span-4">
+        {view && <Vitals view={view} />}
+      </Glass>
+
+      <Glass title={open.length ? `${open.length} open` : 'nothing open'} right={`${data.acks.length} accepted`} onTitle={onIncidents} className="xl:col-span-3">
+        {open.length === 0 && <p className="text-sm text-good">✓ nothing needs you now.</p>}
+        <div className="space-y-2">
+          {open.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              onClick={() => {
+                const s = byKey.get(`${i.host}:${i.service}`)
+                if (s) onPick(s)
+              }}
+              className={`block w-full rounded-xl border-l-2 bg-white/[0.03] px-2.5 py-1.5 text-left transition hover:bg-white/[0.07] ${i.severity === 'critical' ? 'border-bad' : 'border-warn'}`}
+            >
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="truncate text-white">{i.service}</span>
+                <span className="shrink-0 text-xs text-white/40">{ago(i.firstSeen)}</span>
+              </div>
+              <div className="line-clamp-2 text-xs text-white/55">{i.title}</div>
+              <div className="text-[10px] text-white/35">
+                {i.host}
+                {i.reopens > 0 && ` · back ${i.reopens}×`}
+              </div>
+            </button>
+          ))}
+          {data.acks.map((a) => (
+            <div key={a.service} className="rounded-xl bg-white/[0.02] px-2.5 py-1.5 text-xs text-white/45">
+              <span className="text-white/65">{a.service}</span> · accepted until {a.until.slice(0, 10)}
+              <div className="text-[11px]">{a.reason}</div>
+            </div>
+          ))}
+        </div>
+      </Glass>
+
+      <Glass title="what is about to break" right="click one" className="xl:col-span-4">
+        <AboutToBreak data={data} onPick={onPick} />
+      </Glass>
+
+      <Glass title="errors in logs" right="last hour · click for the lines" className="xl:col-span-3">
+        <Noisy stats={stats} onStream={onStream} />
+      </Glass>
+
+      <Glass title="fleet map" right={`${data.services.length} services`} onTitle={onGraph} className="xl:col-span-12">
+        <FleetMap data={data} onPick={onPick} />
+      </Glass>
+    </div>
+  )
 }

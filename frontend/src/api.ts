@@ -1,4 +1,4 @@
-import type { AckIn, Logs, Ops, ScenarioListItem, View } from './types'
+import type { AckIn, Logs, LogStats, Ops, ScenarioListItem, View } from './types'
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url)
@@ -30,6 +30,12 @@ export const loadLive = (tenant?: string) => api<View>(`live${tenant ? `?tenant=
 export const loadOps = (scenario?: string) => api<Ops>(`ops${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ''}`)
 
 export const loadLogs = (service: string) => api<Logs>(`logs?service=${encodeURIComponent(service)}`)
+
+// a Loki stream by its own labels, as loadLogStats lists the noisy ones
+export const loadStream = (host: string, service: string) =>
+  api<Logs>(`logs?loki_host=${encodeURIComponent(host)}&loki_service=${encodeURIComponent(service)}`)
+
+export const loadLogStats = (scenario?: string) => api<LogStats>(`logstats${scenario ? `?scenario=${encodeURIComponent(scenario)}` : ''}`)
 
 async function send(method: string, path: string, body?: unknown): Promise<void> {
   const response = await fetch(`${import.meta.env.BASE_URL}api/${path}`, {

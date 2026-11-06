@@ -18,6 +18,7 @@ export type Ops = Schemas['Ops']
 export type OpsService = Schemas['OpsService']
 export type OpsIncident = Schemas['OpsIncident']
 export type Logs = Schemas['Logs']
+export type LogStats = Schemas['LogStats']
 export type AckIn = Schemas['AckIn']
 
 export type Level = Indicator['level']

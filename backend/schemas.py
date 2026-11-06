@@ -275,6 +275,26 @@ class Logs(BaseModel):
     lines: list[LogLine]
 
 
+class LogActivity(BaseModel):
+    stepS: int
+    start: int              # unix seconds of the first point
+    lines: list[float]      # log lines of the whole fleet per step
+    errors: list[float]     # of them, lines that read like an error
+
+
+class NoisyStream(BaseModel):
+    host: str               # Loki labels, not tracker names
+    service: str
+    errors: float           # error lines in the last hour
+
+
+class LogStats(BaseModel):
+    available: bool
+    reason: str | None = None
+    activity: LogActivity | None = None
+    noisiest: list[NoisyStream]
+
+
 class ScenarioListItem(BaseModel):
     id: str
     title: str
