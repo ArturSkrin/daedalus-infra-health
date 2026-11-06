@@ -74,7 +74,7 @@ def _loki(path: str, params: dict) -> dict:
         raise LogsUnavailable("Loki did not answer") from error
 
 
-def activity(hours: int = 12, step_s: int = 300) -> dict:
+def activity(hours: int = 24, step_s: int = 600) -> dict:
     """Log lines and error lines of the whole fleet, one point per step: how busy the fleet was and how much of it
     went wrong. Until there is real request data (RED) this is the closest thing to traffic we have."""
     end = int(time.time()) // step_s * step_s

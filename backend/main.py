@@ -172,16 +172,17 @@ _logstats: dict = {}
 
 @app.get("/api/logstats", response_model=LogStats)
 def log_stats(scenario: str | None = None) -> dict:
-    """The fleet's log activity over the last 12 h and the streams writing the most errors now. Cached for a minute.
+    """The fleet's log activity over the last 24 h and the streams writing the most errors now. Cached for a minute.
     ?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki."""
     if scenario:
         block = _scenario_or_404(scenario)
         tenant = block["status"]["tenantStats"]["tenants"][block["tenant"]]
-        history = (tenant.get("signalsHistory") or [])[-144:]
-        start = int(time.time()) // 300 * 300 - (len(history) - 1) * 300
+        history = (tenant.get("signalsHistory") or [])[-288:]
+        pairs = [history[i:i + 2] for i in range(0, len(history), 2)]        # 5-minute buckets into 10-minute ones
+        start = int(time.time()) // 600 * 600 - (len(pairs) - 1) * 600
         return {"available": True, "reason": "demo: the scenario's requests stand in for log lines",
-                "activity": {"stepS": 300, "start": start, "lines": [b.get("requests") or 0 for b in history],
-                             "errors": [b.get("requestErrors") or 0 for b in history]},
+                "activity": {"stepS": 600, "start": start, "lines": [sum(b.get("requests") or 0 for b in p) for p in pairs],
+                             "errors": [sum(b.get("requestErrors") or 0 for b in p) for p in pairs]},
                 "noisiest": [{"host": block["tenant"], "service": a["name"], "errors": round(a["golden"]["errPct"] * 10, 1)}
                              for a in block.get("applications") or [] if (a.get("golden") or {}).get("errPct", 0) >= 0.5]}
     if _logstats and time.monotonic() - _logstats["at"] < 60:
