@@ -176,6 +176,15 @@ def test_memory_pressure_in_a_container_cgroup_is_brewing(host):
     assert decide()["states"]["forecast"] == "brewing"
 
 
+def test_a_docker_run_rm_task_is_not_a_service(monkeypatch, tmp_path):
+    """Live on Backup: a nightly `docker run --rm` dump showed up as distracted_galileo and was down for a day after."""
+    task = _container("b1", "x", project="")
+    task["Labels"] = {}
+    task["inspect"].update(Name="/distracted_galileo", HostConfig={"AutoRemove": True, "RestartPolicy": {"Name": "no"}})
+    monkeypatch.setattr(docker_source, "_get", _api([task, _container("a1", "web")]))
+    assert [c.name for c in docker_source.discover("unix:///x", str(tmp_path), 1)] == ["shop/web"]
+
+
 def test_compose_depends_on_becomes_who_calls_whom(monkeypatch, tmp_path):
     """front -> back -> db: the same edges the shim's graph and blast radius are drawn from."""
     monkeypatch.setattr(docker_source, "_get", _api([
