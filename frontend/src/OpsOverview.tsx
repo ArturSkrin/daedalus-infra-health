@@ -23,26 +23,33 @@ function Frame({ title, right, children, className = '' }: { title: string; righ
   )
 }
 
-function ScoreRing({ view }: { view: View }) {
-  const size = 280
+// colour of a slice of the day by its error share: the thresholds of "Users now" (0.5 % degraded, 5 % broken)
+const errorColor = (share: number) => (share >= 5 ? '#ef4444' : share >= 0.5 ? '#fb923c' : share > 0 ? '#facc15' : '#22d3ee')
+
+function ScoreRing({ view, history }: { view: View; history: Ops['history'] }) {
+  const size = 300
   const c = size / 2
   const rings = view.indicators.map((i, n) => ({ id: i.id, value: i.ring, r: 92 - n * 15 }))
   const score = Math.round((100 * view.indicators.reduce((sum, i) => sum + i.ring, 0)) / Math.max(1, view.indicators.length))
-  const series = view.indicators.find((i) => i.id === 'day')?.drill?.sparkline ?? []
-  const ticks = 120
-  const top = Math.max(...series, 0)
+  // the day around the score, 96 slices of 15 minutes: bar length is traffic, colour is the share of it that failed
+  const slices = 96
+  const step = Math.max(1, Math.ceil(history.length / slices))
+  const bars = Array.from({ length: Math.ceil(history.length / step) }, (_, i) => {
+    const chunk = history.slice(i * step, (i + 1) * step)
+    const requests = chunk.reduce((n, b) => n + b.requests, 0)
+    const errors = chunk.reduce((n, b) => n + b.errors, 0)
+    return { requests, share: requests ? (100 * errors) / requests : 0 }
+  })
+  const peak = Math.max(...bars.map((b) => b.requests), 0)
   const level = LEVEL[view.decision.level]
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-64 w-64">
-        {Array.from({ length: ticks }, (_, t) => {
-          // the day around the score: one tick per slice of the last 24 h, longer and redder where errors were
-          const v = series.length ? series[Math.floor((t / ticks) * series.length)] : 0
-          const share = top > 0 ? v / top : 0
-          const angle = (t / ticks) * 2 * Math.PI - Math.PI / 2
-          const r1 = 106
-          const r2 = r1 + 6 + share * 26
-          const color = share > 0.66 ? '#ff6b6b' : share > 0.2 ? '#fb923c' : '#22d3ee'
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-72 w-72">
+        {Array.from({ length: slices }, (_, t) => {
+          const bar = bars[t - (slices - bars.length)]         // the newest slice sits just left of twelve o'clock
+          const angle = (t / slices) * 2 * Math.PI - Math.PI / 2
+          const r1 = 104
+          const r2 = r1 + 3 + (bar && peak > 0 ? (bar.requests / peak) * 38 : 0)
           return (
             <line
               key={t}
@@ -50,12 +57,16 @@ function ScoreRing({ view }: { view: View }) {
               y1={c + r1 * Math.sin(angle)}
               x2={c + r2 * Math.cos(angle)}
               y2={c + r2 * Math.sin(angle)}
-              stroke={color}
-              strokeOpacity={share > 0 ? 0.9 : 0.35}
-              strokeWidth={2}
-            />
+              stroke={bar ? errorColor(bar.share) : '#2f2a52'}
+              strokeOpacity={bar ? 0.95 : 0.6}
+              strokeWidth={3.2}
+              strokeLinecap="round"
+            >
+              {bar && <title>{`${Math.round(bar.requests)} requests, ${bar.share.toFixed(2)}% failed`}</title>}
+            </line>
           )
         })}
+        <line x1={c} y1={c - 102} x2={c} y2={c - 150} stroke="#f5f3ff" strokeOpacity={0.7} strokeWidth={1.5} />
         {rings.map(({ id, value, r }) => {
           const length = 2 * Math.PI * r
           return (
@@ -85,6 +96,15 @@ function ScoreRing({ view }: { view: View }) {
         {view.decision.word}
       </div>
       <p className="mt-1 max-w-sm text-center text-[#b9b4d6]">{view.decision.reason}</p>
+      <div className="mt-2 flex gap-3 text-[10px] text-[#6e6a86]">
+        <span>around: last 24 h, height = traffic</span>
+        {[['#22d3ee', 'no errors'], ['#facc15', '< 0.5%'], ['#fb923c', '< 5%'], ['#ef4444', '≥ 5%']].map(([color, label]) => (
+          <span key={label} className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: color }} />
+            {label}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -247,12 +267,17 @@ function FleetMap({ data, onPick }: { data: Ops; onPick: (s: OpsService) => void
   )
 }
 
-export function OpsOverview({ data, view, onPick }: { data: Ops; view: View | null; onPick: (s: OpsService) => void }) {
+export function OpsOverview({ data, view, onPick, onGraph }: {
+  data: Ops
+  view: View | null
+  onPick: (s: OpsService) => void
+  onGraph: () => void
+}) {
   const open = data.incidents.filter((i) => i.status === 'open')
   return (
     <div className="grid grid-cols-1 gap-4 pt-2 xl:grid-cols-12">
       <Frame title={`${view?.source.tenant ?? 'fleet'} score`} right={view ? `data ${view.source.age} old` : undefined} className="xl:col-span-4">
-        {view ? <ScoreRing view={view} /> : <p className="text-[#6e6a86]">loading…</p>}
+        {view ? <ScoreRing view={view} history={data.history ?? []} /> : <p className="text-[#6e6a86]">loading…</p>}
       </Frame>
 
       <div className="flex flex-col gap-4 xl:col-span-4">
@@ -298,6 +323,9 @@ export function OpsOverview({ data, view, onPick }: { data: Ops; view: View | nu
 
       <Frame title="fleet map" right={`${data.services.length} services · click a square`} className="xl:col-span-5">
         <FleetMap data={data} onPick={onPick} />
+        <button type="button" onClick={onGraph} className="mt-2 text-[#c792ea] hover:text-white">
+          who calls whom: the service graph →
+        </button>
       </Frame>
     </div>
   )

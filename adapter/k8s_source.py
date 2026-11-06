@@ -65,6 +65,45 @@ def _cgroup(pod: dict, cgroup_root: str) -> dict | None:
     return None
 
 
+# a host name in an env value or an argument: "api", "api.shop", "api.shop.svc.cluster.local", with an optional port
+_LABEL = r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
+_HOST = re.compile(rf"(?<![\w.-])({_LABEL})(?:\.({_LABEL}))?(?:\.svc(?:\.cluster\.local)?)?(?::\d+)?(?![\w-])")
+
+
+def _mentions(template: dict) -> list[str]:
+    """Every literal string a pod template hands its containers: env values, command, args."""
+    texts = []
+    for container in (template.get("spec") or {}).get("containers") or []:
+        texts += [e.get("value") for e in container.get("env") or [] if isinstance(e.get("value"), str)]
+        texts += [a for a in (container.get("command") or []) + (container.get("args") or []) if isinstance(a, str)]
+    return texts
+
+
+def _edges(workloads: list[tuple[str, dict, dict]], timeout: float) -> dict[str, tuple[str, ...]]:
+    """Who calls whom, from Service names the workloads mention. Secrets are not read, so a URL kept in a Secret
+    is not seen: this is a floor, never a full map. Empty when Services cannot be listed (older RBAC)."""
+    try:
+        services = _get("/api/v1/services", timeout)["items"]
+    except (OSError, ValueError, KeyError):
+        return {}
+    backing: dict[str, list[str]] = {}          # "<ns>/<service>" -> workloads whose pods it selects
+    for svc in services:
+        selector = (svc.get("spec") or {}).get("selector") or {}
+        key = f"{svc['metadata']['namespace']}/{svc['metadata']['name']}"
+        backing[key] = [name for name, labels, _ in workloads
+                        if selector and name.startswith(f"{svc['metadata']['namespace']}/") and selector.items() <= labels.items()]
+    calls = {}
+    for name, _, template in workloads:
+        namespace = name.split("/")[0]
+        targets = set()
+        for text in _mentions(template):
+            for host, ns in _HOST.findall(text):
+                for key in (f"{ns}/{host}" if ns else None, f"{namespace}/{host}"):
+                    targets.update(w for w in backing.get(key or "", []) if w != name)
+        calls[name] = tuple(sorted(targets))
+    return calls
+
+
 def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root: str, timeout: float) -> list[Container] | None:
     """Every workload in the cluster. None when the API cannot be asked: blindness, not an empty cluster."""
     try:
@@ -73,7 +112,7 @@ def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root:
             owner = _owner(pod)
             if owner:
                 pods.setdefault(f"{pod['metadata']['namespace']}/{owner}", []).append(pod)
-        found = []
+        found, templates = [], []
         for kind, path in WORKLOADS.items():
             for item in _get(path, timeout)["items"]:
                 meta, spec, status = item["metadata"], item.get("spec") or {}, item.get("status") or {}
@@ -96,6 +135,9 @@ def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root:
                 tier = int(label) if label.isdigit() else 2 if meta["namespace"] in tier2_namespaces else 1
                 cgroup = next((c for c in (_cgroup(p, cgroup_root) for p in mine) if c), None)
                 found.append(Container(name, tier, ok, detail, cgroup))
-        return found
+                template = spec.get("template") or {}
+                templates.append((name, (template.get("metadata") or {}).get("labels") or {}, template))
+        calls = _edges(templates, timeout)
+        return [Container(c.name, c.tier, c.ok, c.detail, c.cgroup, calls.get(c.name, ())) for c in found]
     except (OSError, ValueError, KeyError):
         return None

@@ -76,6 +76,25 @@ def test_pod_cgroup_is_found_by_container_id(cluster, tmp_path):
     assert found(tmp_path)["clc-claw/clc-claw"].cgroup["memCurrentBytes"] == 1048576.0
 
 
+def test_who_calls_whom_comes_from_service_names_in_env_and_args(cluster, tmp_path):
+    def workload(name, app, env=(), args=()):
+        d = _deployment("shop", name)
+        d["spec"]["template"] = {"metadata": {"labels": {"app": app}},
+                                 "spec": {"containers": [{"env": [{"name": k, "value": v} for k, v in env], "args": list(args)}]}}
+        return d
+
+    cluster["/apis/apps/v1/deployments"] = [
+        workload("web", "web", env=[("API_URL", "http://api:8000/v1")]),
+        workload("api", "api", env=[("DATABASE_URL", "postgres://u@db.shop.svc.cluster.local:5432/app"), ("MODE", "web")]),
+        workload("db", "db", args=["-c", "max_connections=50"])]
+    cluster["/api/v1/services"] = [{"metadata": {"namespace": "shop", "name": n}, "spec": {"selector": {"app": n}}}
+                                   for n in ("web", "api", "db")]
+    seen = found(tmp_path)
+    assert seen["shop/web"].calls == ("shop/api",)
+    assert seen["shop/api"].calls == ("shop/db", "shop/web")      # MODE=web names a Service too: a floor, read as a hint
+    assert seen["shop/db"].calls == ()
+
+
 def test_an_api_that_does_not_answer_is_blindness(monkeypatch, tmp_path):
     def refuse(path, timeout):
         raise ConnectionRefusedError

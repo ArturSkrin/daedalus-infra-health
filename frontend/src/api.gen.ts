@@ -469,6 +469,11 @@ export interface components {
             acks: components["schemas"]["Ack"][];
             /** Agents */
             agents: components["schemas"]["OpsAgent"][];
+            /**
+             * History
+             * @default []
+             */
+            history: components["schemas"]["OpsBucket"][];
             /** Incidents */
             incidents: components["schemas"]["OpsIncident"][];
             /** Services */
@@ -490,6 +495,15 @@ export interface components {
             lastMessage?: string | null;
             /** Services */
             services: number;
+        };
+        /** OpsBucket */
+        OpsBucket: {
+            /** Errors */
+            errors: number;
+            /** Requests */
+            requests: number;
+            /** T */
+            t: string;
         };
         /** OpsIncident */
         OpsIncident: {
@@ -520,6 +534,11 @@ export interface components {
         OpsService: {
             /** Accepted */
             accepted?: string | null;
+            /**
+             * Calls
+             * @default []
+             */
+            calls: string[];
             /** Cluster */
             cluster?: string | null;
             /** Cpustallpct */

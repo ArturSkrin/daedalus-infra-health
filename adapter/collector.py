@@ -176,7 +176,8 @@ class Collector:
                           if name not in static_names and s.last_seen is not None and now - s.last_seen < FORGET_AFTER_S}
             names = sorted(set(self.containers) | remembered)
             tiers = {**{name: t.tier for name, t in previous.items()}, **{name: c.tier for name, c in self.containers.items()}}
-            discovered = tuple(Target(name=name, container=True, tier=tiers.get(name, 2)) for name in names)
+            calls = {**{name: t.calls for name, t in previous.items()}, **{name: c.calls for name, c in self.containers.items()}}
+            discovered = tuple(Target(name=name, container=True, tier=tiers.get(name, 2), calls=calls.get(name, ())) for name in names)
             self.settings = replace(self.settings, targets=(*static, *discovered))
             for name in names:
                 self.states.setdefault(name, TargetState())

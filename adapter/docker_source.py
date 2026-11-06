@@ -24,6 +24,7 @@ class Container:
     ok: bool
     detail: str
     cgroup: dict | None
+    calls: tuple[str, ...] = ()     # what it depends on, by the same names (compose depends_on, k8s Service DNS names)
 
 
 class _UnixConnection(http.client.HTTPConnection):
@@ -143,7 +144,10 @@ def discover(url: str, cgroup_root: str, timeout: float) -> list[Container] | No
             restart_policy = ((info.get("HostConfig") or {}).get("RestartPolicy") or {}).get("Name") or ""
             ok, detail = _readiness(state, restart_policy)
             directory = _cgroup_dir(Path(cgroup_root), item["Id"]) if state.get("Status") == "running" else None
-            container = Container(name, _tier(info, labels), ok, detail, read_cgroup(directory) if directory else None)
+            # compose writes depends_on into a label: "db:service_healthy:false,cache:service_started:false"
+            depends = labels.get("com.docker.compose.depends_on") or ""
+            calls = tuple(f"{project}/{d.split(':')[0]}" for d in depends.split(",") if d and project)
+            container = Container(name, _tier(info, labels), ok, detail, read_cgroup(directory) if directory else None, calls)
             # replicas of one service share a name; the worst of them speaks for it
             if name not in found or (found[name].ok and not ok):
                 found[name] = container

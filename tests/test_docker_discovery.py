@@ -176,6 +176,17 @@ def test_memory_pressure_in_a_container_cgroup_is_brewing(host):
     assert decide()["states"]["forecast"] == "brewing"
 
 
+def test_compose_depends_on_becomes_who_calls_whom(monkeypatch, tmp_path):
+    """front -> back -> db: the same edges the shim's graph and blast radius are drawn from."""
+    monkeypatch.setattr(docker_source, "_get", _api([
+        _container("a1", "front", labels={"com.docker.compose.depends_on": "back:service_started:false"}),
+        _container("a2", "back", labels={"com.docker.compose.depends_on": "db:service_healthy:false,cache:service_started:true"}),
+        _container("a3", "db"),
+    ]))
+    found = {c.name: c.calls for c in docker_source.discover("unix:///x", str(tmp_path), 1)}
+    assert found == {"shop/front": ("shop/back",), "shop/back": ("shop/db", "shop/cache"), "shop/db": ()}
+
+
 def _blink(world, run, times: int) -> None:
     """shop/web goes down long enough to open an incident, then back up long enough to close it, `times` times."""
     for _ in range(times):

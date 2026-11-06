@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { addAck, liftAck, loadLive, loadLogs, loadOps, loadScenario } from './api'
+import { OpsGraph } from './OpsGraph'
 import { OpsOverview } from './OpsOverview'
 import type { Logs, Ops as OpsData, OpsIncident, OpsService, View } from './types'
 
@@ -8,7 +9,7 @@ import type { Logs, Ops as OpsData, OpsIncident, OpsService, View } from './type
 // ?scenario=<id> shows a demo scenario, to look at the screen without agents.
 
 const REFRESH_MS = 20_000
-const TABS = ['overview', 'services', 'incidents', 'agents', 'logs'] as const
+const TABS = ['overview', 'graph', 'services', 'incidents', 'agents', 'logs'] as const
 type Tab = (typeof TABS)[number]
 type Tone = 'good' | 'warn' | 'bad' | 'muted'
 
@@ -525,7 +526,7 @@ export default function Ops() {
       if (e.key === '/') {
         e.preventDefault()
         searchRef.current?.focus()
-      } else if (/^[1-5]$/.test(e.key)) {
+      } else if (/^[1-6]$/.test(e.key)) {
         setTab(TABS[Number(e.key) - 1])
       } else if (tab === 'services' && (e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault()
@@ -542,10 +543,11 @@ export default function Ops() {
 
   const keys: [string, string][] = [
     ['1', 'overview'],
-    ['2', 'services'],
-    ['3', 'incidents'],
-    ['4', 'agents'],
-    ['5', 'logs'],
+    ['2', 'graph'],
+    ['3', 'services'],
+    ['4', 'incidents'],
+    ['5', 'agents'],
+    ['6', 'logs'],
     ['/', 'filter'],
     ['esc', 'clear'],
   ]
@@ -586,7 +588,17 @@ export default function Ops() {
           <OpsOverview
             data={data}
             view={view}
+            onGraph={() => setTab('graph')}
             onPick={(s) => {
+              setSelectedKey(`${s.host}:${s.service}`)
+              setTab('services')
+            }}
+          />
+        )}
+        {data && tab === 'graph' && (
+          <OpsGraph
+            data={data}
+            onDetails={(s) => {
               setSelectedKey(`${s.host}:${s.service}`)
               setTab('services')
             }}
@@ -632,7 +644,7 @@ export default function Ops() {
             <button
               key={key}
               type="button"
-              onClick={() => /^[1-5]$/.test(key) && setTab(TABS[Number(key) - 1])}
+              onClick={() => /^[1-6]$/.test(key) && setTab(TABS[Number(key) - 1])}
               className="flex items-center gap-1"
             >
               <span className={`rounded-sm px-1 ${active ? 'bg-[#c792ea] text-[#09080f]' : `bg-[#c792ea]/20 ${C.accent}`}`}>&lt;{key}&gt;</span>

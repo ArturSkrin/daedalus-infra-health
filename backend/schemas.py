@@ -223,6 +223,7 @@ class OpsService(BaseModel):
     severity: str | None = None
     flapping: bool = False
     accepted: str | None = None     # the reason, when a person accepted it
+    calls: list[str] = []           # services on the same host it depends on (compose depends_on, k8s Service names)
 
 
 class OpsIncident(BaseModel):
@@ -249,11 +250,18 @@ class OpsAgent(BaseModel):
     error: str | None = None
 
 
+class OpsBucket(BaseModel):
+    t: str
+    requests: float
+    errors: float
+
+
 class Ops(BaseModel):
     services: list[OpsService]
     incidents: list[OpsIncident]
     agents: list[OpsAgent]
     acks: list[Ack]
+    history: list[OpsBucket] = []   # 5-minute buckets of the last day, the whole fleet
 
 
 class LogLine(BaseModel):
