@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { addAck, liftAck, loadLive, loadLogs, loadOps, loadScenario } from './api'
+import { OpsOverview } from './OpsOverview'
 import type { Logs, Ops as OpsData, OpsIncident, OpsService, View } from './types'
 
 // The admin screen: the fleet as panels, for the person who runs it. Same data as the overview, without the
@@ -32,15 +33,6 @@ function ago(iso?: string | null): string {
   if (!iso) return '—'
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000)
   return s < 90 ? `${Math.round(s)}s` : s < 5400 ? `${Math.round(s / 60)}m` : s < 172800 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 86400)}d`
-}
-
-// a series as one line of block characters, squeezed to `width` columns by taking the worst of each group
-function spark(values: number[], width = 48): string {
-  const bars = '▁▂▃▄▅▆▇█'
-  const step = Math.max(1, Math.ceil(values.length / width))
-  const groups = Array.from({ length: Math.ceil(values.length / step) }, (_, i) => Math.max(...values.slice(i * step, (i + 1) * step)))
-  const top = Math.max(...groups, 0)
-  return groups.map((v) => (top > 0 ? bars[Math.min(7, Math.floor((v / top) * 7.99))] : bars[0])).join('')
 }
 
 function serviceTone(s: OpsService): Tone {
@@ -96,125 +88,6 @@ function Bar({ value, tone }: { value?: number | null; tone: Tone }) {
 
 const th = `px-2 py-1 text-left font-normal ${C.dim}`
 const td = 'px-2 py-[3px] align-top'
-
-// ----------------------------------------------------------------------- overview ---
-
-const LEVEL_TONE: Record<string, Tone> = { good: 'good', warn: 'warn', bad: 'bad', muted: 'muted' }
-
-function Overview({ data, view }: { data: OpsData; view: View | null }) {
-  const open = data.incidents.filter((i) => i.status === 'open')
-  const down = data.services.filter((s) => !s.ready && !s.accepted && !s.dark)
-  const day = view?.indicators.find((i) => i.id === 'day')
-  const series = day?.drill?.sparkline ?? []
-  return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-2 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
-      <Panel title="fleet" tag={view?.source.tenant ?? 'fleet'} hint={view ? `data ${view.source.age} old` : undefined}>
-        {view ? (
-          <div className="px-3 py-3">
-            <div className={`text-2xl font-bold tracking-wider ${TONE[LEVEL_TONE[view.decision.level]]}`}>{view.decision.word}</div>
-            <p className={`mt-1 ${C.text}`}>{view.decision.reason}</p>
-            {view.decision.alsoOpen.length > 0 && <p className={`mt-1 ${C.dim}`}>also open: {view.decision.alsoOpen.join(', ')}</p>}
-            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-              {[
-                ['services', data.services.length, 'muted'],
-                ['down', down.length, down.length ? 'bad' : 'good'],
-                ['open', open.length, open.length ? 'warn' : 'good'],
-                ['accepted', data.acks.length, 'muted'],
-              ].map(([label, n, tone]) => (
-                <div key={label as string} className="rounded-sm bg-white/[0.03] py-1.5">
-                  <div className={`text-lg ${TONE[tone as Tone]}`}>{n}</div>
-                  <div className={C.dim}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className={`px-3 py-3 ${C.dim}`}>loading the verdict…</p>
-        )}
-      </Panel>
-
-      <Panel title="vitals" count={4}>
-        <table className="w-full">
-          <tbody>
-            {view?.indicators.map((i) => (
-              <tr key={i.id} className="border-b border-[#2a2840]/50">
-                <td className={`${td} whitespace-nowrap ${C.dim}`}>{i.title.toLowerCase()}</td>
-                <td className={`${td} whitespace-nowrap ${TONE[LEVEL_TONE[i.level]]}`}>{i.label}</td>
-                <td className={`${td} ${C.text}`}>{i.caption}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {series.length > 0 && (
-          <div className="px-2 py-2">
-            <div className={C.dim}>errors, last 24 h</div>
-            <div className={`overflow-hidden whitespace-nowrap text-base leading-none ${C.warn}`}>{spark(series)}</div>
-          </div>
-        )}
-      </Panel>
-
-      <Panel title="agents" count={data.agents.length} hint={`${data.agents.filter((a) => !a.connected).length} silent`}>
-        <table className="w-full">
-          <tbody>
-            {data.agents.map((a) => (
-              <tr key={a.host} className="border-b border-[#2a2840]/50">
-                <td className={td}>
-                  <Dot tone={a.connected ? 'good' : 'bad'} />
-                </td>
-                <td className={`${td} ${C.cyan}`}>{a.host}</td>
-                <td className={`${td} ${C.dim}`}>{a.cluster ?? '—'}</td>
-                <td className={`${td} text-right`}>{a.services}</td>
-                <td className={`${td} text-right ${C.dim}`}>{a.lastMessage ? `${ago(a.lastMessage)} ago` : a.error}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
-
-      <Panel title="needs a human" count={open.length} className="lg:col-span-2">
-        {open.length === 0 && <p className={`px-3 py-2 ${C.good}`}>✓ nothing open</p>}
-        {open.map((i) => (
-          <div key={i.id} className="flex gap-2 border-b border-[#2a2840]/50 px-2.5 py-1.5">
-            <span className={`w-14 shrink-0 ${i.severity === 'critical' ? C.bad : C.warn}`}>[{i.severity === 'critical' ? 'CRIT' : 'WARN'}]</span>
-            <span className="min-w-0 flex-1">
-              <span className={C.cyan}>{i.host}</span>
-              <span className={C.dim}>:</span>
-              <span className="text-white/90">{i.service}</span>
-              <span className={`block ${C.text} opacity-80`}>{i.title}</span>
-            </span>
-            <span className={`shrink-0 ${C.dim}`}>
-              open {ago(i.firstSeen)}
-              {i.reopens > 0 && ` · back ${i.reopens}×`}
-            </span>
-          </div>
-        ))}
-        {data.acks.length > 0 && (
-          <div className="px-2.5 py-2">
-            <div className={C.dim}>accepted, not deciding the verdict</div>
-            {data.acks.map((a) => (
-              <div key={a.service} className={C.text}>
-                <span className={C.dim}>{a.kind} until {a.until.slice(0, 10)} · </span>
-                {a.service} <span className={C.dim}>— {a.reason}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
-
-      <Panel title="journal" count={view?.journal.length}>
-        {view?.journal.slice(0, 30).map((e, n) => (
-          <div key={n} className="flex gap-2 border-b border-[#2a2840]/40 px-2.5 py-1">
-            <span className={`shrink-0 ${C.dim}`}>{clock(e.at)}</span>
-            <span className="min-w-0">
-              <span className={TONE[LEVEL_TONE[e.level]]}>{e.title}</span>
-              <span className={`block truncate ${C.dim}`}>{e.detail}</span>
-            </span>
-          </div>
-        ))}
-      </Panel>
-    </div>
-  )
-}
 
 // ----------------------------------------------------------------------- services ---
 
@@ -708,8 +581,17 @@ export default function Ops() {
 
       {error && <p className={`px-3 py-1 ${C.bad}`}>could not load: {error}</p>}
 
-      <main className="min-h-0 flex-1 p-2">
-        {data && tab === 'overview' && <Overview data={data} view={view} />}
+      <main className={`min-h-0 flex-1 p-2 ${tab === 'overview' ? 'scrollbar-thin overflow-auto' : ''}`}>
+        {data && tab === 'overview' && (
+          <OpsOverview
+            data={data}
+            view={view}
+            onPick={(s) => {
+              setSelectedKey(`${s.host}:${s.service}`)
+              setTab('services')
+            }}
+          />
+        )}
         {data && tab === 'services' && (
           <Services
             data={data}
