@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
@@ -63,18 +64,25 @@ def _query(selector: str, limit: int) -> list[dict]:
 ERROR_LINE = "(?i)(error|fatal|panic|exception|traceback|fail)"
 
 
+STATS_TIMEOUT_S = 30        # a day of every stream is a heavier question than one service's last lines
+
+
 def _loki(path: str, params: dict) -> dict:
     base = os.environ.get("LOKI_URL", "").rstrip("/")
     if not base:
         raise LogsUnavailable("logs are not configured on this tracker (LOKI_URL)")
     try:
-        with urllib.request.urlopen(f"{base}{path}?{urllib.parse.urlencode(params)}", timeout=TIMEOUT_S) as response:  # noqa: S310
+        with urllib.request.urlopen(f"{base}{path}?{urllib.parse.urlencode(params)}", timeout=STATS_TIMEOUT_S) as response:  # noqa: S310
             return json.loads(response.read())["data"]
+    except urllib.error.HTTPError as error:
+        # Loki says what it disliked in the body ("parse error", "query timed out"): an admin needs that, not a shrug
+        detail = error.read().decode("utf-8", "replace").strip()[:200]
+        raise LogsUnavailable(f"Loki refused the query (HTTP {error.code}): {detail}") from error
     except Exception as error:
-        raise LogsUnavailable("Loki did not answer") from error
+        raise LogsUnavailable(f"Loki did not answer: {type(error).__name__}: {error}") from error
 
 
-def activity(hours: int = 12, step_s: int = 300) -> dict:
+def activity(hours: int = 24, step_s: int = 600) -> dict:
     """Log lines and error lines of the whole fleet, one point per step: how busy the fleet was and how much of it
     went wrong. Until there is real request data (RED) this is the closest thing to traffic we have."""
     end = int(time.time()) // step_s * step_s

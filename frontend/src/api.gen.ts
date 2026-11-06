@@ -149,7 +149,7 @@ export interface paths {
         };
         /**
          * Log Stats
-         * @description The fleet's log activity over the last 12 h and the streams writing the most errors now. Cached for a minute.
+         * @description The fleet's log activity over the last 24 h and the streams writing the most errors now. Cached for a minute.
          *     ?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki.
          */
         get: operations["log_stats_api_logstats_get"];

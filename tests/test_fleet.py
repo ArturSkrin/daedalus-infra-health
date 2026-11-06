@@ -248,7 +248,7 @@ def test_log_stats_say_why_when_there_is_no_loki_and_stand_in_for_a_demo(fleet, 
     assert (stats["available"], stats["noisiest"]) == (False, [])
     assert "LOKI_URL" in stats["reason"]
     demo = fleet.get("/api/logstats", params={"scenario": "s07_outage"}).json()
-    assert demo["available"] and len(demo["activity"]["lines"]) == 144
+    assert demo["available"] and len(demo["activity"]["lines"]) == 144 and demo["activity"]["stepS"] == 600
     assert any(n["service"] == "checkout" for n in demo["noisiest"])
 
 

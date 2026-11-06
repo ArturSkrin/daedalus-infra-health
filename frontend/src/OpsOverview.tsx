@@ -1,8 +1,10 @@
+import { LogCharts } from './OpsCharts'
 import type { LogStats, Ops, OpsService, View } from './types'
 
-// The first tab of /ops, in the tracker's own liquid glass. The ring is a clock face of the last 12 hours, one
-// tick per 5 minutes, each at its own place on the dial: how much the fleet wrote to its logs, and how much of
-// that read like an error. Everything on it opens something: a service, its logs, or the drill-in behind a vital.
+// The first tab of /ops, in the tracker's own liquid glass. The crown around the rings is the last 24 hours, one
+// bar per 10 minutes: the newest at the top, running clockwise into the past, 12 hours ago at the bottom. Its length
+// is how much the fleet wrote to its logs, its colour how much of that read like an error. Everything on the
+// page opens something: a service, its logs, or the drill-in behind a vital.
 
 const RING = { users: '#22d3ee', forecast: '#e879f9', trust: '#a78bfa', day: '#fbbf24' } as const
 const LEVEL: Record<string, string> = { good: '#4ade80', warn: '#fbbf24', bad: '#ef4444', muted: '#7c8296' }
@@ -37,31 +39,18 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
   const activity = stats?.activity
   const lines = activity?.lines ?? []
   const peak = Math.max(...lines, 0)
-  // a 12-hour dial: the angle of a point is its own wall-clock time, so 12 is at the top and 6 at the bottom
-  const angleOf = (unix: number) => {
-    const d = new Date(unix * 1000)
-    return (((d.getHours() % 12) * 60 + d.getMinutes()) / 720) * 2 * Math.PI - Math.PI / 2
-  }
-  const now = Date.parse(view.source.now) / 1000        // the moment the backend judged, so the hand matches the data
-  const hand = angleOf(now)
+  // newest at twelve o'clock, then clockwise back in time: the ring is a day read like a stopwatch, not a wall clock
+  const angleOf = (i: number) => ((lines.length - 1 - i) / Math.max(1, lines.length)) * 2 * Math.PI - Math.PI / 2
   const rings = view.indicators.map((i, n) => ({ id: i.id, value: i.ring, r: 88 - n * 14 }))
   return (
     <div className="flex flex-col items-center">
       <svg viewBox={`0 0 ${size} ${size}`} className="h-80 w-80">
-        {Array.from({ length: 12 }, (_, h) => {
-          const a = (h / 12) * 2 * Math.PI - Math.PI / 2
-          return (
-            <text key={h} x={c + 150 * Math.cos(a)} y={c + 150 * Math.sin(a) + 4} textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.35)">
-              {h === 0 ? 12 : h}
-            </text>
-          )
-        })}
         {lines.map((count, i) => {
-          const at = (activity?.start ?? 0) + i * (activity?.stepS ?? 300)
-          const a = angleOf(at)
+          const at = (activity?.start ?? 0) + i * (activity?.stepS ?? 600)
+          const a = angleOf(i)
           const share = count ? (100 * (activity?.errors[i] ?? 0)) / count : 0
           const r1 = 100
-          const r2 = r1 + 2 + (peak ? (count / peak) * 36 : 0)
+          const r2 = r1 + 3 + (peak ? (count / peak) * 46 : 0)
           return (
             <line
               key={at}
@@ -70,9 +59,9 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
               x2={c + r2 * Math.cos(a)}
               y2={c + r2 * Math.sin(a)}
               stroke={errorColor(share)}
-              strokeWidth={2.4}
+              strokeWidth={3}
               strokeLinecap="round"
-              opacity={0.35 + 0.65 * (1 - (now - at) / 43200)}
+              opacity={0.45 + 0.55 * (i / Math.max(1, lines.length - 1))}
             >
               <title>{`${new Date(at * 1000).toTimeString().slice(0, 5)}: ${Math.round(count)} log lines, ${share.toFixed(1)}% errors`}</title>
             </line>
@@ -83,7 +72,6 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
             const a = (i / 144) * 2 * Math.PI
             return <line key={i} x1={c + 100 * Math.cos(a)} y1={c + 100 * Math.sin(a)} x2={c + 104 * Math.cos(a)} y2={c + 104 * Math.sin(a)} stroke="rgba(255,255,255,0.12)" strokeWidth={2} />
           })}
-        <line x1={c + 60 * Math.cos(hand)} y1={c + 60 * Math.sin(hand)} x2={c + 142 * Math.cos(hand)} y2={c + 142 * Math.sin(hand)} stroke="#fff" strokeOpacity={0.8} strokeWidth={1.5} />
         {rings.map(({ id, value, r }) => {
           const length = 2 * Math.PI * r
           return (
@@ -105,7 +93,7 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
       </div>
       <p className="mt-1 max-w-md text-center text-sm text-white/65">{view.decision.reason}</p>
       <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-white/40">
-        <span>dial: log lines, last 12 h</span>
+        <span>crown: log lines, 24 h, newest at the top</span>
         {[['#22d3ee', 'no errors'], ['#facc15', '< 0.5%'], ['#fb923c', '< 5%'], ['#ef4444', '≥ 5%']].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
@@ -309,7 +297,11 @@ export function OpsOverview({ data, view, stats, onPick, onGraph, onStream, onIn
         <Noisy stats={stats} onStream={onStream} />
       </Glass>
 
-      <Glass title="fleet map" right={`${data.services.length} services`} onTitle={onGraph} className="xl:col-span-12">
+      <Glass title="logs, last 24 h" right="hover for the numbers" className="xl:col-span-7">
+        <LogCharts stats={stats} />
+      </Glass>
+
+      <Glass title="fleet map" right={`${data.services.length} services`} onTitle={onGraph} className="xl:col-span-5">
         <FleetMap data={data} onPick={onPick} />
       </Glass>
     </div>
