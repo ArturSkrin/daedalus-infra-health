@@ -2098,7 +2098,7 @@
     },
     "/api/logstats": {
       "get": {
-        "description": "The fleet's log activity over the last 12 h and the streams writing the most errors now. Cached for a minute.\n?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki.",
+        "description": "The fleet's log activity over the last 24 h and the streams writing the most errors now. Cached for a minute.\n?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki.",
         "operationId": "log_stats_api_logstats_get",
         "parameters": [
           {
