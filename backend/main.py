@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -13,7 +14,7 @@ from backend.engine import verdict
 from backend.fleet import FLEET
 from backend.presentation import build_view
 from backend.repository import ScenarioNotFound, list_scenarios, load_scenario
-from backend.schemas import Ack, AckIn, Event, FleetItem, Health, Logs, Ops, ScenarioListItem, View
+from backend.schemas import Ack, AckIn, Event, FleetItem, Health, Logs, LogStats, Ops, ScenarioListItem, View
 
 log = logging.getLogger("daedalus")
 JOURNAL_POLL_S = int(os.environ.get("JOURNAL_POLL_S", "20"))
@@ -166,9 +167,42 @@ def ops_view(scenario: str | None = None) -> dict:
     return ops.snapshot()
 
 
+_logstats: dict = {}
+
+
+@app.get("/api/logstats", response_model=LogStats)
+def log_stats(scenario: str | None = None) -> dict:
+    """The fleet's log activity over the last 12 h and the streams writing the most errors now. Cached for a minute.
+    ?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki."""
+    if scenario:
+        block = _scenario_or_404(scenario)
+        tenant = block["status"]["tenantStats"]["tenants"][block["tenant"]]
+        history = (tenant.get("signalsHistory") or [])[-144:]
+        start = int(time.time()) // 300 * 300 - (len(history) - 1) * 300
+        return {"available": True, "reason": "demo: the scenario's requests stand in for log lines",
+                "activity": {"stepS": 300, "start": start, "lines": [b.get("requests") or 0 for b in history],
+                             "errors": [b.get("requestErrors") or 0 for b in history]},
+                "noisiest": [{"host": block["tenant"], "service": a["name"], "errors": round(a["golden"]["errPct"] * 10, 1)}
+                             for a in block.get("applications") or [] if (a.get("golden") or {}).get("errPct", 0) >= 0.5]}
+    if _logstats and time.monotonic() - _logstats["at"] < 60:
+        return _logstats["value"]
+    try:
+        value = {"available": True, "activity": logs.activity(), "noisiest": logs.noisiest()}
+    except logs.LogsUnavailable as error:
+        value = {"available": False, "reason": str(error), "activity": None, "noisiest": []}
+    _logstats.update(at=time.monotonic(), value=value)
+    return value
+
+
 @app.get("/api/logs", response_model=Logs)
-def service_logs(service: str, limit: int = 200) -> dict:
-    """Recent lines of one fleet service (<host>:<service>) from Loki, newest first."""
+def service_logs(service: str = "", limit: int = 200, loki_host: str = "", loki_service: str = "") -> dict:
+    """Recent lines of one fleet service (<host>:<service>) from Loki, newest first. loki_host and loki_service
+    name a Loki stream by its own labels instead, as /api/logstats lists them."""
+    if loki_host and loki_service:
+        try:
+            return logs.stream(loki_host, loki_service, limit=max(1, min(limit, 1000)))
+        except logs.LogsUnavailable as error:
+            raise HTTPException(status_code=503, detail=str(error)) from None
     host, _, name = service.partition(":")
     if not host or not name:
         raise HTTPException(status_code=422, detail="service must be <host>:<service>")

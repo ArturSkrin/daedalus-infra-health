@@ -241,8 +241,8 @@ export function OpsGraph({ data, onDetails }: { data: Ops; onDetails: (s: OpsSer
 
   return (
     <div className="grid h-full min-h-0 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <section className="relative min-h-[28rem] rounded-sm border border-[#2a2840] bg-[radial-gradient(ellipse_at_center,#171338_0%,#0e0d18_70%)]">
-        <header className="absolute left-0 right-0 top-0 flex justify-between bg-[#1b1930]/80 px-2.5 py-1">
+      <section className="glass relative min-h-[28rem] overflow-hidden rounded-3xl">
+        <header className="absolute left-0 right-0 top-0 z-10 flex justify-between px-4 py-2 text-sm">
           <span>
             <span className="text-[#e6defc]">service graph</span>
             <span className="text-[#6e6a86]">({data.services.length})</span>
@@ -258,7 +258,7 @@ export function OpsGraph({ data, onDetails }: { data: Ops; onDetails: (s: OpsSer
             )}
           </span>
         </header>
-        <div className="absolute inset-0 pt-7">
+        <div className="absolute inset-0 pt-9">
           {group ? (
             <Inside data={data} group={group} picked={picked} onPick={setPicked} />
           ) : (
@@ -271,7 +271,7 @@ export function OpsGraph({ data, onDetails }: { data: Ops; onDetails: (s: OpsSer
             />
           )}
         </div>
-        <div className="absolute bottom-1.5 left-2.5 flex gap-3 text-[10px] text-[#6e6a86]">
+        <div className="absolute bottom-3 left-4 flex gap-3 text-[11px] text-white/45">
           {(['bad', 'warn', 'good', 'muted'] as Tone[]).map((t) => (
             <span key={t} className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOR[t] }} />
@@ -282,9 +282,9 @@ export function OpsGraph({ data, onDetails }: { data: Ops; onDetails: (s: OpsSer
         </div>
       </section>
 
-      <section className="min-h-0 overflow-auto rounded-sm border border-[#2a2840] bg-[#0e0d18]">
-        <header className="bg-[#1b1930] px-2.5 py-1 text-[#e6defc]">{pickedService ? 'service' : group ? 'group' : 'how to read it'}</header>
-        <div className="space-y-2 px-3 py-2 text-[#d8d4ea]">
+      <section className="glass min-h-0 overflow-auto rounded-3xl p-4">
+        <header className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">{pickedService ? 'service' : group ? 'group' : 'how to read it'}</header>
+        <div className="space-y-2 text-sm text-white/75">
           {!group && (
             <>
               <p>Each host is a hub, each sphere around it a compose project or a namespace. Size is how many services it has, colour is its worst service.</p>

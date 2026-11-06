@@ -128,9 +128,31 @@ export interface paths {
         };
         /**
          * Service Logs
-         * @description Recent lines of one fleet service (<host>:<service>) from Loki, newest first.
+         * @description Recent lines of one fleet service (<host>:<service>) from Loki, newest first. loki_host and loki_service
+         *     name a Loki stream by its own labels instead, as /api/logstats lists them.
          */
         get: operations["service_logs_api_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logstats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Log Stats
+         * @description The fleet's log activity over the last 12 h and the streams writing the most errors now. Cached for a minute.
+         *     ?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki.
+         */
+        get: operations["log_stats_api_logstats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -447,6 +469,17 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** LogActivity */
+        LogActivity: {
+            /** Errors */
+            errors: number[];
+            /** Lines */
+            lines: number[];
+            /** Start */
+            start: number;
+            /** Steps */
+            stepS: number;
+        };
         /** LogLine */
         LogLine: {
             /** At */
@@ -456,12 +489,31 @@ export interface components {
             /** Stream */
             stream: string;
         };
+        /** LogStats */
+        LogStats: {
+            activity?: components["schemas"]["LogActivity"] | null;
+            /** Available */
+            available: boolean;
+            /** Noisiest */
+            noisiest: components["schemas"]["NoisyStream"][];
+            /** Reason */
+            reason?: string | null;
+        };
         /** Logs */
         Logs: {
             /** Lines */
             lines: components["schemas"]["LogLine"][];
             /** Selector */
             selector: string;
+        };
+        /** NoisyStream */
+        NoisyStream: {
+            /** Errors */
+            errors: number;
+            /** Host */
+            host: string;
+            /** Service */
+            service: string;
         };
         /** Ops */
         Ops: {
@@ -959,9 +1011,11 @@ export interface operations {
     };
     service_logs_api_logs_get: {
         parameters: {
-            query: {
-                service: string;
+            query?: {
+                service?: string;
                 limit?: number;
+                loki_host?: string;
+                loki_service?: string;
             };
             header?: never;
             path?: never;
@@ -976,6 +1030,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Logs"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_stats_api_logstats_get: {
+        parameters: {
+            query?: {
+                scenario?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogStats"];
                 };
             };
             /** @description Validation Error */

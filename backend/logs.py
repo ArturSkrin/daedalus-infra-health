@@ -60,6 +60,52 @@ def _query(selector: str, limit: int) -> list[dict]:
     return [{k: v for k, v in x.items() if k != "ns"} for x in lines[:limit]]
 
 
+ERROR_LINE = "(?i)(error|fatal|panic|exception|traceback|fail)"
+
+
+def _loki(path: str, params: dict) -> dict:
+    base = os.environ.get("LOKI_URL", "").rstrip("/")
+    if not base:
+        raise LogsUnavailable("logs are not configured on this tracker (LOKI_URL)")
+    try:
+        with urllib.request.urlopen(f"{base}{path}?{urllib.parse.urlencode(params)}", timeout=TIMEOUT_S) as response:  # noqa: S310
+            return json.loads(response.read())["data"]
+    except Exception as error:
+        raise LogsUnavailable("Loki did not answer") from error
+
+
+def activity(hours: int = 12, step_s: int = 300) -> dict:
+    """Log lines and error lines of the whole fleet, one point per step: how busy the fleet was and how much of it
+    went wrong. Until there is real request data (RED) this is the closest thing to traffic we have."""
+    end = int(time.time()) // step_s * step_s
+    start = end - hours * 3600 + step_s
+    window = f"{step_s}s"
+
+    def series(query: str) -> dict[int, float]:
+        result = _loki("/loki/api/v1/query_range", {"query": query, "start": start, "end": end, "step": step_s}).get("result") or []
+        return {int(float(t)): float(v) for t, v in (result[0].get("values") or [] if result else [])}
+
+    lines = series(f'sum(count_over_time({{host=~".+"}}[{window}]))')
+    errors = series(f'sum(count_over_time({{host=~".+"}} |~ "{ERROR_LINE}" [{window}]))')
+    times = list(range(start, end + 1, step_s))
+    return {"stepS": step_s, "start": start, "lines": [lines.get(t, 0.0) for t in times], "errors": [errors.get(t, 0.0) for t in times]}
+
+
+def noisiest(limit: int = 12) -> list[dict]:
+    """The streams that wrote the most error lines in the last hour, with their Loki labels."""
+    query = f'topk({limit}, sum by (host, service) (count_over_time({{host=~".+"}} |~ "{ERROR_LINE}" [1h])))'
+    result = _loki("/loki/api/v1/query", {"query": query}).get("result") or []
+    rows = [{"host": r["metric"].get("host", ""), "service": r["metric"].get("service", ""), "errors": float(r["value"][1])}
+            for r in result if r.get("metric")]
+    return sorted((r for r in rows if r["errors"] > 0), key=lambda r: -r["errors"])
+
+
+def stream(host_label: str, service_label: str, limit: int = 200) -> dict:
+    """Lines of one Loki stream named by its own labels (as noisiest() returns them)."""
+    selector = f"{{host={json.dumps(host_label)}, service={json.dumps(service_label)}}}"
+    return {"selector": selector, "lines": _query(selector, limit)}
+
+
 def recent(host: str, service: str, cluster: str | None, limit: int = 200) -> dict:
     """Newest first. An empty answer still says which selectors were tried."""
     tried = selectors(host, service, cluster)
