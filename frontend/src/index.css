@@ -166,8 +166,12 @@ body {
   @keyframes drift-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-8vw, 10vh); } }
   @keyframes drift-c { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(6vw, -8vh); } }
 
+  /* a down service's orb breathes out a ring, the same beat as on the graph */
+  .orb-pulse { transform-box: fill-box; transform-origin: center; animation: orb-pulse 1.8s cubic-bezier(.2, .7, .3, 1) infinite; }
+  @keyframes orb-pulse { from { transform: scale(1); opacity: .5; } to { transform: scale(1.45); opacity: 0; } }
+
   @media (prefers-reduced-motion: reduce) {
-    .ambient > i { animation: none; }
+    .ambient > i, .orb-pulse { animation: none; }
   }
 
   /* no backdrop-filter (old browsers, some WebViews): fall back to the solid panel so text stays readable */

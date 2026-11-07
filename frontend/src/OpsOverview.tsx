@@ -1,4 +1,5 @@
 import { LogCharts } from './OpsCharts'
+import { Orb } from './OpsOrb'
 import { scaleTop } from './scale'
 import type { LogStats, Ops, OpsService, View } from './types'
 
@@ -148,17 +149,26 @@ function AboutToBreak({ data, onPick }: { data: Ops; onPick: (s: OpsService) => 
   return (
     <div className="flex flex-wrap gap-3">
       {ranked.map(({ s, r }) => {
-        const color = r >= 90 ? '#ef4444' : r >= 60 ? '#f97316' : '#f59e0b'
+        // the graph's colours: rose down, orange close to it, amber worth a look
+        const color = r >= 90 ? '#f43f5e' : r >= 60 ? '#fb923c' : '#fbbf24'
+        const word = !s.ready ? (s.flapping ? 'flap' : 'down') : `${r}%`
         return (
-          <button key={`${s.host}:${s.service}`} type="button" onClick={() => onPick(s)} className="flex w-20 flex-col items-center transition active:scale-95" title={s.incident ?? ''}>
-            <span
-              className="flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white"
-              style={{ background: `radial-gradient(circle at 35% 30%, #ffffff88, ${color} 45%, ${color}66)`, boxShadow: `0 0 22px ${color}77` }}
-            >
-              {!s.ready ? (s.flapping ? 'flap' : 'down') : `${r}%`}
+          <button
+            key={`${s.host}:${s.service}`}
+            type="button"
+            onClick={() => onPick(s)}
+            className="group flex w-28 flex-col items-center rounded-2xl pb-1 pt-1.5 outline-none transition focus-visible:bg-white/10"
+            title={s.incident ?? ''}
+          >
+            <span className="transition duration-300 ease-out group-hover:-translate-y-1 group-hover:scale-105 group-active:scale-95">
+              <Orb color={color} size={88} pulse={!s.ready && !s.flapping}>
+                <text x="50" y="57" textAnchor="middle" fontSize="19" fontWeight="700" fill="#fff" stroke="#0b0b14" strokeOpacity={0.35} strokeWidth={3} paintOrder="stroke">
+                  {word}
+                </text>
+              </Orb>
             </span>
-            <span className="mt-1 w-full truncate text-center text-[11px] text-white/75">{s.service}</span>
-            <span className="w-full truncate text-center text-[10px] text-white/40">{s.host}</span>
+            <span className="mt-1.5 w-full truncate text-center text-xs font-medium text-white/85 group-hover:text-white">{s.service}</span>
+            <span className="w-full truncate text-center text-[11px] text-white/45">{s.host}</span>
           </button>
         )
       })}
