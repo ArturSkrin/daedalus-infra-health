@@ -151,7 +151,7 @@ function AboutToBreak({ data, onPick }: { data: Ops; onPick: (s: OpsService) => 
       {ranked.map(({ s, r }) => {
         // the graph's colours: rose down, orange close to it, amber worth a look
         const color = r >= 90 ? '#f43f5e' : r >= 60 ? '#fb923c' : '#fbbf24'
-        const word = !s.ready ? (s.flapping ? 'flap' : 'down') : `${r}%`
+        const word = !s.ready ? (s.flapping ? 'flapping' : 'down') : `${r}% risk`
         return (
           <button
             key={`${s.host}:${s.service}`}
@@ -161,13 +161,12 @@ function AboutToBreak({ data, onPick }: { data: Ops; onPick: (s: OpsService) => 
             title={s.incident ?? ''}
           >
             <span className="transition duration-300 ease-out group-hover:-translate-y-1 group-hover:scale-105 group-active:scale-95">
-              <Orb color={color} size={88} pulse={!s.ready && !s.flapping}>
-                <text x="50" y="57" textAnchor="middle" fontSize="19" fontWeight="700" fill="#fff" stroke="#0b0b14" strokeOpacity={0.35} strokeWidth={3} paintOrder="stroke">
-                  {word}
-                </text>
-              </Orb>
+              <Orb color={color} size={88} pulse={!s.ready && !s.flapping} />
             </span>
-            <span className="mt-1.5 w-full truncate text-center text-xs font-medium text-white/85 group-hover:text-white">{s.service}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color }}>
+              {word}
+            </span>
+            <span className="mt-0.5 w-full truncate text-center text-xs font-medium text-white/85 group-hover:text-white">{s.service}</span>
             <span className="w-full truncate text-center text-[11px] text-white/45">{s.host}</span>
           </button>
         )
