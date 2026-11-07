@@ -228,6 +228,9 @@ function Defs() {
         .beat-soft { transform-box: fill-box; transform-origin: center; animation: beat-soft 2.4s cubic-bezier(.2,.7,.3,1) infinite; }
         @keyframes beat-soft { from { transform: scale(1); opacity: .7; } to { transform: scale(1.12); opacity: 0; } }
         .bubble { transition: opacity .3s; }
+        .tile { fill-opacity: .24; stroke-opacity: .5; stroke-width: 1; transition: fill-opacity .25s ease-out, stroke-opacity .25s ease-out, stroke .25s ease-out; }
+        .tile.down { fill-opacity: .5; stroke-opacity: .8; }
+        .bubble:hover > .tile, .tile.lit { fill-opacity: .62; stroke: #fff; stroke-opacity: .9; stroke-width: 1.5; }
         .bubble:focus-visible { outline: none; }
         .bubble:focus-visible > .rim { stroke: #fff; stroke-width: 2.5; }
         @media (prefers-reduced-motion: reduce) { .flow, .beat, .beat-soft { animation: none; } }
@@ -400,9 +403,9 @@ function Canvas({ root, focus, picked, onFocus, onPick }: {
             onMouseLeave={() => setHover(null)}
           >
             <title>{`${b.service!.service} · ${b.host}\n${b.service!.incident ?? LABEL[t]}`}</title>
-            {t === 'bad' && <circle className="beat" cx={x} cy={y} r={R} fill={COLOR.bad} opacity={0.5} pointerEvents="none" />}
-            <ellipse cx={x} cy={y + R * 0.95} rx={R * 0.7} ry={R * 0.16} fill="#000" opacity={0.35} />
-            <circle className="rim" cx={x} cy={y} r={R} fill={`url(#orb-${t})`} stroke={lit(b) ? '#fff' : 'none'} strokeWidth={2} />
+            {t === 'bad' && <circle className="beat" cx={x} cy={y} r={R} fill="none" stroke={COLOR.bad} strokeWidth={1.5} pointerEvents="none" />}
+            {/* a flat, see-through tile: the glass around it carries the depth; hover firms it up and lights its edge */}
+            <circle className={`tile rim${t === 'bad' ? ' down' : ''}${lit(b) ? ' lit' : ''}`} cx={x} cy={y} r={R} fill={COLOR[t]} stroke={COLOR[t]} />
             {R >= 20 && (
               <text x={x} y={y + R + 15} textAnchor="middle" fontSize={R >= 32 ? 13 : 11} fill="#f1effa" stroke="#0b0b14" strokeWidth={3} strokeOpacity={0.6} paintOrder="stroke">
                 {fit(b.name, (2 * R + 0.9 * k) / (R >= 32 ? 7.2 : 6.2))}
@@ -420,16 +423,23 @@ function Canvas({ root, focus, picked, onFocus, onPick }: {
         if (R < 3 || x + R < 0 || x - R > W || y + R < 0 || y - R > H) return null
         const arc = `glass-arc-${b.id}`
         const under = `glass-under-${b.id}`
-        const labelR = R - Math.min(b.kind === 'host' ? 22 : 18, Math.max(b.kind === 'host' ? 14 : 10, R / 14))
+        // the name follows the upper arc; a long one shrinks to fit, and past a readable size it is cut with …
+        const text = b.kind === 'host' ? b.name.toUpperCase() : b.name
+        const wanted = Math.min(b.kind === 'host' ? 22 : 18, Math.max(b.kind === 'host' ? 15 : 11, R / 14))
+        const perChar = b.kind === 'host' ? 0.74 : 0.62 // glyph width plus letter spacing, in font sizes
+        const room = Math.PI * (R - wanted) * 0.78
+        const size = Math.max(10, Math.min(wanted, room / (text.length * perChar)))
+        const label = fit(text, room / (size * perChar))
+        const labelR = R - size
         return (
           <g key={`${b.id}-surface`} pointerEvents="none">
             <ellipse cx={x - R * 0.36} cy={y - R * 0.52} rx={R * 0.38} ry={R * 0.16} transform={`rotate(-28 ${x - R * 0.36} ${y - R * 0.52})`} fill="url(#spec)" opacity={b.kind === 'host' ? 0.45 : 0.6} />
             {R >= 30 && (
               <>
                 <path id={arc} d={`M ${x - labelR} ${y} A ${labelR} ${labelR} 0 0 1 ${x + labelR} ${y}`} fill="none" />
-                <text fontSize={Math.min(b.kind === 'host' ? 22 : 18, Math.max(b.kind === 'host' ? 15 : 11, R / 14))} fontWeight={b.kind === 'host' ? 700 : 600} letterSpacing={b.kind === 'host' ? '0.12em' : '0.06em'} fill={b.kind === 'host' ? '#ffffff' : '#e9e6f7'} fillOpacity={0.92}>
+                <text fontSize={size} fontWeight={b.kind === 'host' ? 700 : 600} letterSpacing={b.kind === 'host' ? '0.12em' : '0.06em'} fill={b.kind === 'host' ? '#ffffff' : '#e9e6f7'} fillOpacity={0.92}>
                   <textPath href={`#${arc}`} startOffset="50%" textAnchor="middle">
-                    {b.kind === 'host' ? b.name.toUpperCase() : b.name}
+                    {label}
                   </textPath>
                 </text>
               </>
