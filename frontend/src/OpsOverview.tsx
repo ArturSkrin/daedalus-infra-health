@@ -1,9 +1,11 @@
 import { LogCharts } from './OpsCharts'
+import { scaleTop } from './scale'
 import type { LogStats, Ops, OpsService, View } from './types'
 
 // The first tab of /ops, in the tracker's own liquid glass. The crown around the rings is the last 24 hours, one
-// bar per 10 minutes: the newest at the top, running clockwise into the past, 12 hours ago at the bottom. Its length
-// is how much the fleet wrote to its logs, its colour how much of that read like an error. Everything on the
+// bar per 10 minutes: the newest at the top, running clockwise into the past, 12 hours ago at the bottom. Its height
+// is how much the fleet wrote to its logs (on the same clipped scale as the chart below, so one nightly burst doesn't
+// flatten the day; a clipped bar gets a white tip), its colour how much of that read like an error. Everything on the
 // page opens something: a service, its logs, or the drill-in behind a vital.
 
 const RING = { users: '#22d3ee', forecast: '#e879f9', trust: '#a78bfa', day: '#fbbf24' } as const
@@ -38,7 +40,7 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
   const c = size / 2
   const activity = stats?.activity
   const lines = activity?.lines ?? []
-  const peak = Math.max(...lines, 0)
+  const peak = scaleTop(lines)
   // newest at twelve o'clock, then clockwise back in time: the ring is a day read like a stopwatch, not a wall clock
   const angleOf = (i: number) => ((lines.length - 1 - i) / Math.max(1, lines.length)) * 2 * Math.PI - Math.PI / 2
   const rings = view.indicators.map((i, n) => ({ id: i.id, value: i.ring, r: 88 - n * 14 }))
@@ -50,21 +52,16 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
           const a = angleOf(i)
           const share = count ? (100 * (activity?.errors[i] ?? 0)) / count : 0
           const r1 = 100
-          const r2 = r1 + 3 + (peak ? (count / peak) * 46 : 0)
+          const clipped = peak > 0 && count > peak
+          const r2 = r1 + 2 + (peak ? (Math.min(count, peak) / peak) * 44 : 0)
+          const point = (r: number) => ({ x: c + r * Math.cos(a), y: c + r * Math.sin(a) })
+          const [p1, p2, tip] = [point(r1), point(r2), point(r2 + 3)]
           return (
-            <line
-              key={at}
-              x1={c + r1 * Math.cos(a)}
-              y1={c + r1 * Math.sin(a)}
-              x2={c + r2 * Math.cos(a)}
-              y2={c + r2 * Math.sin(a)}
-              stroke={errorColor(share)}
-              strokeWidth={3}
-              strokeLinecap="round"
-              opacity={0.45 + 0.55 * (i / Math.max(1, lines.length - 1))}
-            >
-              <title>{`${new Date(at * 1000).toTimeString().slice(0, 5)}: ${Math.round(count)} log lines, ${share.toFixed(1)}% errors`}</title>
-            </line>
+            <g key={at} opacity={0.45 + 0.55 * (i / Math.max(1, lines.length - 1))}>
+              <title>{`${new Date(at * 1000).toTimeString().slice(0, 5)}: ${Math.round(count).toLocaleString()} log lines, ${share.toFixed(1)}% errors`}</title>
+              <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={errorColor(share)} strokeWidth={3} />
+              {clipped && <line x1={p2.x} y1={p2.y} x2={tip.x} y2={tip.y} stroke="#fff" strokeWidth={3} />}
+            </g>
           )
         })}
         {!lines.length &&
@@ -93,7 +90,7 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
       </div>
       <p className="mt-1 max-w-md text-center text-sm text-white/65">{view.decision.reason}</p>
       <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-white/40">
-        <span>crown: log lines, 24 h, newest at the top</span>
+        <span>crown: 24 h clockwise from the top, bar height = log lines per 10 min, white tip = off the scale</span>
         {[['#22d3ee', 'no errors'], ['#facc15', '< 0.5%'], ['#fb923c', '< 5%'], ['#ef4444', '≥ 5%']].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />

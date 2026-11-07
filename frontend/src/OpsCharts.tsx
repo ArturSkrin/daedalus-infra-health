@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { scaleTop } from './scale'
 import type { LogStats } from './types'
 
 // Two charts, one measure each (never two scales on one chart): log lines of the fleet, and the lines of them that
@@ -19,21 +20,19 @@ function niceMax(v: number): number {
 const fmt = (v: number) => (v >= 10_000 ? `${(v / 1000).toFixed(0)}k` : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${Math.round(v)}`)
 const hhmm = (unix: number) => new Date(unix * 1000).toTimeString().slice(0, 5)
 
-function Chart({ activity, values, color, kind, unit }: {
+function Chart({ activity, values, color, unit }: {
   activity: Activity
   values: number[]
   color: string
-  kind: 'area' | 'bars'
   unit: string
 }) {
   const [hover, setHover] = useState<number | null>(null)
   const n = values.length
-  const top = niceMax(Math.max(...values, 0))
+  const top = niceMax(scaleTop(values))
   const plotW = W - PAD.left - PAD.right
   const plotH = H - PAD.top - PAD.bottom
   const x = (i: number) => PAD.left + (n > 1 ? (i / (n - 1)) * plotW : plotW / 2)
   const y = (v: number) => PAD.top + plotH - (v / top) * plotH
-  const line = values.map((v, i) => `${i ? 'L' : 'M'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
   const barW = Math.max(1, plotW / n - 1.5)
   const at = (i: number) => activity.start + i * activity.stepS
   const hours = [24, 18, 12, 6, 0]
@@ -66,22 +65,17 @@ function Chart({ activity, values, color, kind, unit }: {
             </text>
           )
         })}
-        {kind === 'area' ? (
-          <>
-            <path d={`${line} L ${x(n - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`} fill={color} opacity={0.15} />
-            <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
-          </>
-        ) : (
-          values.map((v, i) =>
-            v > 0 ? <rect key={i} x={x(i) - barW / 2} y={y(v)} width={barW} height={y(0) - y(v)} rx={1} fill={color} opacity={hover === i ? 1 : 0.8} /> : null,
+        {values.map((v, i) => {
+          if (v <= 0) return null
+          const shown = Math.min(v, top)
+          return (
+            <g key={i} opacity={hover === i ? 1 : 0.8}>
+              <rect x={x(i) - barW / 2} y={y(shown)} width={barW} height={y(0) - y(shown)} rx={1} fill={color} />
+              {v > top && <rect x={x(i) - barW / 2} y={PAD.top - 3} width={barW} height={3} rx={1} fill="#fff" />}
+            </g>
           )
-        )}
-        {hover !== null && (
-          <>
-            <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={y(0)} stroke="rgba(255,255,255,0.4)" strokeDasharray="3 3" />
-            <circle cx={x(hover)} cy={y(values[hover])} r={4} fill={color} stroke="#12121b" strokeWidth={2} />
-          </>
-        )}
+        })}
+        {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={y(0)} stroke="rgba(255,255,255,0.4)" strokeDasharray="3 3" />}
       </svg>
       {hover !== null && (
         <div
@@ -127,15 +121,15 @@ export function LogCharts({ stats }: { stats: LogStats | null }) {
         <Tile label="lines, last hour" value={lastLines.toLocaleString()} sub={`${dayLines.toLocaleString()} in 24 h`} />
         <Tile label="errors, last hour" value={lastErrors.toLocaleString()} sub={`${dayErrors.toLocaleString()} in 24 h`} />
         <Tile label="error share, hour" value={share(lastErrors, lastLines)} sub={`${share(dayErrors, dayLines)} over 24 h`} />
-        <Tile label="busiest 10 min" value={Math.max(...a.lines, 0).toLocaleString()} sub="lines" />
+        <Tile label="busiest 10 min" value={Math.max(...a.lines, 0).toLocaleString()} sub={`lines, at ${hhmm(a.start + a.lines.indexOf(Math.max(...a.lines, 0)) * a.stepS)}`} />
       </div>
       <div>
-        <div className="mb-1 text-xs text-white/55">log lines per {a.stepS / 60} min</div>
-        <Chart activity={a} values={a.lines} color="#22d3ee" kind="area" unit="lines" />
+        <div className="mb-1 text-xs text-white/55">log lines per {a.stepS / 60} min · a white cap: taller than the scale, hover for the number</div>
+        <Chart activity={a} values={a.lines} color="#22d3ee" unit="lines" />
       </div>
       <div>
         <div className="mb-1 text-xs text-white/55">error lines per {a.stepS / 60} min</div>
-        <Chart activity={a} values={a.errors} color="#ef4444" kind="bars" unit="error lines" />
+        <Chart activity={a} values={a.errors} color="#ef4444" unit="error lines" />
       </div>
       {stats.reason && <p className="text-[11px] text-white/35">{stats.reason}</p>}
     </div>
