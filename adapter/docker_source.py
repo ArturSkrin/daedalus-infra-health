@@ -138,6 +138,8 @@ def discover(url: str, cgroup_root: str, timeout: float) -> list[Container] | No
             if labels.get("daedalus.ignore") == "true" or labels.get("com.docker.compose.oneoff") == "True":
                 continue                            # opted out, or a `docker compose run` one-off
             info = _get(url, f"/containers/{urllib.parse.quote(item['Id'])}/json", timeout)
+            if (info.get("HostConfig") or {}).get("AutoRemove"):
+                continue        # `docker run --rm`: a one-off task (a backup dump, a migration) that is gone when it is done
             project, service = labels.get("com.docker.compose.project"), labels.get("com.docker.compose.service")
             name = f"{project}/{service}" if project and service else (info.get("Name") or item["Id"][:12]).lstrip("/")
             state = info.get("State") or {}
