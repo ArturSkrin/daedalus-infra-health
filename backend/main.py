@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import acks, journal, live, logs, ops
+from backend import acks, journal, live, logs, notify, ops
 from backend.engine import verdict
 from backend.fleet import FLEET
 from backend.presentation import build_view
@@ -26,7 +26,10 @@ def observe_live(tenant: str | None = None) -> dict:
     data = acks.apply(data, prefix="" if data["tenant"] == FLEET else f"{data['tenant']}:")
     result = verdict(data)
     view = build_view(data, result, mode="live", journal=[])
-    journal.observe(data["tenant"], view, at=data["now"])
+    fresh = journal.observe(data["tenant"], view, at=data["now"])
+    # one push per change: from the fleet's journal when there are agents (each tenant's own would repeat it)
+    if data["tenant"] == FLEET or not live.agents():
+        notify.send(fresh)
     view["journal"] = journal.events(data["tenant"])
     return view
 

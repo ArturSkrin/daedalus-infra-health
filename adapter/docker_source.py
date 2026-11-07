@@ -25,6 +25,7 @@ class Container:
     detail: str
     cgroup: dict | None
     calls: tuple[str, ...] = ()     # what it depends on, by the same names (compose depends_on, k8s Service DNS names)
+    traffic: dict | None = None     # cumulative requests, 5xx and latency buckets the ingress saw for it (Traefik on k3s)
 
 
 class _UnixConnection(http.client.HTTPConnection):

@@ -134,19 +134,26 @@ class Collector:
             self._discover(now)
         samples = {t.name: self._observe(t, now) for t in self.settings.targets if not t.via}
         with self.lock:
-            fleet_requests = fleet_errors = 0.0
+            fleet_requests = fleet_errors = traffic_requests = traffic_errors = 0.0
             # direct targets first: a via-target reads what its parent reported in this same cycle
             for target in sorted(self.settings.targets, key=lambda t: bool(t.via)):
                 if target.via:
                     self._apply_via(target, now)
                     continue
-                requests, errors = self._apply(target, samples[target.name], now)
+                requests, errors, real_requests, real_errors = self._apply(target, samples[target.name], now)
                 if not target.external:
                     fleet_requests += requests
                     fleet_errors += errors
-            bucket = self.history.setdefault(int(now // BUCKET_S), [0.0, 0.0])
+                    traffic_requests += real_requests
+                    traffic_errors += real_errors
+            # [all requests, all errors, users' requests, users' errors]: the first pair counts our own probes too,
+            # the second only what users sent (an app's counters, the ingress), the traffic a chart should show
+            bucket = self.history.setdefault(int(now // BUCKET_S), [0.0, 0.0, 0.0, 0.0])
+            bucket.extend([0.0] * (4 - len(bucket)))           # buckets saved before users' traffic was kept apart
             bucket[0] += fleet_requests
             bucket[1] += fleet_errors
+            bucket[2] += traffic_requests
+            bucket[3] += traffic_errors
             for index in [i for i in self.history if i <= int(now // BUCKET_S) - BUCKETS_KEPT]:
                 del self.history[index]
             self.incidents = [i for i in self.incidents if i["status"] == "open" or now - i["resolvedUnix"] < INCIDENTS_KEPT_S]
@@ -196,8 +203,9 @@ class Collector:
             if container is None:
                 # not reachable: _apply turns "seen before, gone now" into down, and stops refreshing last_seen
                 return sources.Probe(False, False, None, "container is gone"), None, False
-            # the daemon's word stands in for a probe; cgroup files are what an in-app vitals endpoint would report
-            vitals = {"cgroup": container.cgroup} if container.cgroup else None
+            # the daemon's word stands in for a probe; cgroup files and the ingress's counters are what an in-app
+            # vitals endpoint would report
+            vitals = {**({"cgroup": container.cgroup} if container.cgroup else {}), **(container.traffic or {})} or None
             return sources.Probe(True, container.ok, None, container.detail), vitals, False
         state = self.states[target.name]
         if target.external and now - state.last_external_check < EXTERNAL_EVERY_S:
@@ -211,11 +219,12 @@ class Collector:
         vitals = sources.fetch_vitals(target.vitals, timeout, self.settings.vitals_token) if target.vitals else None
         return probe, vitals, False
 
-    def _apply(self, target: Target, sample, now: float) -> tuple[float, float]:
+    def _apply(self, target: Target, sample, now: float) -> tuple[float, float, float, float]:
+        """Returns (requests, errors) with our probes counted, then (requests, errors) of users' traffic alone."""
         probe, vitals, skipped = sample
         state = self.states[target.name]
         if skipped:
-            return 0.0, 0.0
+            return 0.0, 0.0, 0.0, 0.0
         state.first_checked = state.first_checked or now
         state.last_external_check = now
         state.has_vitals = vitals is not None
@@ -227,7 +236,7 @@ class Collector:
             # Never seen: we cannot tell a service that is down from one that is not on our network.
             # That is "dark", not "down": it never counts as an error, only against trust.
             state.ready = None
-            return 0.0, 0.0
+            return 0.0, 0.0, 0.0, 0.0
         if not state.reachable:
             # It was here and now its name does not resolve. Under compose a running container never leaves
             # its network, so the name goes away only when the container stops. That is down, and we saw it happen.
@@ -270,7 +279,7 @@ class Collector:
 
         if not target.external:
             self._track_incident(target, state, now)
-        return requests + probe_requests, errors + probe_errors
+        return requests + probe_requests, errors + probe_errors, requests, errors
 
     def _apply_via(self, target: Target, now: float) -> None:
         parent_name, _, dependency = target.via.partition(".")

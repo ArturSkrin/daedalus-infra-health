@@ -962,6 +962,16 @@
           "t": {
             "title": "T",
             "type": "string"
+          },
+          "traffic": {
+            "default": 0,
+            "title": "Traffic",
+            "type": "number"
+          },
+          "trafficErrors": {
+            "default": 0,
+            "title": "Trafficerrors",
+            "type": "number"
           }
         },
         "required": [
@@ -1107,6 +1117,17 @@
             "title": "Dark",
             "type": "boolean"
           },
+          "errPct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errpct"
+          },
           "flapping": {
             "default": false,
             "title": "Flapping",
@@ -1171,9 +1192,31 @@
             ],
             "title": "Oomkills"
           },
+          "p99Ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P99Ms"
+          },
           "ready": {
             "title": "Ready",
             "type": "boolean"
+          },
+          "reqPerSec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reqpersec"
           },
           "service": {
             "title": "Service",

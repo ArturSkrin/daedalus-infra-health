@@ -110,7 +110,10 @@ def status(collector: Collector) -> dict:
         fleet = [t for t in settings.targets if not t.external and collector.states[t.name].known]
         dark = [(t, collector.states[t.name]) for t in fleet if not collector.states[t.name].reachable]
         total = len(fleet)
-        history = [{"t": _iso(index * BUCKET_S), "requests": round(values[0], 1), "requestErrors": round(values[1], 1)}
+        history = [{"t": _iso(index * BUCKET_S), "requests": round(values[0], 1), "requestErrors": round(values[1], 1),
+                    # users' traffic alone, without our probes (an extra field: the core's own clients ignore it)
+                    "trafficRequests": round(values[2], 1) if len(values) > 2 else 0.0,
+                    "trafficErrors": round(values[3], 1) if len(values) > 3 else 0.0}
                    for index, values in sorted(collector.history.items())]
         resolved = [i for i in collector.incidents if i["status"] == "resolved"]
         tenant: dict = {

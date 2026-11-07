@@ -79,19 +79,20 @@ def _mentions(template: dict) -> list[str]:
     return texts
 
 
-def _edges(workloads: list[tuple[str, dict, dict]], timeout: float) -> dict[str, tuple[str, ...]]:
-    """Who calls whom, from Service names the workloads mention. Secrets are not read, so a URL kept in a Secret
-    is not seen: this is a floor, never a full map. Empty when Services cannot be listed (older RBAC)."""
-    try:
-        services = _get("/api/v1/services", timeout)["items"]
-    except (OSError, ValueError, KeyError):
-        return {}
-    backing: dict[str, list[str]] = {}          # "<ns>/<service>" -> workloads whose pods it selects
+def _backing(services: list[dict], workloads: list[tuple[str, dict, dict]]) -> dict[str, list[str]]:
+    """"<ns>/<service>" -> the workloads whose pods the Service selects."""
+    backing: dict[str, list[str]] = {}
     for svc in services:
         selector = (svc.get("spec") or {}).get("selector") or {}
         key = f"{svc['metadata']['namespace']}/{svc['metadata']['name']}"
         backing[key] = [name for name, labels, _ in workloads
                         if selector and name.startswith(f"{svc['metadata']['namespace']}/") and selector.items() <= labels.items()]
+    return backing
+
+
+def _edges(workloads: list[tuple[str, dict, dict]], backing: dict[str, list[str]]) -> dict[str, tuple[str, ...]]:
+    """Who calls whom, from Service names the workloads mention. Secrets are not read, so a URL kept in a Secret
+    is not seen: this is a floor, never a full map. Empty when Services cannot be listed (older RBAC)."""
     calls = {}
     for name, _, template in workloads:
         namespace = name.split("/")[0]
@@ -104,11 +105,66 @@ def _edges(workloads: list[tuple[str, dict, dict]], timeout: float) -> dict[str,
     return calls
 
 
+# Real traffic, from the ingress every site goes through. k3s ships Traefik with Prometheus metrics on :9100 of its
+# pod; reached by pod IP from inside the cluster, so nothing new is exposed. Per Traefik service ("<ns>-<service>-
+# <port name or number>@kubernetes"): requests by code, and a latency histogram in seconds. All cumulative.
+TRAEFIK_METRICS_PORT = 9100
+_SAMPLE = re.compile(r'^(traefik_service_requests_total|traefik_service_request_duration_seconds_bucket)\{([^}]*)\}\s+(\S+)$')
+_PAIR = re.compile(r'(\w+)="((?:[^"\\]|\\.)*)"')
+
+
+def _scrape(ip: str, timeout: float) -> str | None:
+    try:
+        with urllib.request.urlopen(f"http://{ip}:{TRAEFIK_METRICS_PORT}/metrics", timeout=timeout) as response:  # noqa: S310 - a pod IP from the API
+            return response.read().decode("utf-8", "replace")
+    except (OSError, ValueError):
+        return None
+
+
+def _traffic(pods: list[dict], services: list[dict], backing: dict[str, list[str]], timeout: float) -> dict[str, dict]:
+    """Workload -> {requests, errors, durationBucketsMs}, the shape an app's own vitals endpoint reports. Empty when
+    there is no Traefik, or its metrics are off: the services then keep their probes, as before."""
+    ips = [p["status"]["podIP"] for p in pods
+           if (p["metadata"].get("labels") or {}).get("app.kubernetes.io/name") == "traefik"
+           and (p.get("status") or {}).get("phase") == "Running" and (p.get("status") or {}).get("podIP")]
+    names: dict[str, str] = {}              # "<ns>-<service>-<port>" -> "<ns>/<service>"
+    for svc in services:
+        ns, name = svc["metadata"]["namespace"], svc["metadata"]["name"]
+        for port in (svc.get("spec") or {}).get("ports") or []:
+            for ref in (port.get("name"), port.get("port")):
+                if ref not in (None, ""):
+                    names[f"{ns}-{name}-{ref}"] = f"{ns}/{name}"
+    out: dict[str, dict] = {}
+    for ip in ips:
+        for line in (_scrape(ip, timeout) or "").splitlines():
+            match = _SAMPLE.match(line)
+            if not match:
+                continue
+            labels = dict(_PAIR.findall(match[2]))
+            service = names.get(labels.get("service", "").rpartition("@")[0])
+            try:
+                value = float(match[3])
+            except ValueError:
+                continue
+            for workload in backing.get(service or "", []):
+                slot = out.setdefault(workload, {"requests": 0.0, "errors": 0.0, "durationBucketsMs": {}})
+                if match[1] == "traefik_service_requests_total":
+                    slot["requests"] += value
+                    # 5xx is the service failing a user; 4xx is the user's own mistake, code 0 a websocket closing
+                    slot["errors"] += value if labels.get("code", "").startswith("5") else 0.0
+                else:
+                    le = labels.get("le", "")
+                    key = "+Inf" if le == "+Inf" else f"{float(le) * 1000:g}"
+                    slot["durationBucketsMs"][key] = slot["durationBucketsMs"].get(key, 0.0) + value
+    return out
+
+
 def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root: str, timeout: float) -> list[Container] | None:
     """Every workload in the cluster. None when the API cannot be asked: blindness, not an empty cluster."""
     try:
         pods: dict[str, list[dict]] = {}
-        for pod in _get("/api/v1/pods", timeout)["items"]:
+        pod_items = _get("/api/v1/pods", timeout)["items"]
+        for pod in pod_items:
             owner = _owner(pod)
             if owner:
                 pods.setdefault(f"{pod['metadata']['namespace']}/{owner}", []).append(pod)
@@ -137,7 +193,13 @@ def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root:
                 found.append(Container(name, tier, ok, detail, cgroup))
                 template = spec.get("template") or {}
                 templates.append((name, (template.get("metadata") or {}).get("labels") or {}, template))
-        calls = _edges(templates, timeout)
-        return [Container(c.name, c.tier, c.ok, c.detail, c.cgroup, calls.get(c.name, ())) for c in found]
+        try:
+            services = _get("/api/v1/services", timeout)["items"]
+        except (OSError, ValueError, KeyError):
+            services = []                       # older RBAC: no calls and no traffic, everything else as before
+        backing = _backing(services, templates)
+        calls = _edges(templates, backing)
+        traffic = _traffic(pod_items, services, backing, timeout)
+        return [Container(c.name, c.tier, c.ok, c.detail, c.cgroup, calls.get(c.name, ()), traffic.get(c.name)) for c in found]
     except (OSError, ValueError, KeyError):
         return None

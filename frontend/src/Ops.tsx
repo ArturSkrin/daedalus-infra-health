@@ -21,6 +21,7 @@ const DOT: Record<Tone, string> = { good: 'bg-good', warn: 'bg-warn', bad: 'bg-b
 const scenarioParam = new URLSearchParams(window.location.search).get('scenario') ?? undefined
 
 const pct = (v?: number | null) => (v === null || v === undefined ? '—' : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`)
+const rps = (v?: number | null) => (v === null || v === undefined ? '—' : v >= 10 ? `${Math.round(v)}` : v >= 0.1 ? v.toFixed(1) : v > 0 ? '<0.1' : '0')
 const clock = (iso?: string | null) => (iso ? iso.slice(5, 16).replace('T', ' ') : '—')
 const keyOf = (s: { host: string; service: string }) => `${s.host}:${s.service}`
 
@@ -189,6 +190,22 @@ function Detail({ s, data, onChanged, onLogs }: { s: OpsService; data: OpsData; 
         </div>
       </div>
 
+      {s.reqPerSec !== null && s.reqPerSec !== undefined && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ['req/s', rps(s.reqPerSec), 'text-white'],
+            ['5xx', pct(s.errPct), (s.errPct ?? 0) >= 5 ? 'text-bad' : (s.errPct ?? 0) >= 0.5 ? 'text-warn' : 'text-white'],
+            ['p99', s.p99Ms !== null && s.p99Ms !== undefined ? `${Math.round(s.p99Ms)} ms` : '—', (s.p99Ms ?? 0) >= 1000 ? 'text-warn' : 'text-white'],
+          ].map(([label, value, tone]) => (
+            <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div className="text-[11px] uppercase tracking-wide text-white/45">{label}</div>
+              <div className={`text-lg font-semibold tabular-nums ${tone}`}>{value}</div>
+            </div>
+          ))}
+          <p className="col-span-3 text-[11px] text-white/35">users&apos; traffic through Traefik, last 5 minutes</p>
+        </div>
+      )}
+
       <div className="space-y-1">
         {stall('cpu stall', s.cpuStallPct)}
         {stall('mem stall', s.memStallPct)}
@@ -317,7 +334,7 @@ function Services({ data, rows, selected, onSelect, onChanged, onLogs }: {
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-[#12121b]/90 backdrop-blur">
               <tr>
-                {['', 'service', 'host', 'tier', 'cpu', 'mem', 'io', 'mem/lim', 'state'].map((h) => (
+                {['', 'service', 'host', 'tier', 'req/s', '5xx', 'cpu', 'mem', 'io', 'mem/lim', 'state'].map((h) => (
                   <th key={h} className={th}>
                     {h}
                   </th>
@@ -335,6 +352,10 @@ function Services({ data, rows, selected, onSelect, onChanged, onLogs }: {
                     <td className={`${td} text-white/90`}>{s.service}</td>
                     <td className={`${td} text-white/50`}>{s.host}</td>
                     <td className={`${td} text-white/40`}>{s.tier ?? '—'}</td>
+                    <td className={`${td} tabular-nums text-white/70`}>{rps(s.reqPerSec)}</td>
+                    <td className={`${td} tabular-nums ${(s.errPct ?? 0) >= 5 ? 'text-bad' : (s.errPct ?? 0) >= 0.5 ? 'text-warn' : 'text-white/70'}`}>
+                      {s.reqPerSec === null || s.reqPerSec === undefined ? '—' : pct(s.errPct)}
+                    </td>
                     <td className={`${td} tabular-nums ${(s.cpuStallPct ?? 0) >= 5 ? 'text-warn' : 'text-white/70'}`}>{pct(s.cpuStallPct)}</td>
                     <td className={`${td} tabular-nums ${(s.memStallPct ?? 0) >= 5 ? 'text-warn' : 'text-white/70'}`}>{pct(s.memStallPct)}</td>
                     <td className={`${td} tabular-nums ${(s.ioStallPct ?? 0) >= 5 ? 'text-warn' : 'text-white/70'}`}>{pct(s.ioStallPct)}</td>
