@@ -46,6 +46,7 @@ class Target:
     external: bool = False          # a third-party dependency: probed less often, never opens an incident
     headers: dict[str, str] = field(default_factory=dict)
     container: bool = False         # found by Docker discovery: readiness comes from the daemon, not a probe
+    urls: tuple[str, ...] = ()      # public addresses (nginx server_name, Ingress hosts), checked from the hub
 
 
 @dataclass(frozen=True)

@@ -159,6 +159,29 @@ def _traffic(pods: list[dict], services: list[dict], backing: dict[str, list[str
     return out
 
 
+def _public_urls(ingresses: list[dict], backing: dict[str, list[str]]) -> dict[str, tuple[str, ...]]:
+    """Workload -> the public addresses its Ingresses route to it. The host is what users type; the path checked is
+    "/" unless the Ingress says otherwise (annotation daedalus.probe-path), and daedalus.ignore drops it."""
+    urls: dict[str, list[str]] = {}
+    for ingress in ingresses:
+        meta = ingress.get("metadata") or {}
+        notes = meta.get("annotations") or {}
+        if notes.get("daedalus.ignore") == "true":
+            continue
+        path = notes.get("daedalus.probe-path") or "/"
+        for rule in (ingress.get("spec") or {}).get("rules") or []:
+            host = (rule.get("host") or "").lower()
+            if not host or "*" in host:
+                continue                        # a catch-all or a wildcard is not one address anybody can check
+            for item in ((rule.get("http") or {}).get("paths") or []):
+                service = (((item.get("backend") or {}).get("service") or {}).get("name"))
+                for workload in backing.get(f"{meta.get('namespace')}/{service}", []):
+                    url = f"https://{host}{path if path.startswith('/') else '/' + path}"
+                    if url not in urls.setdefault(workload, []):
+                        urls[workload].append(url)
+    return {w: tuple(u) for w, u in urls.items()}
+
+
 def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root: str, timeout: float) -> list[Container] | None:
     """Every workload in the cluster. None when the API cannot be asked: blindness, not an empty cluster."""
     try:
@@ -200,6 +223,12 @@ def discover(skip_namespaces: set[str], tier2_namespaces: set[str], cgroup_root:
         backing = _backing(services, templates)
         calls = _edges(templates, backing)
         traffic = _traffic(pod_items, services, backing, timeout)
-        return [Container(c.name, c.tier, c.ok, c.detail, c.cgroup, calls.get(c.name, ()), traffic.get(c.name)) for c in found]
+        try:
+            ingresses = _get("/apis/networking.k8s.io/v1/ingresses", timeout)["items"]
+        except (OSError, ValueError, KeyError):
+            ingresses = []                      # RBAC without ingresses: no outside checks, everything else as before
+        urls = _public_urls(ingresses, backing)
+        return [Container(c.name, c.tier, c.ok, c.detail, c.cgroup, calls.get(c.name, ()), traffic.get(c.name), urls.get(c.name, ()))
+                for c in found]
     except (OSError, ValueError, KeyError):
         return None

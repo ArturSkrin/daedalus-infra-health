@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import threading
@@ -9,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend import acks, journal, live, logs, notify, ops
+from backend import acks, external, journal, live, logs, notify, ops
 from backend.engine import verdict
 from backend.fleet import FLEET
 from backend.presentation import build_view
@@ -49,11 +50,19 @@ def _watch(stop: threading.Event) -> None:
         stop.wait(JOURNAL_POLL_S)
 
 
+def _refresh_addresses() -> None:
+    """Read every agent once, so the outside checks know the addresses each one reports right now."""
+    for tenant in live.tenants():
+        with contextlib.suppress(live.LiveUnavailable):     # a silent agent keeps the addresses it reported last
+            live.load_live(tenant)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     stop = threading.Event()
     if live.configured():
         threading.Thread(target=_watch, args=(stop,), name="journal-watcher", daemon=True).start()
+        threading.Thread(target=external.watch, args=(stop, _refresh_addresses), name="outside-checks", daemon=True).start()
     yield
     stop.set()
 

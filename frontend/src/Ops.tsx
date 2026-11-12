@@ -190,6 +190,24 @@ function Detail({ s, data, onChanged, onLogs }: { s: OpsService; data: OpsData; 
         </div>
       </div>
 
+      {s.urls.length > 0 && (
+        <div className="space-y-1 text-xs">
+          <div className="text-white/40">public addresses, from the internet</div>
+          {s.urls.map((url) => {
+            const site = data.sites.find((x) => x.url === url)
+            return (
+              <div key={url} className="flex items-center gap-2">
+                <Dot tone={!site ? 'muted' : site.ok ? 'good' : 'bad'} />
+                <a href={url} target="_blank" rel="noreferrer" className="truncate text-white/80 hover:text-white">
+                  {url}
+                </a>
+                <span className={`ml-auto shrink-0 ${site && !site.ok ? 'text-bad' : 'text-white/40'}`}>{site?.detail ?? 'not checked yet'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {s.reqPerSec !== null && s.reqPerSec !== undefined && (
         <div className="grid grid-cols-3 gap-2">
           {[

@@ -23,6 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
+from backend import external
 from backend.fleet import FLEET, merge
 
 log = logging.getLogger("daedalus.live")
@@ -126,7 +127,7 @@ def load_live(tenant: str | None = None) -> dict:
         if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
             if isinstance(hit[1], LiveUnavailable):
                 raise hit[1]
-            return hit[1]
+            return external.inject(hit[1])
     try:
         data = _fetch(tenant)
     except LiveUnavailable as error:
@@ -136,4 +137,5 @@ def load_live(tenant: str | None = None) -> dict:
         raise
     with _lock:
         _cache[key] = (time.monotonic(), data)
-    return data
+    # what the hub sees of this host's sites from the internet, as incidents of the services behind them
+    return external.inject(data)

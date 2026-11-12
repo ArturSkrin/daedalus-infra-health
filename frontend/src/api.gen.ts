@@ -530,6 +530,11 @@ export interface components {
             incidents: components["schemas"]["OpsIncident"][];
             /** Services */
             services: components["schemas"]["OpsService"][];
+            /**
+             * Sites
+             * @default []
+             */
+            sites: components["schemas"]["OpsSite"][];
         };
         /** OpsAgent */
         OpsAgent: {
@@ -641,6 +646,28 @@ export interface components {
             severity?: string | null;
             /** Tier */
             tier?: number | null;
+            /**
+             * Urls
+             * @default []
+             */
+            urls: string[];
+        };
+        /** OpsSite */
+        OpsSite: {
+            /** Certdays */
+            certDays?: number | null;
+            /** Detail */
+            detail?: string | null;
+            /** Domaindays */
+            domainDays?: number | null;
+            /** Host */
+            host: string;
+            /** Ok */
+            ok: boolean;
+            /** Service */
+            service?: string | null;
+            /** Url */
+            url: string;
         };
         /** Outcome */
         Outcome: {

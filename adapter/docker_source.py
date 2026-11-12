@@ -7,14 +7,19 @@ Only GET /containers/* is used, so a docker-socket-proxy with CONTAINERS=1 is al
 from __future__ import annotations
 
 import http.client
+import io
 import json
 import re
 import socket
+import tarfile
+import time
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
 _cgroup_dirs: dict[str, Path] = {}      # container id -> its cgroup directory, found once
+_sites: dict[str, tuple[float, tuple[str, ...]]] = {}  # nginx container id -> (read at, its public URLs)
+SITES_EVERY_S = 600                     # a config changes with a deploy, and a deploy is a new container anyway
 
 
 @dataclass(frozen=True)
@@ -26,6 +31,7 @@ class Container:
     cgroup: dict | None
     calls: tuple[str, ...] = ()     # what it depends on, by the same names (compose depends_on, k8s Service DNS names)
     traffic: dict | None = None     # cumulative requests, 5xx and latency buckets the ingress saw for it (Traefik on k3s)
+    urls: tuple[str, ...] = ()      # public addresses users reach it at: nginx server_name, k8s Ingress hosts
 
 
 class _UnixConnection(http.client.HTTPConnection):
@@ -41,6 +47,10 @@ class _UnixConnection(http.client.HTTPConnection):
 
 def _get(url: str, path: str, timeout: float):
     """url is unix:///var/run/docker.sock or http://docker-proxy:2375."""
+    return json.loads(_raw(url, path, timeout))
+
+
+def _raw(url: str, path: str, timeout: float) -> bytes:
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme == "unix":
         connection = _UnixConnection(parsed.path, timeout)
@@ -52,9 +62,47 @@ def _get(url: str, path: str, timeout: float):
         body = response.read()
         if response.status != 200:
             raise OSError(f"docker API {path}: HTTP {response.status}")
-        return json.loads(body)
+        return body
     finally:
         connection.close()
+
+
+# The public names a site answers to, read from its nginx: compose projects keep nginx/default.conf in the project
+# and mount it into an nginx container. Read through the Docker API (GET /containers/<id>/archive, allowed by the
+# socket proxy with CONTAINERS=1), so the agent needs no host path and follows whatever the project mounts.
+_SERVER_NAME = re.compile(r"^\s*server_name\s+([^;]+);", re.M)
+_HOSTNAME = re.compile(r"^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$")
+
+
+def server_names(config: str) -> list[str]:
+    """Real host names from nginx server_name lines: no _, localhost, wildcards, regexes or bare IPs."""
+    names = []
+    for line in _SERVER_NAME.findall(re.sub(r"#.*", "", config)):
+        for name in line.split():
+            name = name.lower().rstrip(".")
+            if _HOSTNAME.match(name) and name not in names:
+                names.append(name)
+    return names
+
+
+def _nginx_urls(url: str, container_id: str, timeout: float, now: float) -> tuple[str, ...]:
+    hit = _sites.get(container_id)
+    if hit and now - hit[0] < SITES_EVERY_S:
+        return hit[1]
+    found: list[str] = []
+    for path in ("/etc/nginx/conf.d", "/etc/nginx/sites-enabled"):
+        try:
+            archive = _raw(url, f"/containers/{urllib.parse.quote(container_id)}/archive?path={urllib.parse.quote(path)}", timeout)
+            with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+                for member in tar.getmembers():
+                    if member.isfile() and member.size < 1_000_000:
+                        text = (tar.extractfile(member) or io.BytesIO()).read().decode("utf-8", "replace")
+                        found += [n for n in server_names(text) if n not in found]
+        except (OSError, tarfile.TarError, http.client.HTTPException):
+            continue                    # no such folder in this image
+    urls = tuple(f"https://{name}/" for name in found)
+    _sites[container_id] = (now, urls)
+    return urls
 
 
 def _readiness(state: dict, restart_policy: str) -> tuple[bool, str]:
@@ -150,10 +198,15 @@ def discover(url: str, cgroup_root: str, timeout: float) -> list[Container] | No
             # compose writes depends_on into a label: "db:service_healthy:false,cache:service_started:false"
             depends = labels.get("com.docker.compose.depends_on") or ""
             calls = tuple(f"{project}/{d.split(':')[0]}" for d in depends.split(",") if d and project)
-            container = Container(name, _tier(info, labels), ok, detail, read_cgroup(directory) if directory else None, calls)
+            image = (item.get("Image") or "").lower()
+            urls = _nginx_urls(url, item["Id"], timeout, time.time()) \
+                if state.get("Status") == "running" and ("nginx" in image or "openresty" in image) else ()
+            container = Container(name, _tier(info, labels), ok, detail, read_cgroup(directory) if directory else None, calls,
+                                  urls=urls)
             # replicas of one service share a name; the worst of them speaks for it
             if name not in found or (found[name].ok and not ok):
-                found[name] = container
+                found[name] = container if container.urls or name not in found else \
+                    Container(**{**container.__dict__, "urls": found[name].urls})
         return list(found.values())
     except (OSError, ValueError, KeyError, http.client.HTTPException):
         return None

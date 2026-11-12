@@ -184,7 +184,9 @@ class Collector:
             names = sorted(set(self.containers) | remembered)
             tiers = {**{name: t.tier for name, t in previous.items()}, **{name: c.tier for name, c in self.containers.items()}}
             calls = {**{name: t.calls for name, t in previous.items()}, **{name: c.calls for name, c in self.containers.items()}}
-            discovered = tuple(Target(name=name, container=True, tier=tiers.get(name, 2), calls=calls.get(name, ())) for name in names)
+            urls = {**{name: t.urls for name, t in previous.items()}, **{name: c.urls for name, c in self.containers.items()}}
+            discovered = tuple(Target(name=name, container=True, tier=tiers.get(name, 2), calls=calls.get(name, ()),
+                                      urls=urls.get(name, ())) for name in names)
             self.settings = replace(self.settings, targets=(*static, *discovered))
             for name in names:
                 self.states.setdefault(name, TargetState())
