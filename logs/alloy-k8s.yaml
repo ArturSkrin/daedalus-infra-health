@@ -54,9 +54,10 @@ spec:
           resources:
             requests:
               cpu: 20m
-              memory: 64Mi
+              memory: 128Mi
             limits:
-              memory: 256Mi
+              # 256Mi was the ceiling on the hub (most pods and journals to follow): 229M resident, mem/limit at 100%
+              memory: 512Mi
       volumes:
         - name: config
           configMap:
