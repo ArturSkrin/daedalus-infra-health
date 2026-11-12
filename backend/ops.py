@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from backend import acks, live
+from backend import acks, external, live
 
 
 def _iso(unix) -> str | None:
@@ -48,6 +48,7 @@ def snapshot(scenario: dict | None = None) -> dict:
         nodes = (raw.get("graph") or {}).get("nodes") or []
         tiers = {n.get("name"): n.get("tier") for n in nodes}
         calls = {n.get("name"): [c for c in n.get("calls") or [] if isinstance(c, str)] for n in nodes}
+        urls = {n.get("name"): [u for u in n.get("urls") or [] if isinstance(u, str)] for n in nodes}
         block_status = ((raw.get("status") or {}).get("tenantStats") or {}).get("tenants", {}).get(raw["tenant"]) or {}
         for bucket in block_status.get("signalsHistory") or []:
             if isinstance(bucket.get("t"), str):
@@ -68,7 +69,7 @@ def snapshot(scenario: dict | None = None) -> dict:
                 "ioStallPct": golden.get("ioPsiPct"), "memOfLimitPct": golden.get("memReqPct"), "oomKills": golden.get("oomKills"),
                 "incident": incident.get("title") if incident else None, "severity": incident.get("severity") if incident else None,
                 "flapping": app.get("flapping") is True, "accepted": (app.get("accepted") or {}).get("reason"),
-                "calls": calls.get(app.get("name"), []),
+                "calls": calls.get(app.get("name"), []), "urls": urls.get(app.get("name"), []),
                 "reqPerSec": golden.get("reqPerSec"), "errPct": golden.get("errPct"), "p99Ms": golden.get("p99Ms"),
             })
         dark = ((raw.get("status") or {}).get("tenantStats") or {}).get("tenants", {}).get(raw["tenant"], {}).get("darkServices") or []
@@ -90,5 +91,6 @@ def snapshot(scenario: dict | None = None) -> dict:
     incidents.sort(key=lambda i: i["firstSeen"] or "", reverse=True)              # newest first within a group
     incidents.sort(key=lambda i: (order.get(i["status"], 3), i["severity"] != "critical"))
     return {"services": services, "incidents": incidents, "agents": agents, "acks": [acks.public(a) for a in acks.listing()],
+            "sites": [] if scenario else external.status(),
             "history": [{"t": t, "requests": round(r, 1), "errors": round(e, 1), "traffic": round(tr, 1), "trafficErrors": round(te, 1)}
                         for t, (r, e, tr, te) in sorted(history.items())]}

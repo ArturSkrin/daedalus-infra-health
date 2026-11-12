@@ -202,6 +202,43 @@ function Noisy({ stats, onStream }: { stats: LogStats | null; onStream: (host: s
   )
 }
 
+// Every public address the agents found, as the hub sees it from the internet: up or not, and how long the
+// certificate and the domain have left. Click opens the service behind it.
+function Sites({ data, onPick }: { data: Ops; onPick: (s: OpsService) => void }) {
+  if (!data.sites.length)
+    return <p className="text-sm text-white/40">no public addresses reported yet: agents find them in nginx configs and k3s Ingresses</p>
+  const days = (v?: number | null) => (v === null || v === undefined ? null : Math.max(0, Math.round(v)))
+  const tone = (v: number | null) => (v === null ? 'text-white/35' : v < 3 ? 'text-bad' : v < 14 ? 'text-warn' : 'text-white/55')
+  return (
+    <div className="space-y-1">
+      {data.sites.map((site) => {
+        const owner = data.services.find((s) => s.service === site.service && s.urls.includes(site.url))
+        const cert = days(site.certDays)
+        const domain = days(site.domainDays)
+        return (
+          <button
+            key={site.url}
+            type="button"
+            onClick={() => owner && onPick(owner)}
+            className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-sm transition hover:bg-white/[0.06]"
+            title={site.detail ?? ''}
+          >
+            <span className={`h-2 w-2 shrink-0 rounded-full ${site.ok ? 'bg-good' : 'bg-bad'}`} style={{ boxShadow: site.ok ? undefined : '0 0 8px #f43f5e' }} />
+            <span className="min-w-0 flex-1 truncate text-white/85">{site.url.replace(/^https:\/\//, '').replace(/\/$/, '')}</span>
+            {!site.ok && <span className="shrink-0 truncate text-xs text-bad">{site.detail}</span>}
+            <span className={`shrink-0 text-xs tabular-nums ${tone(cert)}`} title="days left on the certificate">
+              cert {cert ?? '—'}d
+            </span>
+            <span className={`shrink-0 text-xs tabular-nums ${tone(domain)}`} title="days left on the domain registration">
+              domain {domain ?? '—'}d
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function FleetMap({ data, onPick }: { data: Ops; onPick: (s: OpsService) => void }) {
   const color = (s: OpsService) =>
     s.dark || s.accepted ? '#4b5068' : !s.ready ? (s.flapping ? '#f59e0b' : '#ef4444') : s.incident ? '#f59e0b' : '#22c55e'
@@ -314,8 +351,16 @@ export function OpsOverview({ data, view, stats, onPick, onGraph, onStream, onIn
         <FleetMap data={data} onPick={onPick} />
       </Glass>
 
-      <Glass title="logs, last 24 h" right="hover for the numbers" className="xl:col-span-12">
+      <Glass title="logs, last 24 h" right="hover for the numbers" className="xl:col-span-7">
         <LogCharts stats={stats} />
+      </Glass>
+
+      <Glass
+        title={`sites from the internet${data.sites.some((s) => !s.ok) ? ` · ${data.sites.filter((s) => !s.ok).length} down` : ''}`}
+        right="checked every minute from the hub"
+        className="xl:col-span-5"
+      >
+        <Sites data={data} onPick={onPick} />
       </Glass>
     </div>
   )

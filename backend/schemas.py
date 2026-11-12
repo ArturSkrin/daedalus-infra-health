@@ -224,6 +224,7 @@ class OpsService(BaseModel):
     flapping: bool = False
     accepted: str | None = None     # the reason, when a person accepted it
     calls: list[str] = []           # services on the same host it depends on (compose depends_on, k8s Service names)
+    urls: list[str] = []            # public addresses it serves (nginx server_name, Ingress hosts), checked from the hub
     reqPerSec: float | None = None  # users' traffic over the last 5 minutes, where it is measured (Traefik, app vitals)
     errPct: float | None = None     # share of it that failed (5xx)
     p99Ms: float | None = None
@@ -261,12 +262,23 @@ class OpsBucket(BaseModel):
     trafficErrors: float = 0        # of them, 5xx
 
 
+class OpsSite(BaseModel):
+    url: str
+    host: str                       # the agent that reported it
+    service: str | None = None
+    ok: bool                        # the last check from the internet got an answer below 500
+    detail: str | None = None       # "HTTP 200", "the name does not resolve (DNS)", "TLS: ..."
+    certDays: float | None = None
+    domainDays: float | None = None
+
+
 class Ops(BaseModel):
     services: list[OpsService]
     incidents: list[OpsIncident]
     agents: list[OpsAgent]
     acks: list[Ack]
     history: list[OpsBucket] = []   # 5-minute buckets of the last day, the whole fleet
+    sites: list[OpsSite] = []       # every public address the agents found, as the hub sees it from the internet
 
 
 class LogLine(BaseModel):

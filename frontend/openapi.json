@@ -877,6 +877,14 @@
             },
             "title": "Services",
             "type": "array"
+          },
+          "sites": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OpsSite"
+            },
+            "title": "Sites",
+            "type": "array"
           }
         },
         "required": [
@@ -1243,6 +1251,14 @@
               }
             ],
             "title": "Tier"
+          },
+          "urls": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Urls",
+            "type": "array"
           }
         },
         "required": [
@@ -1251,6 +1267,73 @@
           "ready"
         ],
         "title": "OpsService",
+        "type": "object"
+      },
+      "OpsSite": {
+        "properties": {
+          "certDays": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certdays"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "domainDays": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domaindays"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "host",
+          "ok"
+        ],
+        "title": "OpsSite",
         "type": "object"
       },
       "Outcome": {

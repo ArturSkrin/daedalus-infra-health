@@ -41,7 +41,8 @@ def graph(collector: Collector) -> dict:
             called_by.setdefault(callee, []).append(target.name)
     return {
         "tenant": collector.settings.tenant,
-        "nodes": [{"name": t.name, "tier": t.tier, "blastRadius": blast[t.name], "calls": list(t.calls), "calledBy": called_by[t.name]}
+        "nodes": [{"name": t.name, "tier": t.tier, "blastRadius": blast[t.name], "calls": list(t.calls), "calledBy": called_by[t.name],
+                   **({"urls": list(t.urls)} if t.urls else {})}
                   for t in collector.settings.targets],
         "edges": [{"from": t.name, "to": callee} for t in collector.settings.targets for callee in t.calls],
     }
