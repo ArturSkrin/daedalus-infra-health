@@ -2,10 +2,16 @@ import { useState } from 'react'
 import { scaleTop } from './scale'
 import type { LogStats } from './types'
 
-// Two charts, one measure each (never two scales on one chart): log lines of the fleet, and the lines of them that
-// read like an error. Numbers on the axis, exact values on hover, totals above.
+// Two charts, one measure each (never two scales on one chart): how much, and how much of it failed. For the logs:
+// lines, and lines that read like an error. For users' traffic: requests through the ingress, and the 5xx among them.
+// Numbers on the axis, exact values on hover, totals above.
 
-type Activity = NonNullable<LogStats['activity']>
+export type Activity = NonNullable<LogStats['activity']>
+
+const WORDS = {
+  logs: { lines: 'lines', errors: 'errors', unit: 'lines', errorUnit: 'error lines', chart: 'log lines', errorChart: 'error lines' },
+  traffic: { lines: 'requests', errors: '5xx', unit: 'requests', errorUnit: '5xx', chart: 'requests', errorChart: '5xx responses' },
+}
 
 const W = 640
 const H = 150
@@ -107,7 +113,26 @@ function Tile({ label, value, sub }: { label: string; value: string; sub?: strin
 export function LogCharts({ stats }: { stats: LogStats | null }) {
   if (!stats) return <p className="text-sm text-white/40">loading…</p>
   if (!stats.available || !stats.activity) return <p className="text-sm text-white/40">{stats.reason ?? 'no log data'}</p>
-  const a = stats.activity
+  return (
+    <>
+      <Charts a={stats.activity} kind="logs" />
+      {stats.reason && <p className="mt-2 text-[11px] text-white/35">{stats.reason}</p>}
+    </>
+  )
+}
+
+export function TrafficCharts({ activity }: { activity: Activity | null }) {
+  if (!activity)
+    return (
+      <p className="text-sm text-white/40">
+        no users&apos; traffic measured yet: it comes from Traefik on the k3s hosts, once their agents run a version that reads it
+      </p>
+    )
+  return <Charts a={activity} kind="traffic" />
+}
+
+function Charts({ a, kind }: { a: Activity; kind: keyof typeof WORDS }) {
+  const w = WORDS[kind]
   const perHour = Math.round(3600 / a.stepS)
   const sum = (v: number[]) => v.reduce((s, x) => s + x, 0)
   const lastLines = sum(a.lines.slice(-perHour))
@@ -118,20 +143,19 @@ export function LogCharts({ stats }: { stats: LogStats | null }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Tile label="lines, last hour" value={lastLines.toLocaleString()} sub={`${dayLines.toLocaleString()} in 24 h`} />
-        <Tile label="errors, last hour" value={lastErrors.toLocaleString()} sub={`${dayErrors.toLocaleString()} in 24 h`} />
-        <Tile label="error share, hour" value={share(lastErrors, lastLines)} sub={`${share(dayErrors, dayLines)} over 24 h`} />
-        <Tile label="busiest 10 min" value={Math.max(...a.lines, 0).toLocaleString()} sub={`lines, at ${hhmm(a.start + a.lines.indexOf(Math.max(...a.lines, 0)) * a.stepS)}`} />
+        <Tile label={`${w.lines}, last hour`} value={Math.round(lastLines).toLocaleString()} sub={`${Math.round(dayLines).toLocaleString()} in 24 h`} />
+        <Tile label={`${w.errors}, last hour`} value={Math.round(lastErrors).toLocaleString()} sub={`${Math.round(dayErrors).toLocaleString()} in 24 h`} />
+        <Tile label={`${w.errors} share, hour`} value={share(lastErrors, lastLines)} sub={`${share(dayErrors, dayLines)} over 24 h`} />
+        <Tile label="busiest 10 min" value={Math.round(Math.max(...a.lines, 0)).toLocaleString()} sub={`${w.unit}, at ${hhmm(a.start + a.lines.indexOf(Math.max(...a.lines, 0)) * a.stepS)}`} />
       </div>
       <div>
-        <div className="mb-1 text-xs text-white/55">log lines per {a.stepS / 60} min · a white cap: taller than the scale, hover for the number</div>
-        <Chart activity={a} values={a.lines} color="#22d3ee" unit="lines" />
+        <div className="mb-1 text-xs text-white/55">{w.chart} per {a.stepS / 60} min · a white cap: taller than the scale, hover for the number</div>
+        <Chart activity={a} values={a.lines} color="#22d3ee" unit={w.unit} />
       </div>
       <div>
-        <div className="mb-1 text-xs text-white/55">error lines per {a.stepS / 60} min</div>
-        <Chart activity={a} values={a.errors} color="#ef4444" unit="error lines" />
+        <div className="mb-1 text-xs text-white/55">{w.errorChart} per {a.stepS / 60} min</div>
+        <Chart activity={a} values={a.errors} color="#ef4444" unit={w.errorUnit} />
       </div>
-      {stats.reason && <p className="text-[11px] text-white/35">{stats.reason}</p>}
     </div>
   )
 }

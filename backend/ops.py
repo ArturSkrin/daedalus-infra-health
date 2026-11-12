@@ -37,7 +37,7 @@ def _live_hosts():
 def snapshot(scenario: dict | None = None) -> dict:
     """The live fleet, or one demo scenario as a fleet of one host (to look at the screen without agents)."""
     agents, services, incidents = [], [], []
-    history: dict[str, list[float]] = {}            # bucket time -> [requests, errors], summed over the fleet
+    history: dict[str, list[float]] = {}            # bucket time -> [requests, errors, traffic, 5xx], summed over the fleet
     hosts = [(scenario["tenant"], scenario, None)] if scenario else _live_hosts()
     for host, raw, error in hosts:
         name = host or (raw or {}).get("tenant") or "live"
@@ -51,9 +51,12 @@ def snapshot(scenario: dict | None = None) -> dict:
         block_status = ((raw.get("status") or {}).get("tenantStats") or {}).get("tenants", {}).get(raw["tenant"]) or {}
         for bucket in block_status.get("signalsHistory") or []:
             if isinstance(bucket.get("t"), str):
-                slot = history.setdefault(bucket["t"], [0.0, 0.0])
+                slot = history.setdefault(bucket["t"], [0.0, 0.0, 0.0, 0.0])
                 slot[0] += bucket.get("requests") or 0
                 slot[1] += bucket.get("requestErrors") or 0
+                # a demo scenario's requests are users' traffic already; an agent keeps its own probes apart
+                slot[2] += (bucket.get("trafficRequests") if "trafficRequests" in bucket else bucket.get("requests")) or 0
+                slot[3] += (bucket.get("trafficErrors") if "trafficErrors" in bucket else bucket.get("requestErrors")) or 0
         block = (raw.get("incidents") or {}).get("incidents") or []
         open_by_service = {i.get("service"): i for i in block if i.get("status") in ("open", "accepted")}
         cluster = agents[-1]["cluster"]
@@ -66,6 +69,7 @@ def snapshot(scenario: dict | None = None) -> dict:
                 "incident": incident.get("title") if incident else None, "severity": incident.get("severity") if incident else None,
                 "flapping": app.get("flapping") is True, "accepted": (app.get("accepted") or {}).get("reason"),
                 "calls": calls.get(app.get("name"), []),
+                "reqPerSec": golden.get("reqPerSec"), "errPct": golden.get("errPct"), "p99Ms": golden.get("p99Ms"),
             })
         dark = ((raw.get("status") or {}).get("tenantStats") or {}).get("tenants", {}).get(raw["tenant"], {}).get("darkServices") or []
         services += [{"host": name, "service": d["name"], "cluster": cluster, "ready": False, "dark": True}
@@ -77,9 +81,14 @@ def snapshot(scenario: dict | None = None) -> dict:
                 "resolvedAt": i.get("resolvedAt"), "resolvedBy": i.get("resolvedBy"), "reopens": int(i.get("reopens") or 0),
                 "accepted": (i.get("accepted") or {}).get("reason"),
             })
+    if scenario and history:
+        # a demo's day happened long ago: move it so that it ends now, or the last-24-h charts would be empty
+        shift = datetime.now(UTC) - datetime.fromisoformat(max(history))
+        history = {(datetime.fromisoformat(t) + shift).isoformat(timespec="seconds"): v for t, v in history.items()}
     services.sort(key=lambda s: (s["ready"], not s.get("incident"), s["host"], s["service"] or ""))
     order = {"open": 0, "accepted": 1, "resolved": 2}
     incidents.sort(key=lambda i: i["firstSeen"] or "", reverse=True)              # newest first within a group
     incidents.sort(key=lambda i: (order.get(i["status"], 3), i["severity"] != "critical"))
     return {"services": services, "incidents": incidents, "agents": agents, "acks": [acks.public(a) for a in acks.listing()],
-            "history": [{"t": t, "requests": round(r, 1), "errors": round(e, 1)} for t, (r, e) in sorted(history.items())]}
+            "history": [{"t": t, "requests": round(r, 1), "errors": round(e, 1), "traffic": round(tr, 1), "trafficErrors": round(te, 1)}
+                        for t, (r, e, tr, te) in sorted(history.items())]}

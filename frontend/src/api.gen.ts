@@ -556,6 +556,16 @@ export interface components {
             requests: number;
             /** T */
             t: string;
+            /**
+             * Traffic
+             * @default 0
+             */
+            traffic: number;
+            /**
+             * Trafficerrors
+             * @default 0
+             */
+            trafficErrors: number;
         };
         /** OpsIncident */
         OpsIncident: {
@@ -600,6 +610,8 @@ export interface components {
              * @default false
              */
             dark: boolean;
+            /** Errpct */
+            errPct?: number | null;
             /**
              * Flapping
              * @default false
@@ -617,8 +629,12 @@ export interface components {
             memStallPct?: number | null;
             /** Oomkills */
             oomKills?: number | null;
+            /** P99Ms */
+            p99Ms?: number | null;
             /** Ready */
             ready: boolean;
+            /** Reqpersec */
+            reqPerSec?: number | null;
             /** Service */
             service: string;
             /** Severity */

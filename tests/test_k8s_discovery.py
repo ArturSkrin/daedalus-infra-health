@@ -95,6 +95,42 @@ def test_who_calls_whom_comes_from_service_names_in_env_and_args(cluster, tmp_pa
     assert seen["shop/db"].calls == ()
 
 
+TRAEFIK_METRICS = """\
+# HELP traefik_service_requests_total How many HTTP requests processed on a service, partitioned by status code, protocol, and method.
+traefik_service_requests_total{code="0",method="GET",protocol="websocket",service="ccb-ccb-http@kubernetes"} 200
+traefik_service_requests_total{code="200",method="GET",protocol="http",service="ccb-ccb-http@kubernetes"} 15331
+traefik_service_requests_total{code="404",method="GET",protocol="http",service="ccb-ccb-http@kubernetes"} 40
+traefik_service_requests_total{code="502",method="POST",protocol="http",service="ccb-ccb-http@kubernetes"} 12
+traefik_service_requests_total{code="200",method="GET",protocol="http",service="other-gone-80@kubernetes"} 9
+traefik_service_request_duration_seconds_bucket{code="200",method="GET",protocol="http",service="ccb-ccb-http@kubernetes",le="0.1"} 15000
+traefik_service_request_duration_seconds_bucket{code="200",method="GET",protocol="http",service="ccb-ccb-http@kubernetes",le="+Inf"} 15331
+"""
+
+
+def test_users_traffic_comes_from_traefik_by_service(cluster, monkeypatch, tmp_path):
+    """Live on CCB: Traefik names the service "<ns>-<service>-<port name>"; 5xx fail users, 404 and websockets do not."""
+    app = _deployment("ccb", "ccb")
+    app["spec"]["template"] = {"metadata": {"labels": {"app": "ccb"}}, "spec": {"containers": [{}]}}
+    cluster["/apis/apps/v1/deployments"] = [app]
+    traefik = {"metadata": {"namespace": "kube-system", "labels": {"app.kubernetes.io/name": "traefik"}},
+               "status": {"phase": "Running", "podIP": "10.42.0.7"}}
+    cluster["/api/v1/pods"] = [_pod("ccb", "ccb"), traefik]
+    cluster["/api/v1/services"] = [{"metadata": {"namespace": "ccb", "name": "ccb"},
+                                    "spec": {"selector": {"app": "ccb"}, "ports": [{"name": "http", "port": 80}]}}]
+    asked = []
+    monkeypatch.setattr(k8s_source, "_scrape", lambda ip, timeout: asked.append(ip) or TRAEFIK_METRICS)
+    traffic = found(tmp_path)["ccb/ccb"].traffic
+    assert asked == ["10.42.0.7"]
+    assert (traffic["requests"], traffic["errors"]) == (15583.0, 12.0)
+    assert traffic["durationBucketsMs"] == {"100": 15000.0, "+Inf": 15331.0}
+
+
+def test_without_traefik_metrics_services_keep_their_probes(cluster, monkeypatch, tmp_path):
+    cluster["/apis/apps/v1/deployments"] = [_deployment("ccb", "ccb")]
+    monkeypatch.setattr(k8s_source, "_scrape", lambda ip, timeout: None)
+    assert found(tmp_path)["ccb/ccb"].traffic is None
+
+
 def test_an_api_that_does_not_answer_is_blindness(monkeypatch, tmp_path):
     def refuse(path, timeout):
         raise ConnectionRefusedError

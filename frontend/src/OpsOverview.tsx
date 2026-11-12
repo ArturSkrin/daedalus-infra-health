@@ -1,12 +1,13 @@
-import { LogCharts } from './OpsCharts'
+import { LogCharts, TrafficCharts, type Activity } from './OpsCharts'
 import { Orb } from './OpsOrb'
-import { scaleTop } from './scale'
+import { scaleTop, trafficActivity } from './scale'
 import type { LogStats, Ops, OpsService, View } from './types'
 
 // The first tab of /ops, in the tracker's own liquid glass. The crown around the rings is the last 24 hours, one
 // bar per 10 minutes: the newest at the top, running clockwise into the past, 12 hours ago at the bottom. Its height
-// is how much the fleet wrote to its logs (on the same clipped scale as the chart below, so one nightly burst doesn't
-// flatten the day; a clipped bar gets a white tip), its colour how much of that read like an error. Everything on the
+// is users' requests through the ingress, its colour the share of 5xx among them; with no traffic measured yet, the
+// fleet's log lines and the share that read like an error stand in. Same clipped scale as the charts below, so one
+// nightly burst doesn't flatten the day; a clipped bar gets a white tip. Everything on the
 // page opens something: a service, its logs, or the drill-in behind a vital.
 
 const RING = { users: '#22d3ee', forecast: '#e879f9', trust: '#a78bfa', day: '#fbbf24' } as const
@@ -36,10 +37,11 @@ export function Glass({ title, right, children, className = '', onTitle }: {
 // a slice of the logs by the share of it that reads like an error; the same 0.5 % and 5 % lines as "Users now"
 const errorColor = (share: number) => (share >= 5 ? '#ef4444' : share >= 0.5 ? '#fb923c' : share > 0 ? '#facc15' : '#22d3ee')
 
-function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | null; healthy: number; total: number }) {
+function Clock({ view, stats, traffic, healthy, total }: { view: View; stats: LogStats | null; traffic: Activity | null; healthy: number; total: number }) {
   const size = 320
   const c = size / 2
-  const activity = stats?.activity
+  const activity = traffic ?? stats?.activity
+  const what = traffic ? ['requests', '5xx'] : ['log lines', 'errors']
   const lines = activity?.lines ?? []
   const peak = scaleTop(lines)
   // newest at twelve o'clock, then clockwise back in time: the ring is a day read like a stopwatch, not a wall clock
@@ -59,7 +61,7 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
           const [p1, p2, tip] = [point(r1), point(r2), point(r2 + 3)]
           return (
             <g key={at} opacity={0.45 + 0.55 * (i / Math.max(1, lines.length - 1))}>
-              <title>{`${new Date(at * 1000).toTimeString().slice(0, 5)}: ${Math.round(count).toLocaleString()} log lines, ${share.toFixed(1)}% errors`}</title>
+              <title>{`${new Date(at * 1000).toTimeString().slice(0, 5)}: ${Math.round(count).toLocaleString()} ${what[0]}, ${share.toFixed(1)}% ${what[1]}`}</title>
               <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={errorColor(share)} strokeWidth={3} />
               {clipped && <line x1={p2.x} y1={p2.y} x2={tip.x} y2={tip.y} stroke="#fff" strokeWidth={3} />}
             </g>
@@ -91,14 +93,14 @@ function Clock({ view, stats, healthy, total }: { view: View; stats: LogStats | 
       </div>
       <p className="mt-1 max-w-md text-center text-sm text-white/65">{view.decision.reason}</p>
       <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-white/40">
-        <span>crown: 24 h clockwise from the top, bar height = log lines per 10 min, white tip = off the scale</span>
+        <span>crown: 24 h clockwise from the top, bar height = {what[0]} per 10 min, colour = {what[1]}, white tip = off the scale</span>
         {[['#22d3ee', 'no errors'], ['#facc15', '< 0.5%'], ['#fb923c', '< 5%'], ['#ef4444', '≥ 5%']].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
             {label}
           </span>
         ))}
-        {stats && !stats.available && <span className="text-warn">{stats.reason}</span>}
+        {!traffic && stats && !stats.available && <span className="text-warn">{stats.reason}</span>}
       </div>
     </div>
   )
@@ -252,10 +254,11 @@ export function OpsOverview({ data, view, stats, onPick, onGraph, onStream, onIn
   const counted = data.services.filter((s) => !s.dark)
   const healthy = counted.filter((s) => s.ready && !s.incident).length
   const byKey = new Map(data.services.map((s) => [`${s.host}:${s.service}`, s]))
+  const traffic = trafficActivity(data.history)
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
       <Glass title="fleet" right={view ? `data ${view.source.age} old` : undefined} className="xl:col-span-5 xl:row-span-2">
-        {view ? <Clock view={view} stats={stats} healthy={healthy} total={counted.length} /> : <p className="text-white/40">loading…</p>}
+        {view ? <Clock view={view} stats={stats} traffic={traffic} healthy={healthy} total={counted.length} /> : <p className="text-white/40">loading…</p>}
       </Glass>
 
       <Glass title="vitals" right={view ? `${view.indicators.filter((i) => i.level === 'good').length} of 4 fine · click for the why` : undefined} className="xl:col-span-4">
@@ -303,12 +306,16 @@ export function OpsOverview({ data, view, stats, onPick, onGraph, onStream, onIn
         <Noisy stats={stats} onStream={onStream} />
       </Glass>
 
-      <Glass title="logs, last 24 h" right="hover for the numbers" className="xl:col-span-7">
-        <LogCharts stats={stats} />
+      <Glass title="users' traffic, last 24 h" right="requests through Traefik · hover for the numbers" className="xl:col-span-7">
+        <TrafficCharts activity={traffic} />
       </Glass>
 
       <Glass title="fleet map" right={`${data.services.length} services`} onTitle={onGraph} className="xl:col-span-5">
         <FleetMap data={data} onPick={onPick} />
+      </Glass>
+
+      <Glass title="logs, last 24 h" right="hover for the numbers" className="xl:col-span-12">
+        <LogCharts stats={stats} />
       </Glass>
     </div>
   )

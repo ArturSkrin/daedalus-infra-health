@@ -224,6 +224,9 @@ class OpsService(BaseModel):
     flapping: bool = False
     accepted: str | None = None     # the reason, when a person accepted it
     calls: list[str] = []           # services on the same host it depends on (compose depends_on, k8s Service names)
+    reqPerSec: float | None = None  # users' traffic over the last 5 minutes, where it is measured (Traefik, app vitals)
+    errPct: float | None = None     # share of it that failed (5xx)
+    p99Ms: float | None = None
 
 
 class OpsIncident(BaseModel):
@@ -252,8 +255,10 @@ class OpsAgent(BaseModel):
 
 class OpsBucket(BaseModel):
     t: str
-    requests: float
+    requests: float                 # everything counted, our own probes included
     errors: float
+    traffic: float = 0              # what users sent alone: requests through the ingress or an app's own counters
+    trafficErrors: float = 0        # of them, 5xx
 
 
 class Ops(BaseModel):
