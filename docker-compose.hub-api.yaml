@@ -1,0 +1,10 @@
+# The hub's backend for the public front: published on the hub's WireGuard address only, so the front (a spoke,
+# roles/daedalus_front in Ansible-vps) reads /api through the tunnel. Nothing is published to the internet.
+# Add it to COMPOSE_FILE on the hub, after docker-compose.agent-local.yaml:
+#
+#   COMPOSE_FILE=...:docker-compose.fleet-logs.yaml:docker-compose.hub-api.yaml
+#   API_BIND=10.77.0.1      the hub's WireGuard address
+services:
+  backend:
+    ports:
+      - "${API_BIND:-127.0.0.1}:8000:8000"
