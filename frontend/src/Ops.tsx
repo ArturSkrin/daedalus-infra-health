@@ -220,7 +220,9 @@ function Detail({ s, data, onChanged, onLogs }: { s: OpsService; data: OpsData; 
               <div className={`text-lg font-semibold tabular-nums ${tone}`}>{value}</div>
             </div>
           ))}
-          <p className="col-span-3 text-[11px] text-white/35">users&apos; traffic through Traefik, last 5 minutes</p>
+          <p className="col-span-3 text-[11px] text-white/35">
+            {s.cluster === 'k3s' ? 'users’ traffic through Traefik, last 5 minutes' : 'requests the agent counted, last 5 minutes'}
+          </p>
         </div>
       )}
 
@@ -481,9 +483,10 @@ function Incidents({ rows, cursor, onCursor, onOpen, onChanged }: {
 
 function Agents({ data, onHost }: { data: OpsData; onHost: (host: string) => void }) {
   return (
-    <Glass title={`agents (${data.agents.length})`} right="one per host and per k3s cluster · click shows its services" className="h-full">
+    <Glass title={`agents (${data.agents.length})`} right="one per host and per k3s cluster · click shows its services" className="flex h-full min-h-0 flex-col">
+      <Scroll>
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-0 bg-[#12121b]/90 backdrop-blur">
           <tr>
             {['', 'agent', 'kind', 'last cycle', 'services', 'silent', 'problem'].map((h) => (
               <th key={h} className={th}>
@@ -508,6 +511,7 @@ function Agents({ data, onHost }: { data: OpsData; onHost: (host: string) => voi
           ))}
         </tbody>
       </table>
+      </Scroll>
     </Glass>
   )
 }
