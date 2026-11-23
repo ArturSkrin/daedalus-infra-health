@@ -64,7 +64,7 @@ def _query(selector: str, limit: int) -> list[dict]:
 ERROR_LINE = "(?i)(error|fatal|panic|exception|traceback|fail)"
 
 
-STATS_TIMEOUT_S = 30        # a day of every stream is a heavier question than one service's last lines
+STATS_TIMEOUT_S = 120       # a day of every stream is a heavier question; asked in the background, nobody waits on it
 
 
 def _loki(path: str, params: dict) -> dict:

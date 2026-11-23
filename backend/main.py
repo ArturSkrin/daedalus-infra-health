@@ -57,12 +57,43 @@ def _refresh_addresses() -> None:
             live.load_live(tenant)
 
 
+NOISIEST_EVERY_S = 60       # the last hour's loudest error streams: a cheap query
+ACTIVITY_EVERY_S = 300      # a day of every stream: the heavy one, and a 10-minute bar changes slowly anyway
+_logstats: dict = {"value": {"available": False, "reason": "counting the fleet's logs, about a minute after start",
+                             "activity": None, "noisiest": []}}
+
+
+def _count_logs(stop: threading.Event) -> None:
+    """Loki is asked by this one thread, one query at a time, and the screen reads the last answer. Asking on every
+    page load stacked 20-second day queries on top of each other until Loki answered nobody (21 hosts, 2026-11-23)."""
+    activity_at = -ACTIVITY_EVERY_S
+    while not stop.is_set():
+        value, errors = dict(_logstats["value"]), []
+        try:
+            value["noisiest"] = logs.noisiest()
+        except logs.LogsUnavailable as error:
+            errors.append(str(error))
+        if time.monotonic() - activity_at >= ACTIVITY_EVERY_S:
+            activity_at = time.monotonic()          # a failed day query waits its turn too, it is the heavy one
+            try:
+                value["activity"] = logs.activity()
+            except logs.LogsUnavailable as error:
+                errors.append(str(error))
+        # an older answer beats no answer: the reason tells the reader this one is stale
+        value["available"] = bool(value["activity"] or value["noisiest"]) or not errors
+        value["reason"] = "; ".join(errors) or None
+        _logstats["value"] = value
+        stop.wait(NOISIEST_EVERY_S)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     stop = threading.Event()
     if live.configured():
         threading.Thread(target=_watch, args=(stop,), name="journal-watcher", daemon=True).start()
         threading.Thread(target=external.watch, args=(stop, _refresh_addresses), name="outside-checks", daemon=True).start()
+    if os.environ.get("LOKI_URL"):
+        threading.Thread(target=_count_logs, args=(stop,), name="log-stats", daemon=True).start()
     yield
     stop.set()
 
@@ -179,12 +210,10 @@ def ops_view(scenario: str | None = None) -> dict:
     return ops.snapshot()
 
 
-_logstats: dict = {}
-
-
 @app.get("/api/logstats", response_model=LogStats)
 def log_stats(scenario: str | None = None) -> dict:
-    """The fleet's log activity over the last 24 h and the streams writing the most errors now. Cached for a minute.
+    """The fleet's log activity over the last 24 h and the streams writing the most errors now, as the background
+    counter last found them (errors every minute, the day every 5 minutes): answering never waits for Loki.
     ?scenario= stands the scenario's own request history in for the logs, to look at the screen without Loki."""
     if scenario:
         block = _scenario_or_404(scenario)
@@ -197,14 +226,9 @@ def log_stats(scenario: str | None = None) -> dict:
                              "errors": [sum(b.get("requestErrors") or 0 for b in p) for p in pairs]},
                 "noisiest": [{"host": block["tenant"], "service": a["name"], "errors": round(a["golden"]["errPct"] * 10, 1)}
                              for a in block.get("applications") or [] if (a.get("golden") or {}).get("errPct", 0) >= 0.5]}
-    if _logstats and time.monotonic() - _logstats["at"] < 60:
-        return _logstats["value"]
-    try:
-        value = {"available": True, "activity": logs.activity(), "noisiest": logs.noisiest()}
-    except logs.LogsUnavailable as error:
-        value = {"available": False, "reason": str(error), "activity": None, "noisiest": []}
-    _logstats.update(at=time.monotonic(), value=value)
-    return value
+    if not os.environ.get("LOKI_URL"):
+        return {"available": False, "reason": "logs are not configured on this tracker (LOKI_URL)", "activity": None, "noisiest": []}
+    return _logstats["value"]
 
 
 @app.get("/api/logs", response_model=Logs)
