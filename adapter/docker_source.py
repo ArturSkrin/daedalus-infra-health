@@ -105,6 +105,24 @@ def _nginx_urls(url: str, container_id: str, timeout: float, now: float) -> tupl
     return urls
 
 
+def _is_nginx(item: dict, info: dict) -> bool:
+    """An nginx container, whatever its image is called: a project's own image built FROM nginx keeps the base
+    image's NGINX_VERSION in its environment (aml-design-hub-web, cryptoland-web); one that installs nginx itself
+    still starts it."""
+    config = info.get("Config") or {}
+    image = (item.get("Image") or "").lower()
+    command = " ".join([*(config.get("Entrypoint") or []), *(config.get("Cmd") or [])]).lower()
+    return ("nginx" in image or "openresty" in image or "nginx" in command
+            or any(e.startswith("NGINX_VERSION=") for e in config.get("Env") or []))
+
+
+def _declared_urls(labels: dict) -> tuple[str, ...]:
+    """Label daedalus.urls="example.com,www.example.com" on the container: for a site whose nginx answers any name
+    (server_name _), so its config cannot tell. Wins over the config when set."""
+    names = [n.strip() for n in (labels.get("daedalus.urls") or "").split(",") if n.strip()]
+    return tuple(n if "://" in n else f"https://{n.rstrip('/')}/" for n in names)
+
+
 def _readiness(state: dict, restart_policy: str) -> tuple[bool, str]:
     status = state.get("Status")
     health = (state.get("Health") or {}).get("Status")
@@ -198,9 +216,8 @@ def discover(url: str, cgroup_root: str, timeout: float) -> list[Container] | No
             # compose writes depends_on into a label: "db:service_healthy:false,cache:service_started:false"
             depends = labels.get("com.docker.compose.depends_on") or ""
             calls = tuple(f"{project}/{d.split(':')[0]}" for d in depends.split(",") if d and project)
-            image = (item.get("Image") or "").lower()
-            urls = _nginx_urls(url, item["Id"], timeout, time.time()) \
-                if state.get("Status") == "running" and ("nginx" in image or "openresty" in image) else ()
+            urls = _declared_urls(labels) or (_nginx_urls(url, item["Id"], timeout, time.time())
+                                              if state.get("Status") == "running" and _is_nginx(item, info) else ())
             container = Container(name, _tier(info, labels), ok, detail, read_cgroup(directory) if directory else None, calls,
                                   urls=urls)
             # replicas of one service share a name; the worst of them speaks for it
