@@ -196,6 +196,25 @@ def test_compose_depends_on_becomes_who_calls_whom(monkeypatch, tmp_path):
     assert found == {"shop/front": ("shop/back",), "shop/back": ("shop/db", "shop/cache"), "shop/db": ()}
 
 
+def test_public_names_come_from_any_nginx_or_a_label(monkeypatch, tmp_path):
+    """Live: project images built FROM nginx (aml-design-hub-web) were skipped because only the image name was checked;
+    a site with server_name _ can only be named by a label."""
+    def own(cid, service, **config):
+        c = _container(cid, service, **config.pop("extra", {}))
+        c["inspect"]["Config"] = config
+        return c
+    monkeypatch.setattr(docker_source, "_get", _api([
+        own("n1", "web", Env=["PATH=/usr/bin", "NGINX_VERSION=1.27.3"]),
+        own("n2", "proxy", Cmd=["/usr/sbin/nginx", "-g", "daemon off;"]),
+        own("n3", "api", Env=["PYTHON_VERSION=3.12"]),
+        own("n4", "site", Env=["NGINX_VERSION=1.27.3"], extra={"labels": {"daedalus.urls": "example.com, https://www.example.com/"}}),
+    ]))
+    monkeypatch.setattr(docker_source, "_nginx_urls", lambda url, cid, timeout, now: (f"https://{cid}.test/",))
+    found = {c.name: c.urls for c in docker_source.discover("unix:///x", str(tmp_path), 1)}
+    assert found == {"shop/web": ("https://n1.test/",), "shop/proxy": ("https://n2.test/",), "shop/api": (),
+                     "shop/site": ("https://example.com/", "https://www.example.com/")}
+
+
 def _blink(world, run, times: int) -> None:
     """shop/web goes down long enough to open an incident, then back up long enough to close it, `times` times."""
     for _ in range(times):
