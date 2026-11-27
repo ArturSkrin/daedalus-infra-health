@@ -91,7 +91,46 @@ def test_a_site_that_does_not_open_twice_is_a_critical_incident_of_its_service(h
     assert out["status"]["tenantStats"]["tenants"]["ccb-k3s"]["incidents"]["openNow"] == 1
     answers["https://ccb.example.com/"] = (True, "HTTP 302")         # a redirect to a login page is an answer
     external.check("https://ccb.example.com/", now=1120)
+    assert len(external.inject(raw)["incidents"]["incidents"]) == 1   # one good answer does not close it yet
+    external.check("https://ccb.example.com/", now=1180)
     assert external.inject(raw)["incidents"]["incidents"] == []
+
+
+def test_a_502_is_critical_at_once_and_a_timeout_after_it_does_not_hide_it(hub):
+    answers, raw = hub
+    url = "https://ccb.example.com/"
+    answers[url] = (False, "HTTP 502")
+    external.check(url, now=1000)
+    [incident] = external.inject(raw)["incidents"]["incidents"]
+    assert incident["severity"] == "critical" and "(HTTP 502)" in incident["title"]
+    answers[url] = (False, "no answer in 10 s")
+    external.check(url, now=1060)
+    [incident] = external.inject(raw)["incidents"]["incidents"]
+    assert "(HTTP 502, last check: no answer in 10 s)" in incident["title"]
+    assert external.status()[0]["detail"].startswith("HTTP 502")
+
+
+def test_a_site_flapping_between_502_and_200_stays_open_until_two_good_answers(hub):
+    answers, raw = hub
+    url = "https://ccb.example.com/"
+    for now, answer in ((1000, (False, "HTTP 502")), (1060, (True, "HTTP 200")), (1120, (False, "HTTP 502")),
+                        (1180, (True, "HTTP 200"))):
+        answers[url] = answer
+        external.check(url, now=now)
+        [incident] = external.inject(raw)["incidents"]["incidents"]
+        assert incident["severity"] == "critical"
+        assert incident["firstSeen"] == external._iso(1000)
+    assert external.status()[0]["ok"] is False
+    external.check(url, now=1240)
+    assert external.inject(raw)["incidents"]["incidents"] == []
+    assert external.status()[0]["ok"] is True
+
+
+def test_one_timeout_alone_is_not_an_outage_yet(hub):
+    answers, raw = hub
+    answers["https://ccb.example.com/"] = (False, "no answer in 10 s")
+    external.check("https://ccb.example.com/", now=1000)
+    assert external.inject(raw) == raw
 
 
 def test_a_certificate_or_domain_close_to_expiry_warns_then_pages(hub, monkeypatch):

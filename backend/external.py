@@ -6,7 +6,10 @@ come from the agents themselves (nginx server_name on Docker hosts, Ingress host
 domain is followed without a list to keep by hand.
 
 What becomes an incident on the service that serves the address:
-  - it does not answer, or answers 5xx, twice in a row (a minute apart): critical;
+  - it answers 5xx (502 from a proxy whose app is gone): critical at once, that is an answer, not a network blip;
+  - it does not answer (timeout, DNS, TLS) twice in a row (a minute apart): critical;
+  - once open it closes after two good answers in a row, so a site flapping between 502 and 200 stays open, and the
+    5xx stays the headline when the next check only times out;
   - its certificate expires in under 14 days (warning) or 3 days (critical);
   - its domain registration expires in under 14 / 3 days, from RDAP (public, no key), checked once a day.
 The incidents are added to the agent's own block as it is read (inject), so the verdict, the journal, the pushes
@@ -32,6 +35,7 @@ log = logging.getLogger("daedalus.external")
 EVERY_S = 60
 TIMEOUT_S = 10
 FAILS_TO_OPEN = 2
+OKS_TO_CLOSE = 2
 CERT_EVERY_S = 6 * 3600
 DOMAIN_EVERY_S = 24 * 3600
 WARN_DAYS, CRIT_DAYS = 14, 3
@@ -111,12 +115,19 @@ def check(url: str, now: float | None = None) -> dict:
     with _lock:
         state = dict(_state.get(url) or {"fails": 0, "since": None})
     ok, detail = _open(url)
-    state["fails"] = 0 if ok else state["fails"] + 1
-    state["detail"] = detail
-    if ok:
-        state["since"] = None
-    elif state["fails"] == 1:
+    server_error = not ok and detail.startswith("HTTP 5")
+    state["fails"] = 0 if ok else state.get("fails", 0) + 1
+    state["oks"] = state.get("oks", 0) + 1 if ok else 0
+    if not ok and state["fails"] == 1 and not state.get("down"):
         state["since"] = now
+    if server_error:
+        state["error5xx"] = detail           # the site's own answer: a later timeout must not hide it
+    if server_error or state["fails"] >= FAILS_TO_OPEN:
+        state["down"] = True
+    elif ok and (not state.get("down") or state["oks"] >= OKS_TO_CLOSE):
+        state.update(down=False, since=None, error5xx=None)
+    worst = state.get("error5xx")
+    state["detail"] = detail if not worst or detail == worst else f"{worst}, last check: {detail}"
     host = urlsplit(url).hostname or ""
     def due(key: str, every: float) -> bool:
         return state.get(key) is None or now - state[key] >= every
@@ -153,7 +164,7 @@ def problems(tenant: str) -> list[dict]:
     for url, service, state in rows:
         host = urlsplit(url).hostname or url
         key = hashlib.sha1(url.encode()).hexdigest()[:10]
-        if state["fails"] >= FAILS_TO_OPEN:
+        if state.get("down"):
             found.append((f"ext-{key}", service, "critical", f"{url} does not open from the internet ({state['detail']})", state["since"],
                           f"curl -sSI {url}"))
         for what, days in (("certificate", state.get("certDays")), ("domain", state.get("domainDays"))):
@@ -201,7 +212,8 @@ def urls() -> list[str]:
 def status() -> list[dict]:
     """Every address and what its last check found, for the screen."""
     with _lock:
-        return [{"url": url, "host": tenant, "service": service, "ok": (_state.get(url) or {}).get("fails", 0) == 0,
+        return [{"url": url, "host": tenant, "service": service,
+                 "ok": not (_state.get(url) or {}).get("down") and (_state.get(url) or {}).get("fails", 0) == 0,
                  "detail": (_state.get(url) or {}).get("detail"), "certDays": (_state.get(url) or {}).get("certDays"),
                  "domainDays": (_state.get(url) or {}).get("domainDays")}
                 for url, (tenant, service) in sorted(_where.items())]
