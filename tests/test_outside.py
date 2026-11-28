@@ -67,7 +67,15 @@ def test_ingress_hosts_become_the_workloads_addresses():
 def hub(monkeypatch):
     external.reset()
     answers = {}
-    monkeypatch.setattr(external, "_open", lambda url: answers[url])
+    asked = []
+
+    def answer(url):                                    # a tuple answers every try, a list one try each
+        asked.append(url)
+        return answers[url].pop(0) if isinstance(answers[url], list) else answers[url]
+
+    monkeypatch.setattr(external, "_open", answer)
+    monkeypatch.setattr(external, "_sleep", lambda s: None)
+    monkeypatch.setattr(external, "_asked", asked, raising=False)
     monkeypatch.setattr(external, "_cert_days", lambda host: 60.0)
     monkeypatch.setattr(external, "_domain_days", lambda host: 200.0)
     raw = {"tenant": "ccb-k3s", "graph": {"nodes": [{"name": "ccb/ccb", "urls": ["https://ccb.example.com/"]}]},
@@ -131,6 +139,64 @@ def test_one_timeout_alone_is_not_an_outage_yet(hub):
     answers["https://ccb.example.com/"] = (False, "no answer in 10 s")
     external.check("https://ccb.example.com/", now=1000)
     assert external.inject(raw) == raw
+
+
+def test_a_miss_that_the_retry_answers_is_not_counted_at_all(hub):
+    answers, raw = hub
+    url = "https://ccb.example.com/"
+    for now in (1000, 1060, 1120):                      # every minute one lost packet / slow DNS, then an answer
+        answers[url] = [(False, "no answer in 10 s"), (True, "HTTP 200")]
+        assert external.check(url, now=now)["fails"] == 0
+        assert external.inject(raw) == raw
+
+
+def test_a_real_outage_still_pages_on_the_second_round_after_three_tries_each(hub):
+    answers, raw = hub
+    url = "https://ccb.example.com/"
+    answers[url] = (False, "no answer in 10 s")
+    external.check(url, now=1000)
+    assert external.inject(raw) == raw
+    assert len(external._asked) == 3                    # first try and two retries
+    external.check(url, now=1060)
+    [incident] = external.inject(raw)["incidents"]["incidents"]
+    assert incident["severity"] == "critical" and incident["firstSeen"] == external._iso(1000)
+
+
+def test_a_502_is_confirmed_by_one_retry_and_pages_in_the_same_round(hub):
+    answers, raw = hub
+    url = "https://ccb.example.com/"
+    answers[url] = [(False, "HTTP 502"), (False, "HTTP 502")]
+    external.check(url, now=1000)
+    [incident] = external.inject(raw)["incidents"]["incidents"]
+    assert incident["severity"] == "critical" and "(HTTP 502)" in incident["title"]
+    assert answers[url] == []                           # two 502 in a row are an answer: no third try
+
+
+def test_a_502_gone_on_the_retry_is_a_restart_but_three_in_ten_minutes_page(hub):
+    answers, raw = hub
+    url = "https://ccb.example.com/"
+    blip = [(False, "HTTP 502"), (True, "HTTP 200")]
+    answers[url] = list(blip)
+    external.check(url, now=1000)
+    assert external.inject(raw) == raw                  # one container restart is not an outage
+    for now in (1060, 1120, 1180, 1240):                # clean rounds in between do not forget the 502 seen
+        answers[url] = (True, "HTTP 200")
+        external.check(url, now=now)
+    answers[url] = list(blip)
+    external.check(url, now=1300)
+    assert external.inject(raw) == raw
+    answers[url] = list(blip)
+    external.check(url, now=1360)
+    [incident] = external.inject(raw)["incidents"]["incidents"]
+    assert incident["severity"] == "critical" and incident["firstSeen"] == external._iso(1000)
+    assert "HTTP 502 now and then, 3 times in 10 min" in incident["title"]
+    answers[url] = (True, "HTTP 200")
+    external.check(url, now=1420)
+    external.check(url, now=1480)
+    assert len(external.inject(raw)["incidents"]["incidents"]) == 1   # still 3 in the last 10 minutes
+    external.check(url, now=1600)                       # the first 502 is out of the window now
+    external.check(url, now=1660)
+    assert external.inject(raw)["incidents"]["incidents"] == []
 
 
 def test_a_certificate_or_domain_close_to_expiry_warns_then_pages(hub, monkeypatch):

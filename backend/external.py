@@ -5,9 +5,13 @@ lapsed, a DNS record or a tunnel route went missing, Cloudflare is down, or a ce
 come from the agents themselves (nginx server_name on Docker hosts, Ingress hosts on k3s), so a new or renamed
 domain is followed without a list to keep by hand.
 
+A failed answer is asked again before it counts: 5 s later, and if it still fails, 15 s after that. One lost
+packet, a slow DNS answer or a container restarting for a few seconds used to be enough to page (2026-11-28).
+
 What becomes an incident on the service that serves the address:
-  - it answers 5xx (502 from a proxy whose app is gone): critical at once, that is an answer, not a network blip;
-  - it does not answer (timeout, DNS, TLS) twice in a row (a minute apart): critical;
+  - it answers 5xx (502 from a proxy whose app is gone) and still 5xx on the retry: critical in that same round;
+  - a 5xx that a retry no longer shows, 3 rounds out of the last 10 (minutes): critical too, the site flaps;
+  - it does not answer (timeout, DNS, TLS) on all three tries, two rounds in a row: critical;
   - once open it closes after two good answers in a row, so a site flapping between 502 and 200 stays open, and the
     5xx stays the headline when the next check only times out;
   - its certificate expires in under 14 days (warning) or 3 days (critical);
@@ -39,6 +43,9 @@ EVERY_S = 60
 TIMEOUT_S = 10
 FAILS_TO_OPEN = 2
 OKS_TO_CLOSE = 2
+RETRY_AFTER_S = (5, 15)                  # pauses before asking a failed address again, within one round
+FLAKY_WINDOW_S = 10 * EVERY_S            # 5xx that went away on a retry, counted over the last 10 rounds
+FLAKY_TO_OPEN = 3
 CERT_EVERY_S = 6 * 3600
 DOMAIN_EVERY_S = 24 * 3600
 DOMAIN_RETRY_S = 3600
@@ -89,6 +96,26 @@ def _open(url: str) -> tuple[bool, str]:
         return False, str(reason)
     except (TimeoutError, OSError) as error:
         return False, f"no answer in {TIMEOUT_S} s" if isinstance(error, TimeoutError) else str(error)
+
+
+_sleep = time.sleep
+
+
+def _ask(url: str) -> tuple[bool, str, str | None]:
+    """Open the address, and ask again after a pause while it fails. Returns (ok, last detail, a 5xx seen on the
+    way or None). Two 5xx in a row are an answer already: no third try for them."""
+    ok, detail = _open(url)
+    seen5xx = None if ok or not detail.startswith("HTTP 5") else detail
+    for pause in RETRY_AFTER_S:
+        if ok:
+            break
+        _sleep(pause)
+        ok, detail = _open(url)
+        if not ok and detail.startswith("HTTP 5"):
+            if seen5xx:
+                return False, detail, detail
+            seen5xx = detail
+    return ok, detail, seen5xx
 
 
 def _cert_days(host: str) -> float | None:
@@ -177,17 +204,27 @@ def check(url: str, now: float | None = None) -> dict:
     now = time.time() if now is None else now
     with _lock:
         state = dict(_state.get(url) or {"fails": 0, "since": None})
-    ok, detail = _open(url)
-    server_error = not ok and detail.startswith("HTTP 5")
+    ok, detail, seen5xx = _ask(url)
+    server_error = not ok and seen5xx is not None
+    # 5xx answers a retry did not repeat: one is a restart, three in ten minutes are a site that flaps
+    flaky = [at for at in state.get("flaky5xx") or [] if now - at < FLAKY_WINDOW_S] + ([now] if ok and seen5xx else [])
+    state["flaky5xx"] = flaky
+    flapping = len(flaky) >= FLAKY_TO_OPEN
+    clean = ok and not seen5xx
     state["fails"] = 0 if ok else state.get("fails", 0) + 1
-    state["oks"] = state.get("oks", 0) + 1 if ok else 0
-    if not ok and state["fails"] == 1 and not state.get("down"):
-        state["since"] = now
+    state["oks"] = state.get("oks", 0) + 1 if clean else 0
+    if not state.get("down"):
+        if flapping:
+            state["since"] = min(flaky)
+        elif not ok and state["fails"] == 1:
+            state["since"] = now
     if server_error:
-        state["error5xx"] = detail           # the site's own answer: a later timeout must not hide it
-    if server_error or state["fails"] >= FAILS_TO_OPEN:
+        state["error5xx"] = seen5xx          # the site's own answer: a later timeout must not hide it
+    elif flapping and not state.get("error5xx"):
+        state["error5xx"] = f"{seen5xx or 'HTTP 5xx'} now and then, {len(flaky)} times in {FLAKY_WINDOW_S // 60} min"
+    if server_error or flapping or state["fails"] >= FAILS_TO_OPEN:
         state["down"] = True
-    elif ok and (not state.get("down") or state["oks"] >= OKS_TO_CLOSE):
+    elif clean and (not state.get("down") or state["oks"] >= OKS_TO_CLOSE):
         state.update(down=False, since=None, error5xx=None)
     worst = state.get("error5xx")
     state["detail"] = detail if not worst or detail == worst else f"{worst}, last check: {detail}"
