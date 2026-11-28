@@ -6,14 +6,20 @@ come from the agents themselves (nginx server_name on Docker hosts, Ingress host
 domain is followed without a list to keep by hand.
 
 What becomes an incident on the service that serves the address:
-  - it does not answer, or answers 5xx, twice in a row (a minute apart): critical;
+  - it answers 5xx (502 from a proxy whose app is gone): critical at once, that is an answer, not a network blip;
+  - it does not answer (timeout, DNS, TLS) twice in a row (a minute apart): critical;
+  - once open it closes after two good answers in a row, so a site flapping between 502 and 200 stays open, and the
+    5xx stays the headline when the next check only times out;
   - its certificate expires in under 14 days (warning) or 3 days (critical);
-  - its domain registration expires in under 14 / 3 days, from RDAP (public, no key), checked once a day.
+  - its domain registration expires in under 14 / 3 days, from RDAP (public, no key), checked once a day; TLDs
+    without RDAP (.ru, .su, .рф and other ccTLDs) are asked over plain WHOIS (port 43). One lookup per registered
+    domain, one at a time (rdap.org answers 429 to a burst), and a failed lookup is retried in an hour, not a day.
 The incidents are added to the agent's own block as it is read (inject), so the verdict, the journal, the pushes
 and /ops treat them like any other. Nothing here raises: a check that cannot run is a check that did not fail.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -32,8 +38,11 @@ log = logging.getLogger("daedalus.external")
 EVERY_S = 60
 TIMEOUT_S = 10
 FAILS_TO_OPEN = 2
+OKS_TO_CLOSE = 2
 CERT_EVERY_S = 6 * 3600
 DOMAIN_EVERY_S = 24 * 3600
+DOMAIN_RETRY_S = 3600
+LOOKUP_GAP_S = 1.5                       # between two registry lookups: rdap.org rate-limits bursts
 WARN_DAYS, CRIT_DAYS = 14, 3
 USER_AGENT = "Daedalus-uptime/1.0"
 # second-level suffixes where the registered domain is three labels (shop.example.co.uk -> example.co.uk)
@@ -42,6 +51,11 @@ _TWO_LEVEL = {"co.uk", "org.uk", "com.au", "co.jp", "com.br", "com.tr", "com.ua"
 _lock = threading.Lock()
 _state: dict[str, dict] = {}            # url -> what the last checks found
 _where: dict[str, tuple[str, str]] = {}  # url -> (agent tenant, service), refreshed from the agents
+_domains: dict[str, tuple[float | None, float]] = {}  # registered domain -> (expires unix, looked up at)
+_whois_servers: dict[str, str | None] = {"ru": "whois.tcinet.ru", "su": "whois.tcinet.ru", "xn--p1ai": "whois.tcinet.ru"}
+_lookup_lock = threading.Lock()
+_EXPIRY_KEYS = ("registry expiry date", "registrar registration expiration date", "paid-till", "expiration date",
+                "expiry date", "expires on", "expires", "expire", "renewal date")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -87,22 +101,75 @@ def _cert_days(host: str) -> float | None:
         return None                      # an unreachable or broken TLS shows up in the plain check already
 
 
-def _domain_days(host: str) -> float | None:
-    request = urllib.request.Request(f"https://rdap.org/domain/{registered_domain(host)}",
+def _parse_date(text: str) -> float | None:
+    text = text.strip().replace("Z", "+00:00")
+    for candidate in (text, text[:10], text[:10].replace(".", "-")):
+        try:
+            moment = datetime.fromisoformat(candidate)
+        except ValueError:
+            continue
+        return (moment if moment.tzinfo else moment.replace(tzinfo=UTC)).timestamp()
+    return None
+
+
+def _rdap_expires(domain: str) -> float | None:
+    request = urllib.request.Request(f"https://rdap.org/domain/{domain}",
                                      headers={"User-Agent": USER_AGENT, "Accept": "application/rdap+json"})
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:  # noqa: S310 - the public RDAP bootstrap
             events = json.loads(response.read()).get("events") or []
     except (OSError, ValueError):
-        return None
+        return None                      # 404: the TLD has no RDAP; 429: rate limited
     for event in events:
         if event.get("eventAction") == "expiration" and event.get("eventDate"):
-            try:
-                expires = datetime.fromisoformat(event["eventDate"].replace("Z", "+00:00"))
-            except ValueError:
-                return None
-            return (expires.timestamp() - time.time()) / 86400
+            return _parse_date(event["eventDate"])
     return None
+
+
+def _whois(query: str, server: str) -> str:
+    with socket.create_connection((server, 43), timeout=TIMEOUT_S) as conn:
+        conn.sendall(f"{query}\r\n".encode())
+        chunks = []
+        while chunk := conn.recv(4096):
+            chunks.append(chunk)
+    return b"".join(chunks).decode("utf-8", "replace")
+
+
+def whois_expires(text: str) -> float | None:
+    for line in text.splitlines():
+        key, sep, value = line.partition(":")
+        if sep and key.strip().lower() in _EXPIRY_KEYS and value.strip():
+            found = _parse_date(value)
+            if found:
+                return found
+    return None
+
+
+def _whois_expires(domain: str) -> float | None:
+    tld = domain.rsplit(".", 1)[-1]
+    try:
+        if tld not in _whois_servers:    # IANA names the registry's WHOIS server for every TLD
+            refer = [line.split(":", 1)[1].strip() for line in _whois(tld, "whois.iana.org").splitlines()
+                     if line.lower().startswith("whois:")]
+            _whois_servers[tld] = refer[0] if refer and refer[0] else None
+        server = _whois_servers[tld]
+        return whois_expires(_whois(domain, server)) if server else None
+    except (OSError, UnicodeError):
+        return None
+
+
+def _domain_days(host: str) -> float | None:
+    """Days until the registration of the host's domain lapses: RDAP, else WHOIS; one lookup per domain a day."""
+    domain = registered_domain(host)
+    with contextlib.suppress(UnicodeError):  # .рф and other IDN names go to registries as punycode
+        domain = domain.encode("idna").decode()
+    with _lookup_lock:                   # one at a time: twenty subdomains at once is a burst rdap.org refuses
+        expires, at = _domains.get(domain, (None, None))
+        if at is None or time.time() - at >= (DOMAIN_EVERY_S if expires else DOMAIN_RETRY_S):
+            expires = _rdap_expires(domain) or _whois_expires(domain)
+            _domains[domain] = (expires, time.time())
+            time.sleep(LOOKUP_GAP_S)
+    return (expires - time.time()) / 86400 if expires else None
 
 
 def check(url: str, now: float | None = None) -> dict:
@@ -111,19 +178,26 @@ def check(url: str, now: float | None = None) -> dict:
     with _lock:
         state = dict(_state.get(url) or {"fails": 0, "since": None})
     ok, detail = _open(url)
-    state["fails"] = 0 if ok else state["fails"] + 1
-    state["detail"] = detail
-    if ok:
-        state["since"] = None
-    elif state["fails"] == 1:
+    server_error = not ok and detail.startswith("HTTP 5")
+    state["fails"] = 0 if ok else state.get("fails", 0) + 1
+    state["oks"] = state.get("oks", 0) + 1 if ok else 0
+    if not ok and state["fails"] == 1 and not state.get("down"):
         state["since"] = now
+    if server_error:
+        state["error5xx"] = detail           # the site's own answer: a later timeout must not hide it
+    if server_error or state["fails"] >= FAILS_TO_OPEN:
+        state["down"] = True
+    elif ok and (not state.get("down") or state["oks"] >= OKS_TO_CLOSE):
+        state.update(down=False, since=None, error5xx=None)
+    worst = state.get("error5xx")
+    state["detail"] = detail if not worst or detail == worst else f"{worst}, last check: {detail}"
     host = urlsplit(url).hostname or ""
     def due(key: str, every: float) -> bool:
         return state.get(key) is None or now - state[key] >= every
 
     if ok and due("certAt", CERT_EVERY_S):
         state["certDays"], state["certAt"] = _cert_days(host), now
-    if due("domainAt", DOMAIN_EVERY_S):
+    if due("domainAt", DOMAIN_EVERY_S if state.get("domainDays") is not None else DOMAIN_RETRY_S):
         state["domainDays"], state["domainAt"] = _domain_days(host), now
     with _lock:
         _state[url] = state
@@ -153,7 +227,7 @@ def problems(tenant: str) -> list[dict]:
     for url, service, state in rows:
         host = urlsplit(url).hostname or url
         key = hashlib.sha1(url.encode()).hexdigest()[:10]
-        if state["fails"] >= FAILS_TO_OPEN:
+        if state.get("down"):
             found.append((f"ext-{key}", service, "critical", f"{url} does not open from the internet ({state['detail']})", state["since"],
                           f"curl -sSI {url}"))
         for what, days in (("certificate", state.get("certDays")), ("domain", state.get("domainDays"))):
@@ -201,7 +275,8 @@ def urls() -> list[str]:
 def status() -> list[dict]:
     """Every address and what its last check found, for the screen."""
     with _lock:
-        return [{"url": url, "host": tenant, "service": service, "ok": (_state.get(url) or {}).get("fails", 0) == 0,
+        return [{"url": url, "host": tenant, "service": service,
+                 "ok": not (_state.get(url) or {}).get("down") and (_state.get(url) or {}).get("fails", 0) == 0,
                  "detail": (_state.get(url) or {}).get("detail"), "certDays": (_state.get(url) or {}).get("certDays"),
                  "domainDays": (_state.get(url) or {}).get("domainDays")}
                 for url, (tenant, service) in sorted(_where.items())]
@@ -226,3 +301,4 @@ def reset() -> None:
     with _lock:
         _state.clear()
         _where.clear()
+        _domains.clear()
