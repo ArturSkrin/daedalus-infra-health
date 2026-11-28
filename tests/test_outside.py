@@ -147,3 +147,34 @@ def test_a_certificate_or_domain_close_to_expiry_warns_then_pages(hub, monkeypat
 def test_registered_domain_for_rdap():
     assert external.registered_domain("shop.ccb.example.com") == "example.com"
     assert external.registered_domain("www.example.co.uk") == "example.co.uk"
+
+
+def test_whois_expiry_in_the_formats_registries_use():
+    tcinet = ("domain:        EXAMPLE.RU\nstate:         REGISTERED, DELEGATED\n"
+              "paid-till:     2027-03-15T21:00:00Z\nfree-date:     2027-04-16\n")
+    verisign = "   Domain Name: EXAMPLE.COM\n   Registry Expiry Date: 2027-08-13T04:00:00Z\n"
+    assert external.whois_expires(tcinet) == external._parse_date("2027-03-15T21:00:00+00:00")
+    assert external.whois_expires(verisign) == external._parse_date("2027-08-13T04:00:00+00:00")
+    assert external.whois_expires("% no entries found\n") is None
+
+
+def test_a_tld_without_rdap_falls_back_to_whois_and_one_domain_is_asked_once(monkeypatch):
+    external.reset()
+    monkeypatch.setattr(external, "LOOKUP_GAP_S", 0)
+    asked = []
+    monkeypatch.setattr(external, "_rdap_expires", lambda domain: asked.append(("rdap", domain)))   # 404 for .ru
+    monkeypatch.setattr(external, "_whois", lambda query, server: asked.append((server, query)) or
+                        "paid-till:     2099-01-01T00:00:00Z\n")
+    assert external._domain_days("shop.example.ru") > 300
+    assert external._domain_days("www.example.ru") > 300
+    assert asked == [("rdap", "example.ru"), ("whois.tcinet.ru", "example.ru")]
+
+
+def test_a_failed_domain_lookup_is_retried_within_the_hour_not_the_day(hub, monkeypatch):
+    answers, _ = hub
+    url = "https://ccb.example.com/"
+    answers[url] = (True, "HTTP 200")
+    days = iter([None, 200.0])
+    monkeypatch.setattr(external, "_domain_days", lambda host: next(days))
+    assert external.check(url, now=1000)["domainDays"] is None
+    assert external.check(url, now=1000 + external.DOMAIN_RETRY_S)["domainDays"] == 200.0
